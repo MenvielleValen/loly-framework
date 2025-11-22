@@ -18,17 +18,31 @@ declare global {
 
 // --- helpers de matching ---
 
-function buildRegexFromPattern(pattern: string, paramNames: string[]): RegExp {
+function buildClientRegexFromPattern(pattern: string): RegExp {
   const segments = pattern.split("/").filter(Boolean);
   const regexParts: string[] = [];
 
-  for (const seg of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+
+    if (seg.startsWith("[...") && seg.endsWith("]")) {
+      // catch-all al final
+      if (i !== segments.length - 1) {
+        throw new Error(
+          `El segmento catch-all "${seg}" en "${pattern}" debe ser el último.`
+        );
+      }
+      regexParts.push("(.+)");
+      continue;
+    }
+
     if (seg.startsWith("[") && seg.endsWith("]")) {
       regexParts.push("([^/]+)");
-    } else {
-      const escaped = seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      regexParts.push(escaped);
+      continue;
     }
+
+    const escaped = seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    regexParts.push(escaped);
   }
 
   const regexSource = "^/" + regexParts.join("/") + "/?$";
@@ -39,7 +53,7 @@ function matchRouteClient(
   pathname: string
 ): { route: ClientRouteLoaded; params: Record<string, string> } | null {
   for (const r of routes) {
-    const regex = buildRegexFromPattern(r.pattern, r.paramNames);
+    const regex = buildClientRegexFromPattern(r.pattern);
     const match = regex.exec(pathname);
     if (!match) continue;
 

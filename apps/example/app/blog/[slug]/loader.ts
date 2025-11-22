@@ -2,7 +2,7 @@ import type {
   ServerContext,
   LoaderResult,
   RouteMiddleware,
-} from "@tuorg/framework";
+} from "@loly/core";
 import axios from "axios";
 
 // Middleware de ejemplo: simula un usuario logueado
@@ -20,7 +20,7 @@ export const beforeServerData: RouteMiddleware[] = [
   async (ctx, next) => {
     try {
       const { data } = await axios.get(
-        `http://localhost:3000/api/test/${ctx.params.slug}`,
+        `http://localhost:3000/api/blog/${ctx.params.slug}`,
         {
           headers: {
             user: ctx.locals.user?.name || "No context",

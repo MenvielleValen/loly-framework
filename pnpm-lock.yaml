@@ -10,7 +10,7 @@ importers:
 
   apps/example:
     dependencies:
-      '@tuorg/framework':
+      '@loly/core':
         specifier: workspace:*
         version: link:../../packages/framework
       axios:

@@ -1,4 +1,4 @@
-import type { ApiContext, ApiMiddleware } from "@tuorg/framework";
+import type { ApiContext, ApiMiddleware } from "@loly/core";
 
 const captureSlug: ApiMiddleware = async (ctx, next) => {
   ctx.locals.slug = ctx.params.id;

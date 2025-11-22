@@ -8,7 +8,7 @@ export const Button = ({
   const handleClick = async () => {
     try {
       const { data } = await axios.post(
-        `http://localhost:3000/api/test/${slug}`,
+        `http://localhost:3000/api/blog/${slug}`,
         {
           test: "prueba",
         }

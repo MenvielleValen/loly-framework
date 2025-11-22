@@ -196,7 +196,7 @@ function buildRoutePathFromDir(relDir: string): string {
   return "/" + clean;
 }
 
-function buildRegexFromRoutePath(routePath: string): {
+export function buildRegexFromRoutePath(routePath: string): {
   regex: RegExp;
   paramNames: string[];
 } {
@@ -204,19 +204,43 @@ function buildRegexFromRoutePath(routePath: string): {
   const paramNames: string[] = [];
   const regexParts: string[] = [];
 
-  for (const seg of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+
+    // 1) Catch-all: [...slug]
+    if (seg.startsWith("[...") && seg.endsWith("]")) {
+      const paramName = seg.slice(4, -1); // "[...slug]" -> "slug"
+      paramNames.push(paramName);
+
+      // Por ahora sólo soportamos catch-all al final, como Next.
+      // Si no es el último segmento, tiramos error o podrías loguear un warning.
+      if (i !== segments.length - 1) {
+        throw new Error(
+          `El segmento catch-all "${seg}" en "${routePath}" debe ser el último.`
+        );
+      }
+
+      // (.+) = uno o más caracteres (no vacío), permite "/" adentro
+      regexParts.push("(.+)");
+      continue;
+    }
+
+    // 2) Param normal: [slug]
     if (seg.startsWith("[") && seg.endsWith("]")) {
       const paramName = seg.slice(1, -1);
       paramNames.push(paramName);
       regexParts.push("([^/]+)");
-    } else {
-      const escaped = seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      regexParts.push(escaped);
+      continue;
     }
+
+    // 3) Segmento estático
+    const escaped = seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    regexParts.push(escaped);
   }
 
   const regexSource = "^/" + regexParts.join("/") + "/?$";
   const regex = new RegExp(regexSource);
+
   return { regex, paramNames };
 }
 

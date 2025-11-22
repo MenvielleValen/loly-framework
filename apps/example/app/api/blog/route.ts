@@ -1,4 +1,4 @@
-import type { ApiContext, ApiMiddleware } from "@tuorg/framework";
+import type { ApiContext, ApiMiddleware } from "@loly/core";
 
 export const beforeApi: ApiMiddleware[] = [
   async (ctx, next) => {

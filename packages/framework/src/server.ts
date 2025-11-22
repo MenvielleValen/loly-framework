@@ -13,7 +13,7 @@ import {
   ServerContext,
   writeClientRoutesManifest,
 } from "./router";
-import { startClientBundler } from "./clientBundler";
+import { startClientBundler } from "./build/client";
 
 export interface StartDevServerOptions {
   port?: number;

@@ -1,9 +1,9 @@
-import type { Express, Request, Response } from "express";
+import type { Application, Request, Response } from "express";
 import chokidar from "chokidar";
 import path from "path";
 
 export interface HotReloadOptions {
-  app: Express;
+  app: Application;
   appDir: string; // carpeta de la app (ej: apps/example/app)
   route?: string; // endpoint SSE, default: "/__fw/hot"
 }

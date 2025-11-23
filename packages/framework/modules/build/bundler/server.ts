@@ -9,10 +9,10 @@ export interface BuildServerResult {
 
 /**
  * Collects all TypeScript/JavaScript source files from the app directory.
- * 
+ *
  * Recursively walks through the directory and collects all .ts, .tsx, .js, .jsx files,
  * excluding .d.ts declaration files.
- * 
+ *
  * @param appDir - Application source directory
  * @returns Array of absolute file paths
  */
@@ -52,14 +52,14 @@ function collectAppSources(appDir: string): string[] {
 
 /**
  * Builds the server-side application code.
- * 
+ *
  * Compiles the app directory to CommonJS format in .fw/server, maintaining
  * the same directory structure. Uses esbuild for fast compilation.
- * 
+ *
  * @param projectRoot - Root directory of the project
  * @param appDir - Source application directory (e.g., 'app')
  * @returns Promise that resolves with output directory path
- * 
+ *
  * @example
  * const { outDir } = await buildServerApp('/path/to/project', 'app');
  * // Server code compiled to .fw/server
@@ -69,6 +69,7 @@ export async function buildServerApp(
   appDir: string
 ): Promise<BuildServerResult> {
   const outDir = path.join(projectRoot, ".fw", "server");
+
   const entryPoints = collectAppSources(appDir);
 
   ensureDir(outDir);
@@ -95,7 +96,36 @@ export async function buildServerApp(
     tsconfig: path.join(projectRoot, "tsconfig.json"),
   });
 
+  const initTS = path.join(projectRoot, "init.server.ts");
+  const initJS = path.join(outDir, "init.server.js");
+
+  if (fs.existsSync(initTS)) {
+    console.log("[framework][server-build] Compilando init.server.ts");
+
+    await esbuild.build({
+      entryPoints: [initTS],
+      outfile: initJS,
+      platform: "node",
+      format: "cjs",
+      target: "node18",
+      jsx: "automatic",
+      sourcemap: true,
+      bundle: false,
+      logLevel: "info",
+      tsconfig: path.join(projectRoot, "tsconfig.json"),
+    });
+
+    console.log(
+      "[framework][server-build] init.server.ts compiled in",
+      initJS
+    );
+  } else {
+    console.log(
+      "[framework][server-build] init.server.ts not found",
+      projectRoot
+    );
+  }
+
   console.log("[framework][server-build] Server build successful at", outDir);
   return { outDir };
 }
-

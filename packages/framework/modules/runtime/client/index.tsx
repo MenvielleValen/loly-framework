@@ -1,12 +1,5 @@
-import "../app/styles.css";
-
 import { useEffect, useState } from "react";
 import { hydrateRoot } from "react-dom/client";
-import {
-  routes,
-  type ClientRouteLoaded,
-  type ClientLoadedComponents,
-} from "../.fw/routes-client";
 
 type InitialData = {
   pathname: string;
@@ -23,6 +16,17 @@ declare global {
     __FW_DATA__?: InitialData;
   }
 }
+
+export type ClientRouteLoaded = {
+  pattern: string;
+  paramNames: string[];
+  load: () => Promise<ClientLoadedComponents>;
+};
+
+export type ClientLoadedComponents = {
+  Page: React.ComponentType<any>;
+  layouts: React.ComponentType<any>[];
+};
 
 // --- helpers de matching ---
 
@@ -60,9 +64,10 @@ function buildClientRegexFromPattern(pattern: string): RegExp {
 }
 
 function matchRouteClient(
-  pathWithSearch: string
+  pathWithSearch: string,
+  routes: ClientRouteLoaded[]
 ): { route: ClientRouteLoaded; params: Record<string, string> } | null {
-  const [pathname] = pathWithSearch.split("?"); // ignoramos query para matchear
+  const [pathname] = pathWithSearch.split("?");
   for (const r of routes) {
     const regex = buildClientRegexFromPattern(r.pattern);
     const match = regex.exec(pathname);
@@ -75,7 +80,6 @@ function matchRouteClient(
 
     return { route: r, params };
   }
-
   return null;
 }
 
@@ -104,25 +108,20 @@ function applyMetadata(md?: { title?: string; description?: string } | null) {
 function setupHotReloadClient() {
   if (typeof window === "undefined") return;
 
-  // Podrías chequear NODE_ENV si tenés un define, pero en dev
-  // no molesta que se conecte siempre.
   try {
     const es = new EventSource("/__fw/hot");
 
     es.onmessage = (ev) => {
       if (!ev.data) return;
-
       if (ev.data.startsWith("reload:")) {
         const file = ev.data.slice("reload:".length);
         console.log("[hot-reload] Cambio detectado:", file);
-        // Live reload simple:
         window.location.reload();
       }
     };
 
     es.onerror = (err) => {
       console.warn("[hot-reload] Error en EventSource:", err);
-      // Opcional: reconectar luego de un tiempo
     };
 
     console.log("[hot-reload] EventSource conectado a /__fw/hot");
@@ -134,7 +133,7 @@ function setupHotReloadClient() {
 // --- Estado global de la app en el cliente ---
 
 type RouteViewState = {
-  url: string; // path + search
+  url: string;
   route: ClientRouteLoaded | null;
   params: Record<string, string>;
   components: ClientLoadedComponents | null;
@@ -173,12 +172,12 @@ function RouterView({ state }: { state: RouteViewState }) {
 }
 
 // --- AppShell: SPA navigation + data fetching + carga de módulos ---
-
 interface AppShellProps {
   initialState: RouteViewState;
+  routes: ClientRouteLoaded[];
 }
 
-function AppShell({ initialState }: AppShellProps) {
+function AppShell({ initialState, routes }: AppShellProps) {
   const [state, setState] = useState<RouteViewState>(initialState);
 
   useEffect(() => {
@@ -206,8 +205,6 @@ function AppShell({ initialState }: AppShellProps) {
 
         const json = await res.json();
 
-        console.log("JSON", json);
-
         if (json.redirect) {
           window.location.href = json.redirect.destination;
           return;
@@ -215,7 +212,7 @@ function AppShell({ initialState }: AppShellProps) {
 
         if (json.notFound) {
           // manejamos 404 en cliente (sin props ni componentes)
-          const match404 = matchRouteClient(nextUrl);
+          const match404 = matchRouteClient(nextUrl, routes);
           setState({
             url: nextUrl,
             route: match404?.route ?? null,
@@ -231,7 +228,7 @@ function AppShell({ initialState }: AppShellProps) {
         const newProps = json.props ?? {};
 
         // resolve de la ruta y carga de módulos para la ruta destino
-        const matched = matchRouteClient(nextUrl);
+        const matched = matchRouteClient(nextUrl, routes);
         if (!matched) {
           window.location.href = nextUrl;
           return;
@@ -242,7 +239,7 @@ function AppShell({ initialState }: AppShellProps) {
           params: matched.params,
           props: newProps,
           pathname: nextUrl,
-        }
+        };
 
         const components = await matched.route.load();
 
@@ -300,53 +297,53 @@ function AppShell({ initialState }: AppShellProps) {
       window.removeEventListener("click", handleClick);
       window.removeEventListener("popstate", handlePopState);
     };
-  }, []); // solo se configura una vez
+  }, [routes]); // solo se configura una vez
 
   return <RouterView state={state} />;
 }
 
-// --- hidratación inicial con load() YA resuelto para la ruta actual ---
-console.log("ENV", process.env.NODE_ENV)
-if (process.env.NODE_ENV === "development") {
-  setupHotReloadClient();
+export function bootstrapClient(routes: ClientRouteLoaded[]) {
+  if (process.env.NODE_ENV === "development") {
+    setupHotReloadClient();
+  }
+
+  (async function bootstrap() {
+    const container = document.getElementById("__app");
+    const initialData: InitialData | null = window.__FW_DATA__ ?? null;
+
+    if (!container) {
+      console.error("No se encontró el contenedor #__app para hidratar");
+      return;
+    }
+
+    const initialUrl = window.location.pathname + window.location.search;
+
+    const match = matchRouteClient(initialUrl, routes);
+    let initialRoute: ClientRouteLoaded | null = null;
+    let initialParams: Record<string, string> = {};
+    let initialComponents: ClientLoadedComponents | null = null;
+
+    if (match) {
+      initialRoute = match.route;
+      initialParams = match.params;
+      initialComponents = await match.route.load();
+    }
+
+    if (initialData?.metadata) {
+      applyMetadata(initialData.metadata);
+    }
+
+    const initialState: RouteViewState = {
+      url: initialUrl,
+      route: initialRoute,
+      params: initialParams,
+      components: initialComponents,
+      props: initialData?.props ?? {},
+    };
+
+    hydrateRoot(
+      container,
+      <AppShell initialState={initialState} routes={routes} />
+    );
+  })();
 }
-
-(async function bootstrap() {
-  const container = document.getElementById("__app");
-  const initialData: InitialData | null = window.__FW_DATA__ ?? null;
-
-  console.log('Initial Data', initialData);
-
-  if (!container) {
-    console.error("No se encontró el contenedor #__app para hidratar");
-    return;
-  }
-
-  const initialUrl = window.location.pathname + window.location.search;
-
-  const match = matchRouteClient(initialUrl);
-  let initialRoute: ClientRouteLoaded | null = null;
-  let initialParams: Record<string, string> = {};
-  let initialComponents: ClientLoadedComponents | null = null;
-
-  if (match) {
-    initialRoute = match.route;
-    initialParams = match.params;
-    // 🔹 Cargamos los módulos de la ruta inicial ANTES de hidratar
-    initialComponents = await match.route.load();
-  }
-
-  if (initialData?.metadata) {
-    applyMetadata(initialData.metadata);
-  }
-
-  const initialState: RouteViewState = {
-    url: initialUrl,
-    route: initialRoute,
-    params: initialParams,
-    components: initialComponents,
-    props: initialData?.props ?? {},
-  };
-
-  hydrateRoot(container, <AppShell initialState={initialState} />);
-})();

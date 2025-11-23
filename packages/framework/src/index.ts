@@ -10,3 +10,4 @@ export {
   GenerateStaticParams,
   ServerLoader,
 } from "@router/index.types";
+export { bootstrapClient } from '@runtime/client';

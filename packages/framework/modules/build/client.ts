@@ -10,7 +10,7 @@ function createClientConfig(
   projectRoot: string,
   mode: "development" | "production"
 ): { config: Configuration; outDir: string } {
-  const clientEntry = path.join(projectRoot, "client", "root.tsx");
+  const clientEntry = path.join(projectRoot, "boostrap.ts");
   const outDir = path.join(projectRoot, ".fw", "client");
 
   const config: Configuration = {

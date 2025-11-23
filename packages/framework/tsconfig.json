@@ -10,7 +10,8 @@
       "@rendering/*": ["modules/rendering/*"],
       "@router/*": ["modules/router/*"],
       "@build/*": ["modules/build/*"],
-      "@dev/*": ["modules/dev/*"]
+      "@dev/*": ["modules/dev/*"],
+      "@runtime/*": ["modules/runtime/*"],
     }
   },
   "include": ["src", "modules"]

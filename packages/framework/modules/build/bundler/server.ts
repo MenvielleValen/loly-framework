@@ -1,12 +1,21 @@
 import path from "path";
 import fs from "fs";
 import esbuild from "esbuild";
+import { ensureDir } from "../utils";
 
 export interface BuildServerResult {
   outDir: string;
 }
 
-// Recorre appDir y devuelve todos los archivos .ts/.tsx/.js/.jsx
+/**
+ * Collects all TypeScript/JavaScript source files from the app directory.
+ * 
+ * Recursively walks through the directory and collects all .ts, .tsx, .js, .jsx files,
+ * excluding .d.ts declaration files.
+ * 
+ * @param appDir - Application source directory
+ * @returns Array of absolute file paths
+ */
 function collectAppSources(appDir: string): string[] {
   const entries: string[] = [];
 
@@ -22,6 +31,7 @@ function collectAppSources(appDir: string): string[] {
       }
 
       if (item.isFile()) {
+        // Skip declaration files
         if (full.endsWith(".d.ts")) continue;
 
         if (
@@ -41,8 +51,18 @@ function collectAppSources(appDir: string): string[] {
 }
 
 /**
- * Compila la carpeta app/ del usuario a .fw/server en formato CJS.
- * Mantiene la misma estructura de carpetas (outbase = appDir).
+ * Builds the server-side application code.
+ * 
+ * Compiles the app directory to CommonJS format in .fw/server, maintaining
+ * the same directory structure. Uses esbuild for fast compilation.
+ * 
+ * @param projectRoot - Root directory of the project
+ * @param appDir - Source application directory (e.g., 'app')
+ * @returns Promise that resolves with output directory path
+ * 
+ * @example
+ * const { outDir } = await buildServerApp('/path/to/project', 'app');
+ * // Server code compiled to .fw/server
  */
 export async function buildServerApp(
   projectRoot: string,
@@ -51,19 +71,11 @@ export async function buildServerApp(
   const outDir = path.join(projectRoot, ".fw", "server");
   const entryPoints = collectAppSources(appDir);
 
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
-  }
-
-  console.log({
-    projectRoot,
-    appDir,
-    outDir,
-  });
+  ensureDir(outDir);
 
   if (entryPoints.length === 0) {
     console.warn(
-      "[framework][server-build] No se encontraron fuentes en appDir:",
+      "[framework][server-build] No source files found in appDir:",
       appDir
     );
     return { outDir };
@@ -72,17 +84,18 @@ export async function buildServerApp(
   await esbuild.build({
     entryPoints,
     outdir: outDir,
-    outbase: appDir, // conserva estructura relativa
+    outbase: appDir, // Preserve relative directory structure
     platform: "node",
     format: "cjs",
     target: "node18",
     jsx: "automatic",
     sourcemap: true,
-    bundle: false, // 1 archivo tsx -> 1 archivo js
+    bundle: false, // 1 tsx file -> 1 js file (no bundling)
     logLevel: "info",
     tsconfig: path.join(projectRoot, "tsconfig.json"),
   });
 
-  console.log("[framework][server-build] Build server OK en", outDir);
+  console.log("[framework][server-build] Server build successful at", outDir);
   return { outDir };
 }
+

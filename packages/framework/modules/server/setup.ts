@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { loadRoutes, loadApiRoutes } from "@router/index";
-import { startClientBundler } from "@build/client";
+import { startClientBundler } from "@build/bundler/client";
 import { setupHotReload } from "@dev/hot-reload-client";
 import { clearAppRequireCache } from "@dev/hot-reload-server";
 import { writeClientRoutesManifest } from "@router/index";

@@ -4,9 +4,11 @@ import {
   ApiHandler,
   ApiMiddleware,
   ApiRoute,
-  ClientRoute,
+  DynamicMode,
+  GenerateStaticParams,
   LayoutComponent,
   LoadedRoute,
+  MetadataLoader,
   PageComponent,
   RouteMiddleware,
   ServerLoader,
@@ -58,7 +60,8 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         currentDir,
         appDir
       );
-      const { middlewares, loader } = loadLoaderForDir(currentDir);
+      const { middlewares, loader, metadata, dynamic, generateStaticParams } =
+        loadLoaderForDir(currentDir);
 
       routes.push({
         pattern: routePath,
@@ -69,7 +72,10 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         pageFile: fullPath,
         layoutFiles,
         middlewares: middlewares,
-        loader: loader,
+        loader,
+        metadata,
+        dynamic,
+        generateStaticParams,
       });
     }
   }
@@ -166,28 +172,66 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
   return routes;
 }
 
-function loadLoaderForDir(dir: string): {
+export function loadLoaderForDir(currentDir: string): {
   middlewares: RouteMiddleware[];
-  loader?: ServerLoader;
+  loader: ServerLoader | null;
+  metadata: MetadataLoader | null;
+  dynamic: DynamicMode;
+  generateStaticParams: GenerateStaticParams | null;
 } {
-  const candidates = ["loader", "hook"]; // nombres que quieras soportar
-  const exts = [".ts", ".tsx", ".js", ".jsx"];
+  const loaderTs = path.join(currentDir, "loader.ts");
+  const loaderJs = path.join(currentDir, "loader.js");
 
-  for (const base of candidates) {
-    for (const ext of exts) {
-      const file = path.join(dir, base + ext);
-      if (!fs.existsSync(file)) continue;
+  console.log("file", loaderTs);
 
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require(file);
-      const middlewares: RouteMiddleware[] = mod.beforeServerData ?? [];
-      const loader: ServerLoader | undefined = mod.getServerSideProps;
+  const file = fs.existsSync(loaderTs)
+    ? loaderTs
+    : fs.existsSync(loaderJs)
+    ? loaderJs
+    : null;
 
-      return { middlewares, loader };
-    }
+  if (!file) {
+    return {
+      middlewares: [],
+      loader: null,
+      metadata: null,
+      dynamic: "auto",
+      generateStaticParams: null,
+    };
   }
 
-  return { middlewares: [], loader: undefined };
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = require(file);
+
+  const middlewares: RouteMiddleware[] = Array.isArray(mod.beforeServerData)
+    ? mod.beforeServerData
+    : [];
+
+  const loader: ServerLoader | null =
+    typeof mod.getServerSideProps === "function"
+      ? mod.getServerSideProps
+      : null;
+
+  const metadata: MetadataLoader | null =
+    typeof mod.getMetadata === "function" ? mod.getMetadata : null;
+
+  const dynamic: DynamicMode =
+    mod.dynamic === "force-static" || mod.dynamic === "force-dynamic"
+      ? mod.dynamic
+      : "auto";
+
+  const generateStaticParams: GenerateStaticParams | null =
+    typeof mod.generateStaticParams === "function"
+      ? mod.generateStaticParams
+      : null;
+
+  return {
+    middlewares,
+    loader,
+    metadata,
+    dynamic,
+    generateStaticParams,
+  };
 }
 
 function buildRoutePathFromDir(relDir: string): string {
@@ -351,63 +395,68 @@ export function writeClientRoutesManifest(
   const manifestPath = path.join(fwDir, "routes-client.ts");
   const manifestDir = path.dirname(manifestPath);
 
-  const importMap = new Map<string, string>(); // importPath -> identifier
-  const clientRoutes: ClientRoute[] = [];
-
-  function getImportId(filePath: string): string {
+  // 🔹 Helper: convierte un path absoluto de file a import path relativo desde .fw/routes-client.ts
+  function toImportPath(filePath: string): string {
     const relRaw = path.relative(manifestDir, filePath).replace(/\\/g, "/");
     const rel = relRaw.startsWith(".") ? relRaw : "./" + relRaw;
-    const importPath = rel.replace(/\.(tsx|ts|jsx|js)$/, "");
-
-    if (importMap.has(importPath)) {
-      return importMap.get(importPath)!;
-    }
-
-    const id = "mod" + importMap.size;
-    importMap.set(importPath, id);
-    return id;
-  }
-
-  for (const route of routes) {
-    const pageImportId = getImportId(route.pageFile);
-    const layoutImportIds = route.layoutFiles.map(getImportId);
-
-    clientRoutes.push({
-      pattern: route.pattern,
-      paramNames: route.paramNames,
-      pageImportId,
-      layoutImportIds,
-    });
+    // le sacamos la extensión para que Rspack use las extensions de resolve
+    return rel.replace(/\.(tsx|ts|jsx|js)$/, "");
   }
 
   const lines: string[] = [];
 
-  // imports estáticos
-  for (const [importPath, id] of importMap.entries()) {
-    lines.push(`import ${id} from "${importPath}";`);
-  }
-
-  lines.push("");
   lines.push(`import React from "react";`);
   lines.push("");
-  lines.push("export interface ClientRouteLoaded {");
-  lines.push("  pattern: string;");
-  lines.push("  paramNames: string[];");
-  lines.push("  Page: React.ComponentType<any>;");
-  lines.push("  layouts: React.ComponentType<any>[];");
-  lines.push("}");
-  lines.push("");
-  lines.push("export const routes: ClientRouteLoaded[] = [");
 
-  for (const r of clientRoutes) {
-    const layoutsArr =
-      r.layoutImportIds.length > 0 ? `[${r.layoutImportIds.join(", ")}]` : "[]";
+  lines.push(`export interface ClientLoadedComponents {`);
+  lines.push(`  Page: React.ComponentType<any>;`);
+  lines.push(`  layouts: React.ComponentType<any>[];`);
+  lines.push(`}`);
+  lines.push("");
+  lines.push(`export interface ClientRouteLoaded {`);
+  lines.push(`  pattern: string;`);
+  lines.push(`  paramNames: string[];`);
+  lines.push(`  load: () => Promise<ClientLoadedComponents>;`);
+  lines.push(`}`);
+  lines.push("");
+  lines.push(`export const routes: ClientRouteLoaded[] = [`);
+
+  for (const route of routes) {
+    const pattern = route.pattern;
+    const paramNames = route.paramNames;
+
+    // page + layouts
+    const modulePaths = [route.pageFile, ...route.layoutFiles].map(
+      toImportPath
+    );
+
+    // Nombre “amigable” para los chunks: /blog/[slug] -> blog_slug
+    const safeName =
+      pattern
+        .replace(/^\//, "") // quita leading slash
+        .replace(/\//g, "_") // / -> _
+        .replace(/\[|\]/g, "") || // quita []
+      "root";
 
     lines.push("  {");
-    lines.push(`    pattern: ${JSON.stringify(r.pattern)},`);
-    lines.push(`    paramNames: ${JSON.stringify(r.paramNames)},`);
-    lines.push(`    Page: ${r.pageImportId},`);
-    lines.push(`    layouts: ${layoutsArr},`);
+    lines.push(`    pattern: ${JSON.stringify(pattern)},`);
+    lines.push(`    paramNames: ${JSON.stringify(paramNames)},`);
+    lines.push(`    load: async () => {`);
+    lines.push(`      const mods = await Promise.all([`);
+
+    for (const p of modulePaths) {
+      lines.push(
+        `        import(/* webpackChunkName: "route-${safeName}" */ "${p}"),`
+      );
+    }
+
+    lines.push("      ]);");
+    lines.push("      const [pageMod, ...layoutMods] = mods;");
+    lines.push("      return {");
+    lines.push("        Page: pageMod.default,");
+    lines.push("        layouts: layoutMods.map((m) => m.default),");
+    lines.push("      };");
+    lines.push("    },");
     lines.push("  },");
   }
 

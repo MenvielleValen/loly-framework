@@ -1,7 +1,6 @@
-import fs from "fs";
 import path from "path";
 import { rspack, type Configuration, type Compiler } from "@rspack/core";
-import { loadAliasesFromTsconfig } from "./utils";
+import { copyStaticAssets, loadAliasesFromTsconfig } from "./utils";
 
 export interface ClientBundlerResult {
   outDir: string;
@@ -21,13 +20,14 @@ function createClientConfig(
     },
     output: {
       path: outDir,
-      filename: "client.js",
+      filename: "client.js",          // principal entry
+      chunkFilename: "[name].js",     // chunks import() (route-..., 0.js, etc.)
       publicPath: "/static/",
     },
     context: projectRoot,
     resolve: {
       extensions: [".tsx", ".ts", ".jsx", ".js"],
-      alias: loadAliasesFromTsconfig(projectRoot), // si ya tenés este helper
+      alias: loadAliasesFromTsconfig(projectRoot),
     },
     module: {
       rules: [
@@ -62,6 +62,9 @@ function createClientConfig(
         filename: "client.css",
       }),
     ],
+    // optimization: {
+    //   splitChunks: { chunks: "async" },
+    // },
     infrastructureLogging: {
       level: "error",
     },
@@ -71,8 +74,12 @@ function createClientConfig(
   return { config, outDir };
 }
 
+
 export function startClientBundler(projectRoot: string): ClientBundlerResult {
   const { config, outDir } = createClientConfig(projectRoot, "development");
+  
+  copyStaticAssets(projectRoot, outDir);
+
   const compiler = rspack(config);
 
   compiler.watch({}, (err, stats) => {
@@ -121,6 +128,8 @@ export function buildClientBundle(
         );
         return reject(new Error("Client build failed"));
       }
+
+      copyStaticAssets(projectRoot, outDir);
 
       console.log("[framework][client] Build de cliente OK");
       resolve({ outDir });

@@ -1,5 +1,7 @@
 import React from "react";
 
+import { Link } from '@loly/core/modules/components';
+
 export default function RootLayout({
   children,
 }: {
@@ -18,8 +20,10 @@ export default function RootLayout({
           My Framework Dev
           <span id="client-debug" />
         </h1>
-        <nav>
-          <a href="/">Home</a> | <a href="/blog/test">Blog test</a>
+        <nav className="flex gap-6">
+          <Link href="/">Home</Link>
+          <Link href="/blog/test">Blog test</Link>
+          <Link href="/post/hello-world">Post test</Link>
         </nav>
       </header>
       <section>{children}</section>

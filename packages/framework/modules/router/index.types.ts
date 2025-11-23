@@ -10,15 +10,23 @@ export interface LoadedRoute {
   regex: RegExp;
   paramNames: string[];
   component: PageComponent;
-  layouts: LayoutComponent[];
-
-  // Info extra para el manifest cliente
+  layouts: PageComponent[];
   pageFile: string;
   layoutFiles: string[];
-
   middlewares: RouteMiddleware[];
-  loader?: ServerLoader;
+  loader: ServerLoader | null;
+  metadata: MetadataLoader | null;
+
+  // ⭐ Nuevos para SSG:
+  dynamic: DynamicMode;
+  generateStaticParams: GenerateStaticParams | null;
 }
+
+export type DynamicMode = "auto" | "force-static" | "force-dynamic";
+
+export type GenerateStaticParams = () =>
+  | Array<Record<string, string>>
+  | Promise<Array<Record<string, string>>>;
 
 export interface ServerContext {
   req: Request;
@@ -37,6 +45,8 @@ export interface LoaderResult {
   props?: Record<string, any>;
   redirect?: { destination: string; permanent?: boolean };
   notFound?: boolean;
+
+  metadata?: PageMetadata | null;
 }
 
 export type ServerLoader = (ctx: ServerContext) => Promise<LoaderResult>;
@@ -49,6 +59,21 @@ export interface ClientRoute {
 }
 
 //#region API
+
+export interface PageMetadata {
+  title?: string;
+  description?: string;
+  // extensible para el futuro
+  metaTags?: {
+    name?: string;
+    property?: string;
+    content: string;
+  }[];
+}
+
+export type MetadataLoader = (
+  ctx: ServerContext
+) => PageMetadata | Promise<PageMetadata>;
 
 export interface ApiContext {
   req: Request;
@@ -66,16 +91,16 @@ export type ApiMiddleware = (
 export type ApiHandler = (ctx: ApiContext) => void | Promise<void>;
 
 export interface ApiRoute {
-    pattern: string;
-    regex: RegExp;
-    paramNames: string[];
-  
-    // Middlewares que aplican a TODOS los métodos de la ruta
-    middlewares: ApiMiddleware[];
-  
-    // Middlewares por método, ej: GET, POST, ...
-    methodMiddlewares: Record<string, ApiMiddleware[]>;
-  
-    // Handlers por método (GET, POST, etc.)
-    handlers: Record<string, ApiHandler>;
-  }
+  pattern: string;
+  regex: RegExp;
+  paramNames: string[];
+
+  // Middlewares que aplican a TODOS los métodos de la ruta
+  middlewares: ApiMiddleware[];
+
+  // Middlewares por método, ej: GET, POST, ...
+  methodMiddlewares: Record<string, ApiMiddleware[]>;
+
+  // Handlers por método (GET, POST, etc.)
+  handlers: Record<string, ApiHandler>;
+}

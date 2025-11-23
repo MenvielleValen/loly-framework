@@ -2,12 +2,20 @@ import "../app/styles.css";
 
 import { useEffect, useState } from "react";
 import { hydrateRoot } from "react-dom/client";
-import { routes, type ClientRouteLoaded } from "../.fw/routes-client";
+import {
+  routes,
+  type ClientRouteLoaded,
+  type ClientLoadedComponents,
+} from "../.fw/routes-client";
 
 type InitialData = {
   pathname: string;
   params: Record<string, string>;
   props: Record<string, any>;
+  metadata?: {
+    title?: string;
+    description?: string;
+  } | null;
 };
 
 declare global {
@@ -25,8 +33,8 @@ function buildClientRegexFromPattern(pattern: string): RegExp {
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
 
+    // catch-all [...slug]
     if (seg.startsWith("[...") && seg.endsWith("]")) {
-      // catch-all al final
       if (i !== segments.length - 1) {
         throw new Error(
           `El segmento catch-all "${seg}" en "${pattern}" debe ser el último.`
@@ -36,11 +44,13 @@ function buildClientRegexFromPattern(pattern: string): RegExp {
       continue;
     }
 
+    // param normal [slug]
     if (seg.startsWith("[") && seg.endsWith("]")) {
       regexParts.push("([^/]+)");
       continue;
     }
 
+    // literal
     const escaped = seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     regexParts.push(escaped);
   }
@@ -50,8 +60,9 @@ function buildClientRegexFromPattern(pattern: string): RegExp {
 }
 
 function matchRouteClient(
-  pathname: string
+  pathWithSearch: string
 ): { route: ClientRouteLoaded; params: Record<string, string> } | null {
+  const [pathname] = pathWithSearch.split("?"); // ignoramos query para matchear
   for (const r of routes) {
     const regex = buildClientRegexFromPattern(r.pattern);
     const match = regex.exec(pathname);
@@ -68,31 +79,61 @@ function matchRouteClient(
   return null;
 }
 
+function applyMetadata(md?: { title?: string; description?: string } | null) {
+  if (!md) return;
+
+  if (md.title) {
+    document.title = md.title;
+  }
+
+  if (md.description) {
+    let meta = document.querySelector(
+      'meta[name="description"]'
+    ) as HTMLMetaElement | null;
+
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "description";
+      document.head.appendChild(meta);
+    }
+
+    meta.content = md.description;
+  }
+}
+
 // --- Estado global de la app en el cliente ---
 
 type RouteViewState = {
-  pathname: string;
+  url: string; // path + search
+  route: ClientRouteLoaded | null;
+  params: Record<string, string>;
+  components: ClientLoadedComponents | null;
   props: Record<string, any>;
 };
 
-// --- Vista: arma Page + Layouts con props ---
+// --- Vista: arma Page + Layouts con props ya cargados ---
 
 function RouterView({ state }: { state: RouteViewState }) {
-  const matched = matchRouteClient(state.pathname);
-
-  if (!matched) {
+  if (!state.route) {
     return <h1>404 desde cliente – ruta no encontrada</h1>;
   }
 
-  const { route, params } = matched;
-  const extraProps = state.props ?? {};
+  if (!state.components) {
+    // Para la ruta inicial, components NO es null (los cargamos antes de hydrateRoot),
+    // así que no hay mismatch con el SSR.
+    // En navegación SPA puede ser null un ratito mientras cargan los módulos.
+    return null;
+  }
 
-  let element = <route.Page params={params} {...extraProps} />;
+  const { Page, layouts } = state.components;
+  const { params, props } = state;
 
-  const layoutChain = route.layouts.slice().reverse();
+  let element = <Page params={params} {...props} />;
+
+  const layoutChain = layouts.slice().reverse();
   for (const Layout of layoutChain) {
     element = (
-      <Layout params={params} {...extraProps}>
+      <Layout params={params} {...props}>
         {element}
       </Layout>
     );
@@ -101,19 +142,20 @@ function RouterView({ state }: { state: RouteViewState }) {
   return element;
 }
 
-// --- AppShell: SPA navigation + data fetching ---
+// --- AppShell: SPA navigation + data fetching + carga de módulos ---
 
-function AppShell({ initialData }: { initialData: InitialData | null }) {
-  const [state, setState] = useState<RouteViewState>(() => ({
-    pathname: initialData?.pathname ?? window.location.pathname,
-    props: initialData?.props ?? {},
-  }));
+interface AppShellProps {
+  initialState: RouteViewState;
+}
+
+function AppShell({ initialState }: AppShellProps) {
+  const [state, setState] = useState<RouteViewState>(initialState);
 
   useEffect(() => {
-    async function navigate(nextPath: string) {
+    async function navigate(nextUrl: string) {
       try {
         const res = await fetch(
-          nextPath + (nextPath.includes("?") ? "&" : "?") + "__fw_data=1",
+          nextUrl + (nextUrl.includes("?") ? "&" : "?") + "__fw_data=1",
           {
             headers: {
               "x-fw-data": "1",
@@ -123,14 +165,12 @@ function AppShell({ initialData }: { initialData: InitialData | null }) {
         );
 
         if (!res.ok) {
-          // Si el server devuelve 404/500, lo podés manejar acá
           const json = await res.json().catch(() => ({}));
-          if (json && json.redirect) {
-            window.location.href = json.redirect.destination;
+          if (json && (json as any).redirect) {
+            window.location.href = (json as any).redirect.destination;
             return;
           }
-          // fallback: recargar página
-          window.location.href = nextPath;
+          window.location.href = nextUrl;
           return;
         }
 
@@ -142,18 +182,41 @@ function AppShell({ initialData }: { initialData: InitialData | null }) {
         }
 
         if (json.notFound) {
-          // Podrías setear un estado especial de 404
-          setState({ pathname: nextPath, props: {} });
+          // manejamos 404 en cliente (sin props ni componentes)
+          const match404 = matchRouteClient(nextUrl);
+          setState({
+            url: nextUrl,
+            route: match404?.route ?? null,
+            params: match404?.params ?? {},
+            components: null,
+            props: {},
+          });
           return;
         }
 
+        applyMetadata(json.metadata ?? null);
+
+        const newProps = json.props ?? {};
+
+        // resolve de la ruta y carga de módulos para la ruta destino
+        const matched = matchRouteClient(nextUrl);
+        if (!matched) {
+          window.location.href = nextUrl;
+          return;
+        }
+
+        const components = await matched.route.load();
+
         setState({
-          pathname: nextPath,
-          props: json.props ?? {},
+          url: nextUrl,
+          route: matched.route,
+          params: matched.params,
+          components,
+          props: newProps,
         });
       } catch (err) {
         console.error("[client] Error fetching FW data:", err);
-        window.location.href = nextPath; // fallback duro
+        window.location.href = nextUrl; // fallback duro
       }
     }
 
@@ -178,17 +241,17 @@ function AppShell({ initialData }: { initialData: InitialData | null }) {
 
       ev.preventDefault();
 
-      const nextPath = url.pathname + url.search;
-      if (nextPath === window.location.pathname + window.location.search) return;
+      const nextUrl = url.pathname + url.search;
+      const currentUrl = window.location.pathname + window.location.search;
+      if (nextUrl === currentUrl) return;
 
-      window.history.pushState({}, "", nextPath);
-      navigate(nextPath);
+      window.history.pushState({}, "", nextUrl);
+      navigate(nextUrl);
     }
 
     function handlePopState() {
-      const nextPath = window.location.pathname + window.location.search;
-      // En back/forward también queremos pedir data al server
-      navigate(nextPath);
+      const nextUrl = window.location.pathname + window.location.search;
+      navigate(nextUrl);
     }
 
     window.addEventListener("click", handleClick);
@@ -198,18 +261,49 @@ function AppShell({ initialData }: { initialData: InitialData | null }) {
       window.removeEventListener("click", handleClick);
       window.removeEventListener("popstate", handlePopState);
     };
-  }, []);
+  }, []); // solo se configura una vez
 
   return <RouterView state={state} />;
 }
 
-// --- hidratación inicial ---
+// --- hidratación inicial con load() YA resuelto para la ruta actual ---
 
-const container = document.getElementById("__app");
-const initialData: InitialData | null = window.__FW_DATA__ ?? null;
+(async function bootstrap() {
+  const container = document.getElementById("__app");
+  const initialData: InitialData | null = window.__FW_DATA__ ?? null;
 
-if (container) {
-  hydrateRoot(container, <AppShell initialData={initialData} />);
-} else {
-  console.error("No se encontró el contenedor #__app para hidratar");
-}
+  console.log('Initial Data', initialData);
+
+  if (!container) {
+    console.error("No se encontró el contenedor #__app para hidratar");
+    return;
+  }
+
+  const initialUrl = window.location.pathname + window.location.search;
+
+  const match = matchRouteClient(initialUrl);
+  let initialRoute: ClientRouteLoaded | null = null;
+  let initialParams: Record<string, string> = {};
+  let initialComponents: ClientLoadedComponents | null = null;
+
+  if (match) {
+    initialRoute = match.route;
+    initialParams = match.params;
+    // 🔹 Cargamos los módulos de la ruta inicial ANTES de hidratar
+    initialComponents = await match.route.load();
+  }
+
+  if (initialData?.metadata) {
+    applyMetadata(initialData.metadata);
+  }
+
+  const initialState: RouteViewState = {
+    url: initialUrl,
+    route: initialRoute,
+    params: initialParams,
+    components: initialComponents,
+    props: initialData?.props ?? {},
+  };
+
+  hydrateRoot(container, <AppShell initialState={initialState} />);
+})();

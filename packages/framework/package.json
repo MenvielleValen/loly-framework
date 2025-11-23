@@ -5,8 +5,11 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts --dts --format cjs,esm",
+    "build": "tsup",
     "dev": "node ./dev/dev-server.js"
+  },
+  "bin": {
+    "loly": "bin/loly.cjs"
   },
   "dependencies": {
     "@rspack/core": "^1.6.4",
@@ -19,6 +22,7 @@
     "@types/react": "^19.2.6",
     "@types/react-dom": "^19.2.3",
     "css-loader": "^7.1.2",
+    "esbuild": "^0.27.0",
     "postcss-loader": "^8.2.0",
     "style-loader": "^4.0.0",
     "tsup": "^8.5.1",

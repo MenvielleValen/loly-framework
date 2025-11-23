@@ -1,8 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
+    "rootDir": ".",
+    "baseUrl": ".",
+    "outDir": "dist",
+    "paths": {
+      "@src/*": ["src/*"],
+      "@components/*": ["modules/components/*"],
+      "@rendering/*": ["modules/rendering/*"],
+      "@router/*": ["modules/router/*"],
+      "@build/*": ["modules/build/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "modules"]
 }

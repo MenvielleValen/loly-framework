@@ -2,6 +2,7 @@ import type {
   ServerContext,
   LoaderResult,
   RouteMiddleware,
+  MetadataLoader,
 } from "@loly/core";
 import axios from "axios";
 
@@ -32,7 +33,7 @@ export const beforeServerData: RouteMiddleware[] = [
 
       ctx.locals.post = data;
     } catch (error) {
-      console.log(error);
+      ctx.locals.post = null;
     }
 
     await next();
@@ -53,3 +54,11 @@ export async function getServerSideProps(
     },
   };
 }
+
+export const getMetadata: MetadataLoader = async (ctx) => {
+  const slug = ctx.params.slug;
+  return {
+    title: `Post ${slug} – My Framework Dev`,
+    description: `Detalle del post "${slug}"`,
+  };
+};

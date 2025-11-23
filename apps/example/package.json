@@ -3,12 +3,14 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "tsx --tsconfig tsconfig.json server/dev-server.tsx",
-    "build": "echo \"(después lo conectamos con el framework)\""
+    "dev": "loly dev",
+    "build": "loly build",
+    "start": "loly start"
   },
   "dependencies": {
     "@loly/core": "workspace:*",
     "axios": "^1.13.2",
+    "mongoose": "^9.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

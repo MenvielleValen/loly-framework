@@ -8,6 +8,64 @@ importers:
 
   .: {}
 
+  apps/chat:
+    dependencies:
+      '@loly/core':
+        specifier: workspace:*
+        version: link:../../packages/framework
+      axios:
+        specifier: ^1.13.2
+        version: 1.13.2
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.0(react@19.2.0)
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.17
+        version: 4.1.17
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      '@types/react':
+        specifier: ^19.2.6
+        version: 19.2.6
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.6)
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      autoprefixer:
+        specifier: ^10.4.22
+        version: 10.4.22(postcss@8.5.6)
+      css-loader:
+        specifier: ^7.1.2
+        version: 7.1.2(@rspack/core@1.6.4)(webpack@5.103.0)
+      postcss:
+        specifier: ^8.5.6
+        version: 8.5.6
+      postcss-loader:
+        specifier: ^8.2.0
+        version: 8.2.0(@rspack/core@1.6.4)(postcss@8.5.6)(typescript@5.9.3)(webpack@5.103.0)
+      style-loader:
+        specifier: ^4.0.0
+        version: 4.0.0(webpack@5.103.0)
+      tailwindcss:
+        specifier: ^4.1.17
+        version: 4.1.17
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   apps/example:
     dependencies:
       '@loly/core':

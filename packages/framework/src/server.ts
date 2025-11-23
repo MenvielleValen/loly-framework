@@ -1,9 +1,10 @@
-import http from "http";
-import express from "express";
+import fs from "fs";
+
 import path from "path";
 import { runInitIfExists } from "@server/init";
 import { setupServer } from "@server/setup";
 import { handleApiRequest, handlePageRequest } from "@server/handlers";
+import { setupApplication } from "@server/application";
 
 //#region PROD
 export interface StartProdServerOptions {
@@ -20,24 +21,28 @@ export interface StartProdServerOptions {
  * - Si no hay SSG para esa ruta, hace SSR como en dev
  */
 export async function startProdServer(options: StartProdServerOptions = {}) {
-  const app = express();
-
-  // Middlewares globales de body (opcionales en prod, pero útiles para APIs)
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-
   const port = options.port ?? 3000;
   const projectRoot = options.rootDir ?? process.cwd();
-  const appDir = options.appDir ?? path.resolve(projectRoot, "app");
+  const serverRoutesDir = path.join(projectRoot, ".fw", "server");
 
-  const httpServer = http.createServer(app);
+  if (!fs.existsSync(serverRoutesDir)) {
+    console.error(
+      "[framework][prod] ERROR: No se encontró el directorio compilado .fw/server",
+      serverRoutesDir
+    );
+  }
 
+  const { app, httpServer } = await setupApplication({
+    projectRoot,
+  });
+
+  // Ejecutar init.server.js compilado
   await runInitIfExists(projectRoot, { server: httpServer });
 
-  // Setup de rutas y estáticos
+  // Setup de rutas y estáticos, pero usando .fw/server
   const { routes, apiRoutes } = setupServer(app, {
     projectRoot,
-    appDir,
+    appDir: serverRoutesDir,
     isDev: false,
   });
 
@@ -68,7 +73,7 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
 
   httpServer.listen(port, () => {
     console.log(`🚀 Prod server corriendo en http://localhost:${port}`);
-    console.log(`🧭 Leyendo rutas desde: ${appDir}`);
+    console.log(`🧭 Leyendo rutas compiladas desde: ${serverRoutesDir}`);
     console.log(`📦 Cliente servido desde /static ( .fw/client )`);
     console.log(`📄 SSG servido desde .fw/ssg (si existe)`);
   });
@@ -90,18 +95,13 @@ export interface StartDevServerOptions {
  * - Arranca bundler de cliente (Rspack) y sirve /static/client.js
  */
 export async function startDevServer(options: StartDevServerOptions = {}) {
-  const app = express();
-
-  // 💡 Middlewares globales para parsear el body
-  app.use(express.json()); // application/json
-  app.use(express.urlencoded({ extended: true })); // forms (application/x-www-form-urlencoded)
-
   const port = options.port ?? 3000;
-
   const projectRoot = options.rootDir ?? process.cwd();
   const appDir = options.appDir ?? path.resolve(projectRoot, "app");
 
-  const httpServer = http.createServer(app);
+  const { app, httpServer } = await setupApplication({
+    projectRoot,
+  });
 
   await runInitIfExists(projectRoot, { server: httpServer });
 

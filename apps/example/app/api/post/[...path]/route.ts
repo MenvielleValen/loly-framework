@@ -4,7 +4,7 @@ export async function GET(ctx: ApiContext) {
   const pathParam = ctx.params.path;
   const segments = pathParam.split("/");
 
-  ctx.res.status(200).json({
+  ctx.Response({
     path: pathParam,
     segments,
   });

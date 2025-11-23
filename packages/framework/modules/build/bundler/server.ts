@@ -2,6 +2,10 @@ import path from "path";
 import fs from "fs";
 import esbuild from "esbuild";
 import { ensureDir } from "../utils";
+import { INIT_FILE_NAME } from "@server/init";
+import { CONFIG_FILE_NAME } from "@server/config";
+
+const SERVER_FILES = [INIT_FILE_NAME, CONFIG_FILE_NAME];
 
 export interface BuildServerResult {
   outDir: string;
@@ -85,45 +89,47 @@ export async function buildServerApp(
   await esbuild.build({
     entryPoints,
     outdir: outDir,
-    outbase: appDir, // Preserve relative directory structure
+    outbase: appDir,
     platform: "node",
     format: "cjs",
     target: "node18",
     jsx: "automatic",
     sourcemap: true,
-    bundle: false, // 1 tsx file -> 1 js file (no bundling)
+    bundle: false,
     logLevel: "info",
     tsconfig: path.join(projectRoot, "tsconfig.json"),
   });
 
-  const initTS = path.join(projectRoot, "init.server.ts");
-  const initJS = path.join(outDir, "init.server.js");
+  /**
+   * Compile framework server files
+   */
+  for (const fileName of SERVER_FILES) {
+    const initTS = path.join(projectRoot, `${fileName}.ts`);
+    const initJS = path.join(outDir, `${fileName}.js`);
 
-  if (fs.existsSync(initTS)) {
-    console.log("[framework][server-build] Compilando init.server.ts");
+    if (fs.existsSync(initTS)) {
+      console.log(`[Loly][server-build] Compiling ${fileName}.ts`);
 
-    await esbuild.build({
-      entryPoints: [initTS],
-      outfile: initJS,
-      platform: "node",
-      format: "cjs",
-      target: "node18",
-      jsx: "automatic",
-      sourcemap: true,
-      bundle: false,
-      logLevel: "info",
-      tsconfig: path.join(projectRoot, "tsconfig.json"),
-    });
+      await esbuild.build({
+        entryPoints: [initTS],
+        outfile: initJS,
+        platform: "node",
+        format: "cjs",
+        target: "node18",
+        jsx: "automatic",
+        sourcemap: true,
+        bundle: false,
+        logLevel: "info",
+        tsconfig: path.join(projectRoot, "tsconfig.json"),
+      });
 
-    console.log(
-      "[framework][server-build] init.server.ts compiled in",
-      initJS
-    );
-  } else {
-    console.log(
-      "[framework][server-build] init.server.ts not found",
-      projectRoot
-    );
+      console.log(
+        `[framework][server-build] ${fileName}.ts compiled in`,
+        initJS
+      );
+    } else {
+      console.warn(`[Loly][server-build] Not found file ${fileName}.ts`);
+    }
   }
 
   console.log("[framework][server-build] Server build successful at", outDir);

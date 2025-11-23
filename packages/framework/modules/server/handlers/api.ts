@@ -38,16 +38,18 @@ export async function handleApiRequest(
   const ctx: ApiContext = {
     req,
     res,
+    Response: (body: any = {}, status = 200) => res.status(status).json(body),
+    NotFound: (body: any = {}) => res.status(404).json(body),
     params,
     pathname: urlPath,
     locals: {},
   };
 
   try {
-    // Middlewares globales de la ruta
+    // Globals middlewares
     const globalMws = route.middlewares ?? [];
 
-    // Middlewares específicos del método
+    // Method middlewares
     const perMethodMws = route.methodMiddlewares?.[method] ?? [];
 
     const chain = [...globalMws, ...perMethodMws];
@@ -68,4 +70,3 @@ export async function handleApiRequest(
     }
   }
 }
-

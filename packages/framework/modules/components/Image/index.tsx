@@ -24,7 +24,8 @@ export function Image({
   if (width) style.width = width;
   if (height) style.height = height;
 
-  const FULL_ROUTE = `${BASE_DIR}/${src}`;
+  const isRelative = !src.startsWith('http');
+  const FULL_ROUTE = isRelative ? `${BASE_DIR}/${src}` : src;
 
   return (
     <img

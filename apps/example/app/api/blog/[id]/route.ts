@@ -14,18 +14,15 @@ export const beforeApi: ApiMiddleware[] = [captureSlug];
 export const beforeGET: ApiMiddleware[] = [attachUserForRead];
 
 export async function GET(ctx: ApiContext) {
-  const name = (ctx.locals.user as string) ?? "mundo";
   const slug = ctx.locals.slug;
-
-  console.log("Name")
 
   const blog = await BlogModel.findOne({ slug });
 
   if(!blog){
-    return ctx.res.status(404).json({})
+    return ctx.NotFound();
   }
 
-  return ctx.res.status(200).json({
+  return ctx.Response({
     ...blog,
     content: 'Content pisado'
   });
@@ -48,5 +45,5 @@ export async function POST(ctx: ApiContext) {
 
   const saved = await newBlog.save();
 
-  return ctx.res.status(201).json({saved});
+  return ctx.Response({saved}, 201);
 }

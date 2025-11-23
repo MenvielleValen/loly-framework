@@ -1,5 +1,5 @@
 export { startDevServer, startProdServer } from "./server";
-export { InitServerData } from "@server/init";
+export { InitServerData, ServerConfig } from "@server/index";
 export { buildApp } from "@build/index";
 export {
   ServerContext,

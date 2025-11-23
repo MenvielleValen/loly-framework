@@ -77,6 +77,8 @@ export type MetadataLoader = (
 export interface ApiContext {
   req: Request;
   res: Response;
+  Response: (body?: any, status?: number) => Response<any, Record<string, any>>;
+  NotFound: (body?: any) => Response<any, Record<string, any>>
   params: Record<string, string>;
   pathname: string;
   locals: Record<string, any>;

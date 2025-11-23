@@ -129,8 +129,8 @@ export async function handlePageRequest(
     appTree,
     initialData,
     meta: loaderResult.metadata,
-    titleFallback: "My Framework Dev",
-    descriptionFallback: "Demo con @tuorg/framework",
+    titleFallback: "Loly framework",
+    descriptionFallback: "Loly demo",
   });
 
   // Stream de respuesta con React 18

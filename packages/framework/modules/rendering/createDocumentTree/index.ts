@@ -46,6 +46,7 @@ export function createDocumentTree(options: {
 
   const metaObj = meta ?? {};
   const title = (metaObj as any).title ?? titleFallback ?? "My Framework Dev";
+  const lang = (metaObj as any).lang ?? "en";
   const description =
     (metaObj as any).description ??
     descriptionFallback ??
@@ -78,7 +79,7 @@ export function createDocumentTree(options: {
 
   const documentTree = React.createElement(
     "html",
-    { lang: "es" },
+    { lang },
     React.createElement(
       "head",
       null,

@@ -15,15 +15,11 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
   return {
     props: {
       slug,
-      content: `Contenido para ${slug}`,
+      content: `Contenido xs para ${slug}`,
     },
-  };
-};
-
-export const getMetadata: MetadataLoader = async (ctx) => {
-  const slug = ctx.params.slug;
-  return {
-    title: `Post ${slug} – My Framework Dev`,
-    description: `Detalle del post estático "${slug}"`,
+    metadata: {
+      title: `EL 1 test ${slug} – My Framework Dev`,
+      description: `Detalle del post estático "${slug}"`,
+    }
   };
 };

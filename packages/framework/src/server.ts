@@ -1,4 +1,5 @@
 import fs from "fs";
+import http from "http";
 import express from "express";
 import React, { ReactElement } from "react";
 import { renderToPipeableStream } from "react-dom/server";
@@ -15,13 +16,23 @@ import {
   writeClientRoutesManifest,
 } from "@router/index";
 import { startClientBundler } from "@build/client";
-import { buildAppTree, buildInitialData, createDocumentTree } from "@rendering/index";
+import {
+  buildAppTree,
+  buildInitialData,
+  createDocumentTree,
+} from "@rendering/index";
+import { setupHotReload } from "@dev/hot-reload-client";
+import { clearAppRequireCache } from "@dev/hot-reload-server";
 
 //#region PROD
 export interface StartProdServerOptions {
   port?: number;
   rootDir?: string; // raíz del proyecto de la app (ej: apps/example)
   appDir?: string; // por defecto rootDir + "/app"
+}
+
+export interface InitServerData {
+  server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>
 }
 
 function getSsgDirForPath(baseDir: string, urlPath: string) {
@@ -39,7 +50,7 @@ function getSsgDataPath(baseDir: string, urlPath: string) {
   return path.join(dir, "data.json");
 }
 
-export async function runInitIfExists(projectRoot: string) {
+export async function runInitIfExists(projectRoot: string, serverData: InitServerData ) {
   const initTS = path.join(projectRoot, "init.server.ts");
 
   if (!fs.existsSync(initTS)) {
@@ -55,7 +66,7 @@ export async function runInitIfExists(projectRoot: string) {
   const mod = require(initTS);
 
   if (typeof mod.init === "function") {
-    const serverContext: any = {};
+    const serverContext: any = { ...serverData };
     await mod.init({ serverContext });
     console.log("[framework] init.server.ts ejecutado con éxito");
     return serverContext;
@@ -85,7 +96,9 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
   const projectRoot = options.rootDir ?? process.cwd();
   const appDir = options.appDir ?? path.resolve(projectRoot, "app");
 
-  const serverContext = await runInitIfExists(projectRoot);
+  const httpServer = http.createServer(app);
+
+  await runInitIfExists(projectRoot, { server: httpServer });
 
   const routes = loadRoutes(appDir);
   const apiRoutes = loadApiRoutes(appDir);
@@ -146,11 +159,11 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
   // Páginas
   app.get("*", async (req, res) => {
     const urlPath = req.path;
-  
+
     const isDataRequest =
       (req.query && (req.query as any).__fw_data === "1") ||
       req.headers["x-fw-data"] === "1";
-  
+
     // 1) DATA REQUEST: intentamos responder desde SSG primero
     if (isDataRequest) {
       const ssgDataPath = getSsgDataPath(ssgOutDir, urlPath);
@@ -167,10 +180,10 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
       }
       // fallback: mismo flujo que dev
     }
-  
+
     // 2) HTML: intentamos servir SSG si existe
     const ssgHtmlPath = getSsgHtmlPath(ssgOutDir, urlPath);
-  
+
     if (!isDataRequest && fs.existsSync(ssgHtmlPath)) {
       console.log("[SSG]", urlPath);
       res.statusCode = 200;
@@ -179,10 +192,10 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
       stream.pipe(res);
       return;
     }
-  
+
     // 3) Fallback SSR (igual que dev)
     const matched = matchRoute(routes, urlPath);
-  
+
     if (!matched) {
       res.statusCode = 404;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -191,9 +204,9 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
       );
       return;
     }
-  
+
     const { route, params } = matched;
-  
+
     const ctx: ServerContext = {
       req,
       res,
@@ -201,7 +214,7 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
       pathname: urlPath,
       locals: {},
     };
-  
+
     // 4) middlewares
     for (const mw of route.middlewares) {
       await Promise.resolve(
@@ -210,36 +223,32 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
         })
       );
     }
-  
+
     // 5) loader + metadata
     let loaderResult: LoaderResult = { props: {} };
-  
+
     if (route.loader) {
       loaderResult = await route.loader(ctx);
     }
-  
-    if (route.metadata) {
-      loaderResult.metadata = await route.metadata(ctx);
-    }
-  
+
     console.log("[SSR]", urlPath);
-  
+
     // 6) DATA REQUEST (fallback SSR si no hubo SSG data)
     if (isDataRequest) {
       res.setHeader("Content-Type", "application/json; charset=utf-8");
-  
+
       if (loaderResult.redirect) {
         res.statusCode = 200;
         res.end(JSON.stringify({ redirect: loaderResult.redirect }));
         return;
       }
-  
+
       if (loaderResult.notFound) {
         res.statusCode = 404;
         res.end(JSON.stringify({ notFound: true }));
         return;
       }
-  
+
       res.statusCode = 200;
       res.end(
         JSON.stringify({
@@ -249,25 +258,25 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
       );
       return;
     }
-  
+
     // 7) Redirect / notFound para HTML
     if (loaderResult.redirect) {
       const { destination, permanent } = loaderResult.redirect;
       res.redirect(permanent ? 301 : 302, destination);
       return;
     }
-  
+
     if (loaderResult.notFound) {
       res.statusCode = 404;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.end("<h1>404 - Not Found</h1>");
       return;
     }
-  
+
     // 8) Construir initialData + árbol de la app
     const initialData = buildInitialData(urlPath, params, loaderResult);
     const appTree = buildAppTree(route, params, initialData.props);
-  
+
     // 9) Documento HTML completo (head + body + __FW_DATA__)
     const documentTree = createDocumentTree({
       appTree,
@@ -276,7 +285,7 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
       titleFallback: "My Framework Dev",
       descriptionFallback: "Demo con @tuorg/framework",
     });
-  
+
     // 10) Stream de respuesta con React 18 (mismo que dev/SSR normal)
     const { pipe } = renderToPipeableStream(documentTree, {
       onShellReady() {
@@ -296,7 +305,7 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
     });
   });
 
-  app.listen(port, () => {
+  httpServer.listen(port, () => {
     console.log(`🚀 Prod server corriendo en http://localhost:${port}`);
     console.log(`🧭 Leyendo rutas desde: ${appDir}`);
     console.log(`📦 Cliente servido desde /static ( .fw/client )`);
@@ -331,12 +340,25 @@ export async function startDevServer(options: StartDevServerOptions = {}) {
   const projectRoot = options.rootDir ?? process.cwd();
   const appDir = options.appDir ?? path.resolve(projectRoot, "app");
 
-  const serverContext = await runInitIfExists(projectRoot);
+  setupHotReload({ app, appDir });
 
-  const routes = loadRoutes(appDir);
-  const apiRoutes = loadApiRoutes(appDir);
+  const httpServer = http.createServer(app);
 
-  writeClientRoutesManifest(routes, projectRoot);
+  await runInitIfExists(projectRoot, { server: httpServer });
+
+  // En dev vamos a recalcular rutas en cada request
+  function getRoutes() {
+    // limpiar require cache solo de la app
+    clearAppRequireCache(appDir);
+    return {
+      routes: loadRoutes(appDir),
+      apiRoutes: loadApiRoutes(appDir),
+    };
+  }
+
+  const { routes: manifestRoutes } = getRoutes();
+
+  writeClientRoutesManifest(manifestRoutes, projectRoot);
 
   // 🔥 Bundler de cliente (Rspack) y estáticos
   const { outDir } = startClientBundler(projectRoot);
@@ -344,6 +366,7 @@ export async function startDevServer(options: StartDevServerOptions = {}) {
 
   app.all("/api/*", async (req, res) => {
     const urlPath = req.path; // ej: /api/posts/123
+    const { apiRoutes } = getRoutes();
     const matched = matchApiRoute(apiRoutes, urlPath);
 
     if (!matched) {
@@ -398,6 +421,9 @@ export async function startDevServer(options: StartDevServerOptions = {}) {
 
   app.get("*", async (req, res) => {
     const urlPath = req.path;
+
+    const { routes } = getRoutes();
+
     const matched = matchRoute(routes, urlPath);
 
     if (!matched) {
@@ -441,11 +467,6 @@ export async function startDevServer(options: StartDevServerOptions = {}) {
     // 1) Ejecutar loader
     if (route.loader) {
       loaderResult = await route.loader(ctx);
-    }
-
-    // 2) Ejecutar metadata
-    if (route.metadata) {
-      loaderResult.metadata = await route.metadata(ctx);
     }
 
     // 🔹 DATA REQUEST: devolvemos JSON y terminamos
@@ -620,7 +641,7 @@ export async function startDevServer(options: StartDevServerOptions = {}) {
     });
   });
 
-  app.listen(port, () => {
+  httpServer.listen(port, () => {
     console.log(`🚀 Dev server corriendo en http://localhost:${port}`);
     console.log(`🧭 Leyendo rutas desde: ${appDir}`);
     console.log(`📦 Cliente servido desde /static/client.js`);

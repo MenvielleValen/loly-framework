@@ -9,7 +9,8 @@
       "@components/*": ["modules/components/*"],
       "@rendering/*": ["modules/rendering/*"],
       "@router/*": ["modules/router/*"],
-      "@build/*": ["modules/build/*"]
+      "@build/*": ["modules/build/*"],
+      "@dev/*": ["modules/dev/*"]
     }
   },
   "include": ["src", "modules"]

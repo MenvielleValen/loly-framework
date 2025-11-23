@@ -101,6 +101,36 @@ function applyMetadata(md?: { title?: string; description?: string } | null) {
   }
 }
 
+function setupHotReloadClient() {
+  if (typeof window === "undefined") return;
+
+  // Podrías chequear NODE_ENV si tenés un define, pero en dev
+  // no molesta que se conecte siempre.
+  try {
+    const es = new EventSource("/__fw/hot");
+
+    es.onmessage = (ev) => {
+      if (!ev.data) return;
+
+      if (ev.data.startsWith("reload:")) {
+        const file = ev.data.slice("reload:".length);
+        console.log("[hot-reload] Cambio detectado:", file);
+        // Live reload simple:
+        window.location.reload();
+      }
+    };
+
+    es.onerror = (err) => {
+      console.warn("[hot-reload] Error en EventSource:", err);
+      // Opcional: reconectar luego de un tiempo
+    };
+
+    console.log("[hot-reload] EventSource conectado a /__fw/hot");
+  } catch (err) {
+    console.error("[hot-reload] No se pudo conectar:", err);
+  }
+}
+
 // --- Estado global de la app en el cliente ---
 
 type RouteViewState = {
@@ -176,6 +206,8 @@ function AppShell({ initialState }: AppShellProps) {
 
         const json = await res.json();
 
+        console.log("JSON", json);
+
         if (json.redirect) {
           window.location.href = json.redirect.destination;
           return;
@@ -203,6 +235,13 @@ function AppShell({ initialState }: AppShellProps) {
         if (!matched) {
           window.location.href = nextUrl;
           return;
+        }
+
+        window.__FW_DATA__ = {
+          ...window.__FW_DATA__,
+          params: matched.params,
+          props: newProps,
+          pathname: nextUrl,
         }
 
         const components = await matched.route.load();
@@ -267,6 +306,10 @@ function AppShell({ initialState }: AppShellProps) {
 }
 
 // --- hidratación inicial con load() YA resuelto para la ruta actual ---
+console.log("ENV", process.env.NODE_ENV)
+if (process.env.NODE_ENV === "development") {
+  setupHotReloadClient();
+}
 
 (async function bootstrap() {
   const container = document.getElementById("__app");

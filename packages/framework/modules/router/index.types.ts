@@ -15,7 +15,6 @@ export interface LoadedRoute {
   layoutFiles: string[];
   middlewares: RouteMiddleware[];
   loader: ServerLoader | null;
-  metadata: MetadataLoader | null;
 
   // ⭐ Nuevos para SSG:
   dynamic: DynamicMode;

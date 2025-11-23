@@ -2,7 +2,6 @@ import type {
   ServerContext,
   LoaderResult,
   RouteMiddleware,
-  MetadataLoader,
 } from "@loly/core";
 import axios from "axios";
 
@@ -46,19 +45,16 @@ export async function getServerSideProps(
 ): Promise<LoaderResult> {
   const user = ctx.locals.user;
   const post = ctx.locals.post;
+  const slug = ctx.params.slug;
 
   return {
     props: {
       post,
       user,
     },
+    metadata: {
+      title: `Post ${slug} – My Framework Dev`,
+      description: `Detalle del post "${slug}"`,
+    },
   };
 }
-
-export const getMetadata: MetadataLoader = async (ctx) => {
-  const slug = ctx.params.slug;
-  return {
-    title: `Post ${slug} – My Framework Dev`,
-    description: `Detalle del post "${slug}"`,
-  };
-};

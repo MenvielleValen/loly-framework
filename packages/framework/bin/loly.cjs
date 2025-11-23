@@ -93,14 +93,17 @@ async function run() {
 
   switch (command) {
     case "dev": {
+      process.env.NODE_ENV ||= "development";
       startDevServer({ rootDir: projectRoot, appDir, port });
       break;
     }
     case "build": {
+      process.env.NODE_ENV ||= "production";
       buildApp({ rootDir: projectRoot, appDir });
       break;
     }
     case "start": {
+      process.env.NODE_ENV ||= "production";
       await startProdServer({ rootDir: projectRoot, appDir, port });
       break;
     }

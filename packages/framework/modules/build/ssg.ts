@@ -137,10 +137,6 @@ async function renderStaticRoute(
     loaderResult = await route.loader(ctx);
   }
 
-  if (route.metadata) {
-    loaderResult.metadata = await route.metadata(ctx);
-  }
-
   if (loaderResult.redirect) {
     console.warn(
       `[framework][ssg] Ruta ${urlPath} devolvió redirect en build, se omite en SSG.`

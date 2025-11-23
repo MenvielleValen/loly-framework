@@ -49,7 +49,7 @@ export function createDocumentTree(options: {
   const description =
     (metaObj as any).description ??
     descriptionFallback ??
-    "Demo con @tuorg/framework";
+    "Demo Loly framework";
 
   const extraMetaTags: ReactElement[] = [];
 

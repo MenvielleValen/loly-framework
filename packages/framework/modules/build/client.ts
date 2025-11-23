@@ -58,6 +58,9 @@ function createClientConfig(
       ],
     },
     plugins: [
+      new rspack.DefinePlugin({
+        "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
+      }),
       new rspack.CssExtractRspackPlugin({
         filename: "client.css",
       }),

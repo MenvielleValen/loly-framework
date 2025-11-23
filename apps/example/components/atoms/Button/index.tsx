@@ -1,3 +1,4 @@
+import { usePageProps } from "@loly/core/modules/components";
 import axios from "axios";
 import { PropsWithChildren } from "react";
 
@@ -5,6 +6,12 @@ export const Button = ({
   children,
   slug,
 }: PropsWithChildren<{ slug: string }>) => {
+
+  const { props } = usePageProps() as any;
+
+  console.log("Page props", props);
+
+
   const handleClick = async () => {
     try {
       const { data } = await axios.post(
@@ -20,7 +27,7 @@ export const Button = ({
 
   return (
     <button onClick={handleClick} className="bg-amber-300 p-2 rounded-md">
-      {children}
+      {children || props?.user?.name}
     </button>
   );
 };

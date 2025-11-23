@@ -17,13 +17,18 @@ export async function GET(ctx: ApiContext) {
   const name = (ctx.locals.user as string) ?? "mundo";
   const slug = ctx.locals.slug;
 
+  console.log("Name")
+
   const blog = await BlogModel.findOne({ slug });
 
   if(!blog){
     return ctx.res.status(404).json({})
   }
 
-  return ctx.res.status(200).json(blog);
+  return ctx.res.status(200).json({
+    ...blog,
+    content: 'Content pisado'
+  });
 }
 
 

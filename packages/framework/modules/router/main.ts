@@ -60,7 +60,7 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         currentDir,
         appDir
       );
-      const { middlewares, loader, metadata, dynamic, generateStaticParams } =
+      const { middlewares, loader, dynamic, generateStaticParams } =
         loadLoaderForDir(currentDir);
 
       routes.push({
@@ -73,7 +73,6 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         layoutFiles,
         middlewares: middlewares,
         loader,
-        metadata,
         dynamic,
         generateStaticParams,
       });
@@ -175,14 +174,11 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
 export function loadLoaderForDir(currentDir: string): {
   middlewares: RouteMiddleware[];
   loader: ServerLoader | null;
-  metadata: MetadataLoader | null;
   dynamic: DynamicMode;
   generateStaticParams: GenerateStaticParams | null;
 } {
-  const loaderTs = path.join(currentDir, "loader.ts");
-  const loaderJs = path.join(currentDir, "loader.js");
-
-  console.log("file", loaderTs);
+  const loaderTs = path.join(currentDir, "server.hook.ts");
+  const loaderJs = path.join(currentDir, "server.hook.js");
 
   const file = fs.existsSync(loaderTs)
     ? loaderTs
@@ -194,7 +190,6 @@ export function loadLoaderForDir(currentDir: string): {
     return {
       middlewares: [],
       loader: null,
-      metadata: null,
       dynamic: "auto",
       generateStaticParams: null,
     };
@@ -212,9 +207,6 @@ export function loadLoaderForDir(currentDir: string): {
       ? mod.getServerSideProps
       : null;
 
-  const metadata: MetadataLoader | null =
-    typeof mod.getMetadata === "function" ? mod.getMetadata : null;
-
   const dynamic: DynamicMode =
     mod.dynamic === "force-static" || mod.dynamic === "force-dynamic"
       ? mod.dynamic
@@ -228,7 +220,6 @@ export function loadLoaderForDir(currentDir: string): {
   return {
     middlewares,
     loader,
-    metadata,
     dynamic,
     generateStaticParams,
   };

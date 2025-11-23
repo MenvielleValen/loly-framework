@@ -1,4 +1,4 @@
-export { startDevServer, startProdServer } from "./server";
+export { startDevServer, startProdServer, InitServerData } from "./server";
 export { buildApp } from "@build/index";
 export {
   ServerContext,

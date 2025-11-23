@@ -12,6 +12,7 @@
       "@build/*": ["modules/build/*"],
       "@dev/*": ["modules/dev/*"],
       "@runtime/*": ["modules/runtime/*"],
+      "@server/*": ["modules/server/*"],
     }
   },
   "include": ["src", "modules"]

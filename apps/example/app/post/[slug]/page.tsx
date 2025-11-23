@@ -6,9 +6,6 @@ export default function BlogCatchAllPage(props: any) {
       <h2 className="text-lg font-semibold text-emerald-800">Blog catch-all</h2>
       <p>
         <strong>Raw slug:</strong> {slug}
-        <div>Testing!</div>
-        <div>Testing s!</div>
-        <article className="bg-green-500">test</article>
       </p>
     </main>
   );

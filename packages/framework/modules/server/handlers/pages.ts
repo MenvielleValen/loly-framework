@@ -1,10 +1,6 @@
 import { Request, Response } from "express";
 import { renderToPipeableStream } from "react-dom/server";
-import {
-  ServerContext,
-  LoadedRoute,
-  matchRoute,
-} from "@router/index";
+import { ServerContext, LoadedRoute, matchRoute } from "@router/index";
 import {
   buildAppTree,
   buildInitialData,
@@ -12,11 +8,7 @@ import {
 } from "@rendering/index";
 import { runRouteMiddlewares } from "./middleware";
 import { runRouteLoader } from "./loader";
-import {
-  handleDataResponse,
-  handleRedirect,
-  handleNotFound,
-} from "./response";
+import { handleDataResponse, handleRedirect, handleNotFound } from "./response";
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 
 export interface HandlePageRequestOptions {
@@ -45,14 +37,7 @@ export function isDataRequest(req: Request): boolean {
 export async function handlePageRequest(
   options: HandlePageRequestOptions
 ): Promise<void> {
-  const {
-    routes,
-    urlPath,
-    req,
-    res,
-    env = "dev",
-    ssgOutDir,
-  } = options;
+  const { routes, urlPath, req, res, env = "dev", ssgOutDir } = options;
 
   const isDataReq = isDataRequest(req);
 
@@ -124,7 +109,7 @@ export async function handlePageRequest(
   const initialData = buildInitialData(urlPath, params, loaderResult);
   const appTree = buildAppTree(route, params, initialData.props);
 
-  // Documento HTML completo
+
   const documentTree = createDocumentTree({
     appTree,
     initialData,
@@ -133,22 +118,24 @@ export async function handlePageRequest(
     descriptionFallback: "Loly demo",
   });
 
-  // Stream de respuesta con React 18
-  const { pipe } = renderToPipeableStream(documentTree, {
+
+  const { pipe, abort } = renderToPipeableStream(documentTree, {
+    bootstrapScripts: ["/static/client.js"],
     onShellReady() {
-      res.statusCode = 200;
+      res.status(200);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.write("<!DOCTYPE html>");
       pipe(res);
     },
+    onShellError(err) {
+      res.status(500).send("<h1>500</h1>");
+    },
+    onAllReady() {
+      // Opcional
+    },
     onError(err) {
-      console.error(`[framework][${env}] SSR error:`, err);
-      if (!res.headersSent) {
-        res.statusCode = 500;
-        res.setHeader("Content-Type", "text/plain; charset=utf-8");
-        res.end("Internal Server Error");
-      }
+      console.error("React SSR error", err);
     },
   });
-}
 
+  setTimeout(() => abort(), 5000);
+}

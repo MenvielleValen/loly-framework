@@ -21,7 +21,7 @@ export interface ClientBundlerResult {
 export function startClientBundler(
   projectRoot: string
 ): ClientBundlerResult {
-  const { config, outDir } = createClientConfig(projectRoot, "development");
+  const { config, outDir } = createClientConfig(projectRoot, "production");
 
   copyStaticAssets(projectRoot, outDir);
 

@@ -118,4 +118,3 @@ export function writeClientRoutesManifest(
   fs.writeFileSync(manifestPath, lines.join("\n"), "utf-8");
   console.log(`[framework] Client routes manifest generated at ${manifestPath}`);
 }
-

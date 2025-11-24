@@ -27,7 +27,7 @@ export default function HomePage() {
   const [clientId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
-    const wsUrl = "ws://localhost:3000/chat"; // ajustá el puerto si hace falta
+    const wsUrl = "ws://loly-framework.onrender.com//chat"; // ajustá el puerto si hace falta
 
     const ws = new WebSocket(wsUrl);
     setSocket(ws);

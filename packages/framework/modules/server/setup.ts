@@ -1,6 +1,10 @@
 import express from "express";
 import path from "path";
-import { loadRoutes, loadApiRoutes, loadRoutesFromManifest } from "@router/index";
+import {
+  loadRoutes,
+  loadApiRoutes,
+  loadRoutesFromManifest,
+} from "@router/index";
 import { startClientBundler } from "@build/bundler/client";
 import { setupHotReload } from "@dev/hot-reload-client";
 import { clearAppRequireCache } from "@dev/hot-reload-server";
@@ -55,9 +59,14 @@ export function setupServer(
     // En prod: rutas estáticas y archivos estáticos
     const { routes, apiRoutes } = loadRoutesFromManifest(projectRoot);
 
-
     const clientOutDir = path.join(projectRoot, ".fw", "client");
-    app.use("/static", express.static(clientOutDir));
+    app.use(
+      "/static",
+      express.static(clientOutDir, {
+        maxAge: "1y",
+        immutable: true,
+      })
+    );
 
     return {
       routes,
@@ -65,4 +74,3 @@ export function setupServer(
     };
   }
 }
-

@@ -1,6 +1,6 @@
 // server/rendering.ts
 import React, { ReactElement } from "react";
-import type { LoaderResult,  PageComponent, LoadedRoute } from "@router/index";
+import type { LoaderResult, PageComponent, LoadedRoute } from "@router/index";
 import { InitialData } from "../index.types";
 
 /**
@@ -40,9 +40,16 @@ export function createDocumentTree(options: {
   meta: LoaderResult["metadata"];
   titleFallback?: string;
   descriptionFallback?: string;
+  chunkHref?: string | null;
 }): ReactElement {
-  const { appTree, initialData, meta, titleFallback, descriptionFallback } =
-    options;
+  const {
+    appTree,
+    initialData,
+    meta,
+    titleFallback,
+    descriptionFallback,
+    chunkHref,
+  } = options;
 
   const metaObj = meta ?? {};
   const title = (metaObj as any).title ?? titleFallback ?? "My Framework Dev";
@@ -90,6 +97,12 @@ export function createDocumentTree(options: {
         content: "width=device-width, initial-scale=1",
       }),
       ...extraMetaTags,
+      chunkHref &&
+        React.createElement("link", {
+          rel: "modulepreload",
+          href: chunkHref,
+          as: "script",
+        }),
       React.createElement("link", {
         rel: "icon",
         href: "/static/favicon.png",

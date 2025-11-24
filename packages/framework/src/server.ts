@@ -7,6 +7,7 @@ import { handleApiRequest, handlePageRequest } from "@server/handlers";
 import { setupApplication } from "@server/application";
 
 import dotenv from "dotenv";
+import { loadChunksFromManifest } from "@router/index";
 dotenv.config();
 
 //#region PROD
@@ -62,10 +63,13 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
     });
   });
 
+  const routeChunks = loadChunksFromManifest(projectRoot);
+
   // Páginas
   app.get("*", async (req, res) => {
     await handlePageRequest({
       routes,
+      routeChunks,
       urlPath: req.path,
       req,
       res,
@@ -130,8 +134,11 @@ export async function startDevServer(options: StartDevServerOptions = {}) {
   // Páginas (en dev recargamos rutas en cada request)
   app.get("*", async (req, res) => {
     const { routes: currentRoutes } = getRoutes!();
+    const routeChunks = loadChunksFromManifest(projectRoot);
+    
     await handlePageRequest({
       routes: currentRoutes,
+      routeChunks,
       urlPath: req.path,
       req,
       res,

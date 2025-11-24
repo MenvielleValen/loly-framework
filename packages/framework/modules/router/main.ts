@@ -28,4 +28,5 @@ export {
   loadLayoutsForDir,
   findLayoutFileInDir,
   loadLoaderForDir,
+  loadRoutesFromManifest,
 } from "./index";

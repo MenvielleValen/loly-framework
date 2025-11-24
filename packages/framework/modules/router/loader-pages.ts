@@ -52,6 +52,7 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const mod = require(fullPath);
       const component: PageComponent = mod.default;
+      
 
       if (!component) {
         console.warn(

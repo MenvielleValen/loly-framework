@@ -88,6 +88,7 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
         handlers,
         middlewares: globalMiddlewares,
         methodMiddlewares,
+        filePath: fullPath,
       });
     }
   }

@@ -9,20 +9,11 @@ export const Button = ({
 
   const { props } = usePageProps() as any;
 
-  console.log("Page props", props);
+ 
 
 
   const handleClick = async () => {
-    try {
-      const { data } = await axios.post(
-        `http://localhost:3000/api/blog/${slug}`,
-        {
-          test: "prueba",
-        }
-      );
-    } catch (error) {
-      console.log(error);
-    }
+    console.log("Page props", props);
   };
 
   return (

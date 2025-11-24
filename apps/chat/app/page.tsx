@@ -27,7 +27,10 @@ export default function HomePage() {
   const [clientId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
-    const wsUrl = "wss://loly-framework.onrender.com//chat"; // ajustá el puerto si hace falta
+    const wsUrl = `${process.env.PUBLIC_WS_BASE_URL}/chat`;
+
+
+    console.log("WS0", wsUrl)
 
     const ws = new WebSocket(wsUrl);
     setSocket(ws);

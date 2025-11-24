@@ -12,3 +12,4 @@ export * from "./path";
 export * from "./layout";
 export * from "./loader";
 export * from "./index.types";
+export * from "./loader-routes";

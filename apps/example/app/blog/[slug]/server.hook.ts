@@ -20,7 +20,7 @@ export const beforeServerData: RouteMiddleware[] = [
   async (ctx, next) => {
     try {
       const { data } = await axios.get(
-        `http://localhost:3000/api/blog/${ctx.params.slug}`,
+        `${process.env.BASE_URL}/api/blog/${ctx.params.slug}`,
         {
           headers: {
             user: ctx.locals.user?.name || "No context",
@@ -28,11 +28,11 @@ export const beforeServerData: RouteMiddleware[] = [
         }
       );
 
-      console.log(data);
-
       ctx.locals.post = data;
     } catch (error) {
       ctx.locals.post = null;
+
+      console.error(error);
     }
 
     await next();
@@ -42,10 +42,10 @@ export const beforeServerData: RouteMiddleware[] = [
 // Loader estilo getServerSideProps
 export async function getServerSideProps(
   ctx: ServerContext
-): Promise<LoaderResult> {
-  const user = ctx.locals.user;
-  const post = ctx.locals.post;
-  const slug = ctx.params.slug;
+): Promise<LoaderResult> {  // Simula usuario desde SSR
+  const user = { id: "1", name: "John Doe", role: "admin" };
+
+  const post =  ctx.locals.post;
 
   return {
     props: {
@@ -53,8 +53,8 @@ export async function getServerSideProps(
       user,
     },
     metadata: {
-      title: `Post ${slug} – My Framework Dev`,
-      description: `Detalle del post "${slug}"`,
+      title: `Post ${post?.slug}`,
+      description: `Detalle del post ${post?.slug}`,
     },
   };
 }

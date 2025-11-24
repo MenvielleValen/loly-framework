@@ -21,6 +21,7 @@ export interface LoadedRoute {
   generateStaticParams: GenerateStaticParams | null;
 }
 
+
 export type DynamicMode = "auto" | "force-static" | "force-dynamic";
 
 export type GenerateStaticParams = () =>
@@ -46,6 +47,7 @@ export interface LoaderResult {
   notFound?: boolean;
 
   metadata?: PageMetadata | null;
+  suspenseSeeds?: Record<string, any>;
 }
 
 export type ServerLoader = (ctx: ServerContext) => Promise<LoaderResult>;
@@ -104,4 +106,33 @@ export interface ApiRoute {
 
   // Handlers por método (GET, POST, etc.)
   handlers: Record<string, ApiHandler>;
+
+  filePath: string;
+}
+
+export interface PageRouteManifestEntry {
+  type: "page";
+  pattern: string;             // "/blog/[slug]"
+  paramNames: string[];        // ["slug"]
+  pageFile: string;            // "app/blog/[slug]/page.tsx" (relativo a root)
+  layoutFiles: string[];       // ["app/layout.tsx", "app/blog/layout.tsx"]
+  dynamic: DynamicMode;        // "auto" | "force-static" | "force-dynamic"
+}
+
+export interface ApiRouteManifestEntry {
+  type: "api";
+  pattern: string;             // "/api/posts/[id]"
+  paramNames: string[];        // ["id"]
+  file: string;                // "app/api/posts/[id]/route.ts"
+  methods: string[];           // ["GET", "POST"]
+}
+
+
+export interface RoutesManifest {
+  version: 1;
+  basePath: string;            // por ahora "", pero queda preparado
+  caseSensitive: boolean;      // por ahora false si tu router lo trata así
+  pages404: boolean;           // por ahora true (tenés _not-found)
+  routes: PageRouteManifestEntry[];
+  apiRoutes: ApiRouteManifestEntry[];
 }

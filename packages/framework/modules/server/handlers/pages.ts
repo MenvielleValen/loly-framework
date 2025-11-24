@@ -4,6 +4,7 @@ import {
   ServerContext,
   LoadedRoute,
   matchRoute,
+  loadChunksFromManifest,
 } from "@router/index";
 import {
   buildAppTree,
@@ -12,15 +13,12 @@ import {
 } from "@rendering/index";
 import { runRouteMiddlewares } from "./middleware";
 import { runRouteLoader } from "./loader";
-import {
-  handleDataResponse,
-  handleRedirect,
-  handleNotFound,
-} from "./response";
+import { handleDataResponse, handleRedirect, handleNotFound } from "./response";
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
+  routeChunks: any; // @TODO typo
   urlPath: string;
   req: Request;
   res: Response;
@@ -47,6 +45,7 @@ export async function handlePageRequest(
 ): Promise<void> {
   const {
     routes,
+    routeChunks,
     urlPath,
     req,
     res,
@@ -97,7 +96,6 @@ export async function handlePageRequest(
 
   // Ejecutar loader
   const loaderResult = await runRouteLoader(route, ctx);
-
   // Log para SSR
   if (!isDataReq) {
     console.log(`[SSR]`, urlPath);
@@ -124,6 +122,9 @@ export async function handlePageRequest(
   const initialData = buildInitialData(urlPath, params, loaderResult);
   const appTree = buildAppTree(route, params, initialData.props);
 
+  const chunkName = routeChunks[route.pattern];
+  const chunkHref = chunkName != null ? `/static/${chunkName}.js` : null;
+
   // Documento HTML completo
   const documentTree = createDocumentTree({
     appTree,
@@ -131,24 +132,43 @@ export async function handlePageRequest(
     meta: loaderResult.metadata,
     titleFallback: "Loly framework",
     descriptionFallback: "Loly demo",
+    chunkHref,
   });
 
   // Stream de respuesta con React 18
-  const { pipe } = renderToPipeableStream(documentTree, {
+  let didError = false;
+
+  const { pipe, abort } = renderToPipeableStream(documentTree, {
     onShellReady() {
+      if (didError || res.headersSent) {
+        return;
+      }
+
       res.statusCode = 200;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.write("<!DOCTYPE html>");
       pipe(res);
     },
-    onError(err) {
-      console.error(`[framework][${env}] SSR error:`, err);
+
+    onShellError(err) {
+      didError = true;
+      console.error("[framework][prod] SSR shell error:", err);
+
       if (!res.headersSent) {
         res.statusCode = 500;
-        res.setHeader("Content-Type", "text/plain; charset=utf-8");
-        res.end("Internal Server Error");
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.end("<!doctype html><h1>Internal Server Error</h1>");
       }
+
+      abort(); // 👉 muy importante: cortamos el stream de React
+    },
+
+    onError(err) {
+      didError = true;
+      console.error("[framework][prod] SSR error:", err);
     },
   });
-}
 
+  req.on("close", () => {
+    abort();
+  });
+}

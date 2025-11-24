@@ -1,14 +1,15 @@
 import path from "path";
 import { rspack, type Configuration } from "@rspack/core";
 import { loadAliasesFromTsconfig } from "../utils";
+import dotenv from 'dotenv';
 
 /**
  * Creates Rspack configuration for client bundle.
- * 
+ *
  * @param projectRoot - Root directory of the project
  * @param mode - Build mode ('development' or 'production')
  * @returns Rspack configuration and output directory
- * 
+ *
  * @example
  * const { config, outDir } = createClientConfig('/path/to/project', 'production');
  */
@@ -18,6 +19,18 @@ export function createClientConfig(
 ): { config: Configuration; outDir: string } {
   const clientEntry = path.join(projectRoot, "boostrap.ts");
   const outDir = path.join(projectRoot, ".fw", "client");
+
+  dotenv.config({
+    path: projectRoot,
+  })
+
+  const publicEnv: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith("PUBLIC_")) {
+      publicEnv[`process.env.${key}`] = JSON.stringify(value ?? "");
+    }
+  }
 
   const config: Configuration = {
     mode,
@@ -66,6 +79,7 @@ export function createClientConfig(
     plugins: [
       new rspack.DefinePlugin({
         "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
+        ...publicEnv,
       }),
       new rspack.CssExtractRspackPlugin({
         filename: "client.css",
@@ -79,4 +93,3 @@ export function createClientConfig(
 
   return { config, outDir };
 }
-

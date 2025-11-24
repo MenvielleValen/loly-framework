@@ -226,6 +226,7 @@ function AppShell({ initialState, routes }: AppShellProps) {
         applyMetadata(json.metadata ?? null);
 
         const newProps = json.props ?? {};
+        const newSeeds = json.suspenseSeeds ?? undefined; // ⭐ NEW
 
         // resolve de la ruta y carga de módulos para la ruta destino
         const matched = matchRouteClient(nextUrl, routes);
@@ -235,10 +236,15 @@ function AppShell({ initialState, routes }: AppShellProps) {
         }
 
         window.__FW_DATA__ = {
-          ...window.__FW_DATA__,
+          ...(window.__FW_DATA__ ?? {
+            pathname: nextUrl,
+            params: matched.params,
+            props: newProps,
+          }),
+          pathname: nextUrl,
           params: matched.params,
           props: newProps,
-          pathname: nextUrl,
+          metadata: json.metadata ?? null,
         };
 
         const components = await matched.route.load();

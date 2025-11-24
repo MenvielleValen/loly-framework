@@ -1,6 +1,6 @@
 import express from "express";
 import path from "path";
-import { loadRoutes, loadApiRoutes } from "@router/index";
+import { loadRoutes, loadApiRoutes, loadRoutesFromManifest } from "@router/index";
 import { startClientBundler } from "@build/bundler/client";
 import { setupHotReload } from "@dev/hot-reload-client";
 import { clearAppRequireCache } from "@dev/hot-reload-server";
@@ -36,10 +36,7 @@ export function setupServer(
 
     function getRoutes() {
       clearAppRequireCache(appDir);
-      return {
-        routes: loadRoutes(appDir),
-        apiRoutes: loadApiRoutes(appDir),
-      };
+      return loadRoutesFromManifest(projectRoot);
     }
 
     const { routes: manifestRoutes } = getRoutes();
@@ -56,8 +53,8 @@ export function setupServer(
     };
   } else {
     // En prod: rutas estáticas y archivos estáticos
-    const routes = loadRoutes(appDir);
-    const apiRoutes = loadApiRoutes(appDir);
+    const { routes, apiRoutes } = loadRoutesFromManifest(projectRoot);
+
 
     const clientOutDir = path.join(projectRoot, ".fw", "client");
     app.use("/static", express.static(clientOutDir));

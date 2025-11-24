@@ -16,7 +16,7 @@ export const beforeGET: ApiMiddleware[] = [attachUserForRead];
 export async function GET(ctx: ApiContext) {
   const slug = ctx.locals.slug;
 
-  const blog = await BlogModel.findOne({ slug });
+  const blog = await BlogModel.findOne({ slug }).lean();
 
   if(!blog){
     return ctx.NotFound();

@@ -6,6 +6,9 @@ import { setupServer } from "@server/setup";
 import { handleApiRequest, handlePageRequest } from "@server/handlers";
 import { setupApplication } from "@server/application";
 
+import dotenv from "dotenv";
+dotenv.config();
+
 //#region PROD
 export interface StartProdServerOptions {
   port?: number;

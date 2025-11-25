@@ -5,9 +5,9 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter example-app dev",
+    "dev": "pnpm --filter loly-template dev",
     "full-dev": "pnpm build & pnpm dev",
-    "start": "pnpm --filter example-app start",
+    "start": "pnpm --filter loly-template start",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint"
   },

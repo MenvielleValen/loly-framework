@@ -119,7 +119,7 @@ export function createDocumentTree(options: {
     ),
     React.createElement(
       "body",
-      { style: { margin: 0 } },
+      { style: { margin: 0 }, className: initialData.className },
       React.createElement("div", { id: "__app" }, appTree)
     ),
     React.createElement("script", {

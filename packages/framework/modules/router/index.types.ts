@@ -47,7 +47,7 @@ export interface LoaderResult {
   notFound?: boolean;
 
   metadata?: PageMetadata | null;
-  suspenseSeeds?: Record<string, any>;
+  className?: string;
 }
 
 export type ServerLoader = (ctx: ServerContext) => Promise<LoaderResult>;

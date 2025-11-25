@@ -13,6 +13,7 @@
       "@dev/*": ["modules/dev/*"],
       "@runtime/*": ["modules/runtime/*"],
       "@server/*": ["modules/server/*"],
+      "@font/*": ["modules/font/*"],
     }
   },
   "include": ["src", "modules"]

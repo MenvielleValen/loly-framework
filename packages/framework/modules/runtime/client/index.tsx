@@ -226,10 +226,10 @@ function AppShell({ initialState, routes }: AppShellProps) {
         applyMetadata(json.metadata ?? null);
 
         const newProps = json.props ?? {};
-        const newSeeds = json.suspenseSeeds ?? undefined; // ⭐ NEW
 
         // resolve de la ruta y carga de módulos para la ruta destino
         const matched = matchRouteClient(nextUrl, routes);
+
         if (!matched) {
           window.location.href = nextUrl;
           return;

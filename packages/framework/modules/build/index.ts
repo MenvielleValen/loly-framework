@@ -14,10 +14,11 @@ export interface BuildAppOptions {
   appDir?: string;
 }
 
-
 export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
   const projectRoot = options.rootDir ?? process.cwd();
   const appDir = options.appDir ?? path.resolve(projectRoot, "app");
+
+  process.env.LOLY_BUILD = "1";
 
   // 1) Escanear TSX (solo metadata)
   const routes = loadRoutes(appDir);
@@ -37,6 +38,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
 
   // 6) SSG (usa loader del server compilado)
   await buildStaticPages(projectRoot, routes);
+
+  delete process.env.LOLY_BUILD;
 }
 
 // Re-export bundler functions for direct use if needed

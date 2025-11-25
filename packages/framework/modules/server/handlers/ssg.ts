@@ -41,7 +41,6 @@ export function tryServeSsgHtml(
     return false;
   }
 
-  console.log("[SSG]", urlPath);
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   const stream = fs.createReadStream(ssgHtmlPath, { encoding: "utf-8" });

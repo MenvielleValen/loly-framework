@@ -96,10 +96,6 @@ export async function handlePageRequest(
 
   // Ejecutar loader
   const loaderResult = await runRouteLoader(route, ctx);
-  // Log para SSR
-  if (!isDataReq) {
-    console.log(`[SSR]`, urlPath);
-  }
 
   // Manejar data request
   if (isDataReq) {
@@ -114,7 +110,11 @@ export async function handlePageRequest(
   }
 
   if (loaderResult.notFound) {
-    handleNotFound(res);
+    if (isDataReq) {
+      res.status(200).json({ notFound: true });
+    } else {
+      handleNotFound(res, urlPath);
+    }
     return;
   }
 

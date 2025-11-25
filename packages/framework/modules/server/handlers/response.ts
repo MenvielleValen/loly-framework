@@ -46,7 +46,7 @@ export function handleRedirect(
  * Maneja notFound para HTML.
  */
 export function handleNotFound(res: Response, urlPath?: string): void {
-  res.statusCode = 404;
+  res.statusCode = 200;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   if (urlPath) {
     res.end(`<h1>404 - Not Found</h1><p>No se encontró ruta para ${urlPath}</p>`);

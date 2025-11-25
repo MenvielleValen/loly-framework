@@ -3,4 +3,5 @@ export interface InitialData {
   params: Record<string, string>;
   props: any;
   metadata: any;
+  className: string;
 }

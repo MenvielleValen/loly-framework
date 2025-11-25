@@ -8,6 +8,7 @@ import { setupApplication } from "@server/application";
 
 import dotenv from "dotenv";
 import { loadChunksFromManifest } from "@router/index";
+
 dotenv.config();
 
 //#region PROD

@@ -2,6 +2,7 @@ import path from "path";
 import { rspack, type Configuration } from "@rspack/core";
 import { loadAliasesFromTsconfig } from "../utils";
 import dotenv from 'dotenv';
+import { BUILD_FOLDER_NAME } from "@constants/globals";
 
 /**
  * Creates Rspack configuration for client bundle.
@@ -17,12 +18,13 @@ export function createClientConfig(
   projectRoot: string,
   mode: "development" | "production"
 ): { config: Configuration; outDir: string } {
-  const clientEntry = path.join(projectRoot, "boostrap.ts");
-  const outDir = path.join(projectRoot, ".fw", "client");
+  const buildDir = path.join(projectRoot, BUILD_FOLDER_NAME);
+  const clientEntry = path.join(buildDir, "boostrap.ts");
+  const outDir = path.join(buildDir, "client");
 
   dotenv.config({
     path: projectRoot,
-  })
+  });
 
   const publicEnv: Record<string, string> = {};
 

@@ -64,17 +64,6 @@ export default function HomePage() {
 }
 ```
 
-2. **Set up the client bootstrap:**
-
-```tsx
-// boostrap.ts
-import "./app/styles.css";
-import { routes } from "./.fw/routes-client";
-import { bootstrapClient } from "@loly/core/modules/runtime/client";
-
-bootstrapClient(routes);
-```
-
 3. **Add scripts to your `package.json`:**
 
 ```json
@@ -404,8 +393,8 @@ loly start --port 3000
 ```
 
 The production server:
-- Serves static assets from `.fw/client`
-- Serves pre-rendered SSG pages from `.fw/ssg`
+- Serves static assets from `{BUILD_FOLDER_NAME}/client`
+- Serves pre-rendered SSG pages from `{BUILD_FOLDER_NAME}/ssg`
 - Falls back to SSR for dynamic routes
 
 ## TypeScript

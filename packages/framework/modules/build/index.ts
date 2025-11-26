@@ -1,7 +1,9 @@
 import path from "path";
 import {
   loadApiRoutes,
+  LoadedRoute,
   loadRoutes,
+  writeClientBoostrapManifest,
   writeClientRoutesManifest,
   writeRoutesManifest,
 } from "@router/index";
@@ -20,29 +22,27 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
 
   process.env.LOLY_BUILD = "1";
 
-  // 1) Escanear TSX (solo metadata)
   const routes = loadRoutes(appDir);
   const apiRoutes = loadApiRoutes(appDir);
 
-  // 2) Compilar server → produce .fw/server/app/**
   const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir);
 
-  // 3) Generar manifest apuntando a JS compilado
-  writeRoutesManifest(routes, apiRoutes, projectRoot, serverOutDir, appDir);
+  const notFoundRoute = routes.find(r => r.pattern === '/not-found');
+  const filteredRoutes = routes.filter(r => r.pattern !== '/not-found');
 
-  // 4) Crear manifest TS para el cliente (usa TSX)
+  writeRoutesManifest(filteredRoutes, apiRoutes, notFoundRoute as LoadedRoute, projectRoot, serverOutDir, appDir);
+
+  writeClientBoostrapManifest(projectRoot);
+
   writeClientRoutesManifest(routes, projectRoot);
 
-  // 5) Bundlear cliente
   await buildClientBundle(projectRoot);
 
-  // 6) SSG (usa loader del server compilado)
   await buildStaticPages(projectRoot, routes);
 
   delete process.env.LOLY_BUILD;
 }
 
-// Re-export bundler functions for direct use if needed
 export { startClientBundler, buildClientBundle } from "./bundler/client";
 export { buildServerApp } from "./bundler/server";
 export { buildStaticPages } from "./ssg";

@@ -10,8 +10,10 @@ export interface HandleApiRequestOptions {
 }
 
 /**
- * Maneja una petición a una ruta API.
- * Unifica la lógica entre dev y prod.
+ * Handles an API route request.
+ * Unifies logic between dev and prod.
+ *
+ * @param options - Request handling options
  */
 export async function handleApiRequest(
   options: HandleApiRequestOptions
@@ -46,12 +48,8 @@ export async function handleApiRequest(
   };
 
   try {
-    // Globals middlewares
     const globalMws = route.middlewares ?? [];
-
-    // Method middlewares
     const perMethodMws = route.methodMiddlewares?.[method] ?? [];
-
     const chain = [...globalMws, ...perMethodMws];
 
     for (const mw of chain) {
@@ -61,10 +59,9 @@ export async function handleApiRequest(
       }
     }
 
-    // Handler final
     await handler(ctx);
   } catch (err) {
-    console.error(`[framework][api][${env}] Error en handler:`, err);
+    console.error(`[framework][api][${env}] Handler error:`, err);
     if (!res.headersSent) {
       res.status(500).json({ error: "Internal Server Error" });
     }

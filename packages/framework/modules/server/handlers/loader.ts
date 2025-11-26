@@ -1,7 +1,11 @@
 import { ServerContext, LoadedRoute, LoaderResult } from "@router/index";
 
 /**
- * Ejecuta el loader de una ruta si existe.
+ * Executes the route loader if it exists.
+ *
+ * @param route - Route definition
+ * @param ctx - Server context
+ * @returns Loader result
  */
 export async function runRouteLoader(
   route: LoadedRoute,

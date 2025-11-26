@@ -15,8 +15,6 @@ export interface LoadedRoute {
   layoutFiles: string[];
   middlewares: RouteMiddleware[];
   loader: ServerLoader | null;
-
-  // ⭐ Nuevos para SSG:
   dynamic: DynamicMode;
   generateStaticParams: GenerateStaticParams | null;
 }
@@ -64,7 +62,7 @@ export interface ClientRoute {
 export interface PageMetadata {
   title?: string;
   description?: string;
-  // extensible para el futuro
+
   metaTags?: {
     name?: string;
     property?: string;
@@ -98,13 +96,13 @@ export interface ApiRoute {
   regex: RegExp;
   paramNames: string[];
 
-  // Middlewares que aplican a TODOS los métodos de la ruta
+  // Global middlewares
   middlewares: ApiMiddleware[];
 
-  // Middlewares por método, ej: GET, POST, ...
+  // Middlewares GET, POST, ...
   methodMiddlewares: Record<string, ApiMiddleware[]>;
 
-  // Handlers por método (GET, POST, etc.)
+  // Handlers(GET, POST, etc.)
   handlers: Record<string, ApiHandler>;
 
   filePath: string;
@@ -112,27 +110,28 @@ export interface ApiRoute {
 
 export interface PageRouteManifestEntry {
   type: "page";
-  pattern: string;             // "/blog/[slug]"
-  paramNames: string[];        // ["slug"]
-  pageFile: string;            // "app/blog/[slug]/page.tsx" (relativo a root)
-  layoutFiles: string[];       // ["app/layout.tsx", "app/blog/layout.tsx"]
-  dynamic: DynamicMode;        // "auto" | "force-static" | "force-dynamic"
+  pattern: string;            
+  paramNames: string[];     
+  pageFile: string; 
+  layoutFiles: string[];     
+  dynamic: DynamicMode;       
 }
 
 export interface ApiRouteManifestEntry {
   type: "api";
-  pattern: string;             // "/api/posts/[id]"
-  paramNames: string[];        // ["id"]
-  file: string;                // "app/api/posts/[id]/route.ts"
-  methods: string[];           // ["GET", "POST"]
+  pattern: string;          
+  paramNames: string[];  
+  file: string;             
+  methods: string[];          
 }
 
 
 export interface RoutesManifest {
   version: 1;
-  basePath: string;            // por ahora "", pero queda preparado
-  caseSensitive: boolean;      // por ahora false si tu router lo trata así
-  pages404: boolean;           // por ahora true (tenés _not-found)
+  basePath: string;        
+  caseSensitive: boolean;  
+  pages404: boolean;       
   routes: PageRouteManifestEntry[];
   apiRoutes: ApiRouteManifestEntry[];
+  notFound: PageRouteManifestEntry;
 }

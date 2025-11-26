@@ -11,6 +11,14 @@ interface ImageProps
   className?: string;
 }
 
+/**
+ * Image component that handles static asset paths.
+ *
+ * Automatically prefixes relative paths with the static assets directory.
+ *
+ * @param props - Image component props
+ * @returns Image element
+ */
 export function Image({
   src,
   alt,

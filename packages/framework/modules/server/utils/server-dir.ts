@@ -1,9 +1,10 @@
 import fs from "fs";
 import path from "path";
+import { BUILD_FOLDER_NAME } from "@constants/globals";
 
 export const getServerFile = async (projectRoot: string, fileName: string) => {
   const fileTS = path.join(projectRoot, `${fileName}.ts`);
-  const fileJS = path.join(projectRoot, ".fw", "server", `${fileName}.js`);
+  const fileJS = path.join(projectRoot, BUILD_FOLDER_NAME, "server", `${fileName}.js`);
 
   const isDev = process.env.NODE_ENV === "development";
   let mod: any = null;

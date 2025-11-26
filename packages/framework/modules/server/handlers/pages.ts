@@ -18,16 +18,20 @@ import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
-  routeChunks: any; // @TODO typo
+  notFoundPage: LoadedRoute | null;
+  routeChunks: Record<string, string>;
   urlPath: string;
   req: Request;
   res: Response;
   env?: "dev" | "prod";
-  ssgOutDir?: string; // Solo para prod
+  ssgOutDir?: string;
 }
 
 /**
- * Determina si una request es una data request (JSON).
+ * Determines if a request is a data request (JSON).
+ *
+ * @param req - Express request object
+ * @returns True if the request is a data request
  */
 export function isDataRequest(req: Request): boolean {
   return (
@@ -37,14 +41,17 @@ export function isDataRequest(req: Request): boolean {
 }
 
 /**
- * Maneja una petición a una ruta de página.
- * Unifica la lógica entre dev y prod (con soporte para SSG en prod).
+ * Handles a page route request.
+ * Unifies logic between dev and prod (with SSG support in prod).
+ *
+ * @param options - Request handling options
  */
 export async function handlePageRequest(
   options: HandlePageRequestOptions
 ): Promise<void> {
   const {
     routes,
+    notFoundPage,
     routeChunks,
     urlPath,
     req,
@@ -55,25 +62,75 @@ export async function handlePageRequest(
 
   const isDataReq = isDataRequest(req);
 
-  // En prod, intentar servir SSG primero
   if (env === "prod" && ssgOutDir) {
     if (isDataReq) {
       if (tryServeSsgData(res, ssgOutDir, urlPath)) {
         return;
       }
-      // Si no hay SSG data, continuar con SSR fallback
     } else {
       if (tryServeSsgHtml(res, ssgOutDir, urlPath)) {
         return;
       }
-      // Si no hay SSG HTML, continuar con SSR fallback
     }
   }
 
-  // Match de ruta
   const matched = matchRoute(routes, urlPath);
 
   if (!matched) {
+    if (notFoundPage) {
+      const ctx: ServerContext = {
+        req,
+        res,
+        params: {},
+        pathname: urlPath,
+        locals: {},
+      };
+
+      const loaderResult = await runRouteLoader(notFoundPage, ctx);
+
+      const initialData = buildInitialData(urlPath, {}, loaderResult);
+      const appTree = buildAppTree(notFoundPage, {}, initialData.props);
+      initialData.notFound = true;
+    
+      const documentTree = createDocumentTree({
+        appTree,
+        initialData,
+        meta: loaderResult.metadata ?? null,
+        titleFallback: "Not found",
+        descriptionFallback: "Loly demo",
+        chunkHref: null,
+      });
+    
+      let didError = false;
+    
+      const { pipe, abort } = renderToPipeableStream(documentTree, {
+        onShellReady() {
+          if (didError || res.headersSent) return;
+
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          pipe(res);
+        },
+        onShellError(err) {
+          didError = true;
+          console.error("[framework][prod] SSR shell error:", err);
+          if (!res.headersSent) {
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.end("<!doctype html><h1>Internal Server Error</h1>");
+          }
+          abort();
+        },
+        onError(err) {
+          didError = true;
+          console.error("[framework][prod] SSR error:", err);
+        },
+      });
+    
+      req.on("close", () => abort());
+      return;
+    }
+
     handleNotFound(res, urlPath);
     return;
   }
@@ -88,22 +145,18 @@ export async function handlePageRequest(
     locals: {},
   };
 
-  // Ejecutar middlewares
   await runRouteMiddlewares(route, ctx);
   if (res.headersSent) {
     return;
   }
 
-  // Ejecutar loader
   const loaderResult = await runRouteLoader(route, ctx);
 
-  // Manejar data request
   if (isDataReq) {
     handleDataResponse(res, loaderResult);
     return;
   }
 
-  // Manejar redirect / notFound para HTML
   if (loaderResult.redirect) {
     handleRedirect(res, loaderResult.redirect);
     return;
@@ -118,14 +171,12 @@ export async function handlePageRequest(
     return;
   }
 
-  // Construir initialData + árbol de la app
   const initialData = buildInitialData(urlPath, params, loaderResult);
   const appTree = buildAppTree(route, params, initialData.props);
 
   const chunkName = routeChunks[route.pattern];
   const chunkHref = chunkName != null ? `/static/${chunkName}.js` : null;
 
-  // Documento HTML completo
   const documentTree = createDocumentTree({
     appTree,
     initialData,
@@ -135,7 +186,6 @@ export async function handlePageRequest(
     chunkHref,
   });
 
-  // Stream de respuesta con React 18
   let didError = false;
 
   const { pipe, abort } = renderToPipeableStream(documentTree, {
@@ -159,7 +209,7 @@ export async function handlePageRequest(
         res.end("<!doctype html><h1>Internal Server Error</h1>");
       }
 
-      abort(); // 👉 muy importante: cortamos el stream de React
+      abort();
     },
 
     onError(err) {

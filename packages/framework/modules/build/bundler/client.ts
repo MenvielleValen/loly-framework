@@ -28,20 +28,18 @@ export function startClientBundler(
   const compiler = rspack(config);
 
   compiler.watch({}, (err, stats) => {
-    if (err) {
-      console.error("[framework][client] Rspack error:", err);
-      return;
-    }
-    if (!stats) return;
+      if (err) {
+        console.error("[framework][client] Rspack error:", err);
+        return;
+      }
+      if (!stats) return;
 
-    if (stats.hasErrors()) {
-      console.error(
-        "[framework][client] Build with errors:\n",
-        stats.toString("errors-only")
-      );
-    } else {
-      console.log("[framework][client] Bundle updated");
-    }
+      if (stats.hasErrors()) {
+        console.error(
+          "[framework][client] Build with errors:\n",
+          stats.toString("errors-only")
+        );
+      }
   });
 
   return { outDir };
@@ -57,7 +55,7 @@ export function startClientBundler(
  * 
  * @example
  * const { outDir } = await buildClientBundle('/path/to/project');
- * // Production bundle created at .fw/client
+ * // Production bundle created at {BUILD_FOLDER_NAME}/client
  */
 export function buildClientBundle(
   projectRoot: string
@@ -88,7 +86,6 @@ export function buildClientBundle(
 
       copyStaticAssets(projectRoot, outDir);
 
-      console.log("[framework][client] Client build successful");
       resolve({ outDir });
     });
   });

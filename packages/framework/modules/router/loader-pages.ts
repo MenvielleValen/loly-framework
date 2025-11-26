@@ -24,7 +24,6 @@ import { loadLoaderForDir } from "./loader";
  */
 export function loadRoutes(appDir: string): LoadedRoute[] {
   if (!fs.existsSync(appDir)) {
-    console.warn(`[framework] App directory not found: ${appDir}`);
     return [];
   }
 
@@ -41,33 +40,25 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         continue;
       }
 
-      // Only process page files
       if (!PAGE_FILE_REGEX.test(entry.name)) continue;
 
-      const relDir = path.relative(appDir, currentDir); // '', 'about', 'blog\\[slug]'
+      const relDir = path.relative(appDir, currentDir);
       const routePath = buildRoutePathFromDir(relDir);
       const { regex, paramNames } = buildRegexFromRoutePath(routePath);
 
-      // Load page component
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const mod = require(fullPath);
       const component: PageComponent = mod.default;
-      
 
       if (!component) {
-        console.warn(
-          `[framework] File ${fullPath} does not export a default component, skipping.`
-        );
         continue;
       }
 
-      // Load layouts for this route
       const { components: layouts, files: layoutFiles } = loadLayoutsForDir(
         currentDir,
         appDir
       );
 
-      // Load server-side hooks (loader, middlewares, SSG config)
       const { middlewares, loader, dynamic, generateStaticParams } =
         loadLoaderForDir(currentDir);
 
@@ -88,11 +79,6 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
   }
 
   walk(appDir);
-
-  console.log("[framework] Loaded routes:");
-  for (const r of routes) {
-    console.log(`  ${r.pattern}  (layouts: ${r.layouts.length})`);
-  }
 
   return routes;
 }

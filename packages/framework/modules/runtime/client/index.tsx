@@ -5,10 +5,8 @@ type InitialData = {
   pathname: string;
   params: Record<string, string>;
   props: Record<string, any>;
-  metadata?: {
-    title?: string;
-    description?: string;
-  } | null;
+  metadata?: { title?: string; description?: string } | null;
+  notFound?: boolean;
 };
 
 declare global {
@@ -17,18 +15,16 @@ declare global {
   }
 }
 
-export type ClientRouteLoaded = {
-  pattern: string;
-  paramNames: string[];
-  load: () => Promise<ClientLoadedComponents>;
-};
-
 export type ClientLoadedComponents = {
   Page: React.ComponentType<any>;
   layouts: React.ComponentType<any>[];
 };
 
-// --- helpers de matching ---
+export type ClientRouteLoaded = {
+  pattern: string;
+  paramNames: string[];
+  load: () => Promise<ClientLoadedComponents>;
+};
 
 function buildClientRegexFromPattern(pattern: string): RegExp {
   const segments = pattern.split("/").filter(Boolean);
@@ -41,20 +37,18 @@ function buildClientRegexFromPattern(pattern: string): RegExp {
     if (seg.startsWith("[...") && seg.endsWith("]")) {
       if (i !== segments.length - 1) {
         throw new Error(
-          `El segmento catch-all "${seg}" en "${pattern}" debe ser el último.`
+          `Catch-all segment "${seg}" in "${pattern}" must be the last segment.`
         );
       }
       regexParts.push("(.+)");
       continue;
     }
 
-    // param normal [slug]
     if (seg.startsWith("[") && seg.endsWith("]")) {
       regexParts.push("([^/]+)");
       continue;
     }
 
-    // literal
     const escaped = seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     regexParts.push(escaped);
   }
@@ -105,33 +99,6 @@ function applyMetadata(md?: { title?: string; description?: string } | null) {
   }
 }
 
-function setupHotReloadClient() {
-  if (typeof window === "undefined") return;
-
-  try {
-    const es = new EventSource("/__fw/hot");
-
-    es.onmessage = (ev) => {
-      if (!ev.data) return;
-      if (ev.data.startsWith("reload:")) {
-        const file = ev.data.slice("reload:".length);
-        console.log("[hot-reload] Cambio detectado:", file);
-        window.location.reload();
-      }
-    };
-
-    es.onerror = (err) => {
-      console.warn("[hot-reload] Error en EventSource:", err);
-    };
-
-    console.log("[hot-reload] EventSource conectado a /__fw/hot");
-  } catch (err) {
-    console.error("[hot-reload] No se pudo conectar:", err);
-  }
-}
-
-// --- Estado global de la app en el cliente ---
-
 type RouteViewState = {
   url: string;
   route: ClientRouteLoaded | null;
@@ -140,17 +107,12 @@ type RouteViewState = {
   props: Record<string, any>;
 };
 
-// --- Vista: arma Page + Layouts con props ya cargados ---
-
 function RouterView({ state }: { state: RouteViewState }) {
   if (!state.route) {
-    return <h1>404 desde cliente – ruta no encontrada</h1>;
+    return <h1>404 - Route not found</h1>;
   }
 
   if (!state.components) {
-    // Para la ruta inicial, components NO es null (los cargamos antes de hydrateRoot),
-    // así que no hay mismatch con el SSR.
-    // En navegación SPA puede ser null un ratito mientras cargan los módulos.
     return null;
   }
 
@@ -171,13 +133,13 @@ function RouterView({ state }: { state: RouteViewState }) {
   return element;
 }
 
-// --- AppShell: SPA navigation + data fetching + carga de módulos ---
 interface AppShellProps {
   initialState: RouteViewState;
   routes: ClientRouteLoaded[];
+  notFoundRoute: ClientRouteLoaded | null;
 }
 
-function AppShell({ initialState, routes }: AppShellProps) {
+function AppShell({ initialState, routes, notFoundRoute }: AppShellProps) {
   const [state, setState] = useState<RouteViewState>(initialState);
 
   useEffect(() => {
@@ -194,7 +156,7 @@ function AppShell({ initialState, routes }: AppShellProps) {
         );
 
         if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
+          const json = await res.json().catch(() => ({} as any));
           if (json && (json as any).redirect) {
             window.location.href = (json as any).redirect.destination;
             return;
@@ -211,15 +173,24 @@ function AppShell({ initialState, routes }: AppShellProps) {
         }
 
         if (json.notFound) {
-          // manejamos 404 en cliente (sin props ni componentes)
-          const match404 = matchRouteClient(nextUrl, routes);
-          setState({
-            url: nextUrl,
-            route: match404?.route ?? null,
-            params: match404?.params ?? {},
-            components: null,
-            props: {},
-          });
+          if (notFoundRoute) {
+            const components = await notFoundRoute.load();
+            setState({
+              url: nextUrl,
+              route: notFoundRoute,
+              params: {},
+              components,
+              props: {},
+            });
+          } else {
+            setState({
+              url: nextUrl,
+              route: null,
+              params: {},
+              components: null,
+              props: {},
+            });
+          }
           return;
         }
 
@@ -227,7 +198,6 @@ function AppShell({ initialState, routes }: AppShellProps) {
 
         const newProps = json.props ?? {};
 
-        // resolve de la ruta y carga de módulos para la ruta destino
         const matched = matchRouteClient(nextUrl, routes);
 
         if (!matched) {
@@ -236,11 +206,6 @@ function AppShell({ initialState, routes }: AppShellProps) {
         }
 
         window.__FW_DATA__ = {
-          ...(window.__FW_DATA__ ?? {
-            pathname: nextUrl,
-            params: matched.params,
-            props: newProps,
-          }),
           pathname: nextUrl,
           params: matched.params,
           props: newProps,
@@ -258,7 +223,7 @@ function AppShell({ initialState, routes }: AppShellProps) {
         });
       } catch (err) {
         console.error("[client] Error fetching FW data:", err);
-        window.location.href = nextUrl; // fallback duro
+        window.location.href = nextUrl;
       }
     }
 
@@ -303,36 +268,49 @@ function AppShell({ initialState, routes }: AppShellProps) {
       window.removeEventListener("click", handleClick);
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [routes]); // solo se configura una vez
+  }, [routes, notFoundRoute]);
 
   return <RouterView state={state} />;
 }
 
-export function bootstrapClient(routes: ClientRouteLoaded[]) {
-  if (process.env.NODE_ENV === "development") {
-    setupHotReloadClient();
-  }
+/**
+ * Bootstraps the client-side application.
+ *
+ * @param routes - Array of client routes
+ * @param notFoundRoute - Not-found route definition
+ */
+export function bootstrapClient(
+  routes: ClientRouteLoaded[],
+  notFoundRoute: ClientRouteLoaded | null
+) {
 
   (async function bootstrap() {
     const container = document.getElementById("__app");
     const initialData: InitialData | null = window.__FW_DATA__ ?? null;
 
     if (!container) {
-      console.error("No se encontró el contenedor #__app para hidratar");
+      console.error("Container #__app not found for hydration");
       return;
     }
 
     const initialUrl = window.location.pathname + window.location.search;
+    const isInitialNotFound = initialData?.notFound === true;
 
-    const match = matchRouteClient(initialUrl, routes);
     let initialRoute: ClientRouteLoaded | null = null;
     let initialParams: Record<string, string> = {};
     let initialComponents: ClientLoadedComponents | null = null;
 
-    if (match) {
-      initialRoute = match.route;
-      initialParams = match.params;
-      initialComponents = await match.route.load();
+    if (!isInitialNotFound) {
+      const match = matchRouteClient(initialUrl, routes);
+      if (match) {
+        initialRoute = match.route;
+        initialParams = match.params;
+        initialComponents = await match.route.load();
+      }
+    } else if (notFoundRoute) {
+      initialRoute = notFoundRoute;
+      initialParams = {};
+      initialComponents = await notFoundRoute.load();
     }
 
     if (initialData?.metadata) {
@@ -349,7 +327,11 @@ export function bootstrapClient(routes: ClientRouteLoaded[]) {
 
     hydrateRoot(
       container,
-      <AppShell initialState={initialState} routes={routes} />
+      <AppShell
+        initialState={initialState}
+        routes={routes}
+        notFoundRoute={notFoundRoute}
+      />
     );
   })();
 }

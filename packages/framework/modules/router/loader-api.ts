@@ -46,11 +46,9 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
       // Only process route files
       if (!ROUTE_FILE_REGEX.test(entry.name)) continue;
 
-      // Build route pattern from file path
       const relToApp = path.relative(appDir, fullPath).replace(/\\/g, "/");
-      // e.g., "api/posts/[id]/route.ts"
-      const withoutRoute = relToApp.replace(/\/route\.(ts|tsx|js|jsx)$/, ""); // "api/posts/[id]"
-      const pattern = "/" + withoutRoute; // "/api/posts/[id]"
+      const withoutRoute = relToApp.replace(/\/route\.(ts|tsx|js|jsx)$/, "");
+      const pattern = "/" + withoutRoute;
 
       const { regex, paramNames } = buildRegexFromRoutePath(pattern);
 
@@ -60,21 +58,18 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
       const handlers: Record<string, ApiHandler> = {};
       const methodMiddlewares: Record<string, ApiMiddleware[]> = {};
 
-      // Load handlers for each HTTP method
       for (const m of HTTP_METHODS) {
         if (typeof mod[m] === "function") {
           handlers[m] = mod[m] as ApiHandler;
         }
       }
 
-      // Load global middlewares (apply to all methods)
       const globalMiddlewares: ApiMiddleware[] = Array.isArray(mod.beforeApi)
         ? mod.beforeApi
         : [];
 
-      // Load method-specific middlewares (beforeGET, beforePOST, etc.)
       for (const m of HTTP_METHODS) {
-        const key = `before${m}`; // e.g., "beforeGET"
+        const key = `before${m}`;
         const mws = (mod as any)[key];
         if (Array.isArray(mws)) {
           methodMiddlewares[m] = mws as ApiMiddleware[];
@@ -94,17 +89,6 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
   }
 
   walk(apiRoot);
-
-  if (routes.length > 0) {
-    console.log("[framework] Loaded API routes:");
-    for (const r of routes) {
-      console.log(
-        `  ${r.pattern}  (methods: ${Object.keys(r.handlers).join(
-          ", "
-        )}, middlewares: ${r.middlewares.length})`
-      );
-    }
-  }
 
   return routes;
 }

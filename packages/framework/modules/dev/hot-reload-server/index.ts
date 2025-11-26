@@ -1,5 +1,10 @@
 import path from "path";
 
+/**
+ * Clears the require cache for files in the app directory.
+ *
+ * @param appDir - App directory path
+ */
 export function clearAppRequireCache(appDir: string) {
   const appDirNormalized = path.resolve(appDir);
 

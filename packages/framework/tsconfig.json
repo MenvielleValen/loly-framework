@@ -6,6 +6,7 @@
     "outDir": "dist",
     "paths": {
       "@src/*": ["src/*"],
+      "@constants/*": ["constants/*"],
       "@components/*": ["modules/components/*"],
       "@rendering/*": ["modules/rendering/*"],
       "@router/*": ["modules/router/*"],
@@ -16,5 +17,5 @@
       "@font/*": ["modules/font/*"],
     }
   },
-  "include": ["src", "modules"]
+  "include": ["src", "constants", "modules"]
 }

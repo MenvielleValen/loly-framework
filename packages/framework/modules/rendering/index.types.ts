@@ -4,4 +4,5 @@ export interface InitialData {
   props: any;
   metadata: any;
   className: string;
+  notFound?: boolean;
 }

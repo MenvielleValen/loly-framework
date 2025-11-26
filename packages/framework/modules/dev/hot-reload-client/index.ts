@@ -1,6 +1,7 @@
 import type { Application, Request, Response } from "express";
 import chokidar from "chokidar";
 import path from "path";
+import { BUILD_FOLDER_NAME } from "@constants/globals";
 
 export interface HotReloadOptions {
   app: Application;
@@ -9,8 +10,10 @@ export interface HotReloadOptions {
 }
 
 /**
- * Monta un endpoint SSE y un watcher sobre appDir.
- * Cada cambio dispara un "reload" hacia los clientes conectados.
+ * Sets up an SSE endpoint and file watcher on appDir.
+ * Each change triggers a reload to connected clients.
+ *
+ * @param options - Hot reload options
  */
 export function setupHotReload({
   app,
@@ -19,7 +22,6 @@ export function setupHotReload({
 }: HotReloadOptions) {
   const clients = new Set<Response>();
 
-  // Endpoint SSE
   app.get(route, (req: Request, res: Response) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -34,10 +36,9 @@ export function setupHotReload({
     });
   });
 
-  // Watcher de archivos de la app
   const watcher = chokidar.watch(appDir, {
     ignoreInitial: true,
-    ignored: ["**/node_modules/**", "**/.fw/**", "**/.git/**"],
+    ignored: ["**/node_modules/**", `**/${BUILD_FOLDER_NAME}/**`, "**/.git/**"],
   });
 
   function broadcastReload(reason: string, filePath: string) {
@@ -53,6 +54,4 @@ export function setupHotReload({
     .on("add", (filePath) => broadcastReload("add", filePath))
     .on("change", (filePath) => broadcastReload("change", filePath))
     .on("unlink", (filePath) => broadcastReload("unlink", filePath));
-
-  console.log("[hot-reload] Watching appDir:", appDir);
 }

@@ -1,7 +1,10 @@
 import { ServerContext, LoadedRoute } from "@router/index";
 
 /**
- * Ejecuta los middlewares de una ruta en cadena.
+ * Executes route middlewares in chain.
+ *
+ * @param route - Route definition
+ * @param ctx - Server context
  */
 export async function runRouteMiddlewares(
   route: LoadedRoute,
@@ -13,7 +16,6 @@ export async function runRouteMiddlewares(
         /* no-op */
       })
     );
-    // Si el middleware ya respondió, no seguimos
     if (ctx.res.headersSent) {
       return;
     }

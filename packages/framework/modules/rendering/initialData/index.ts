@@ -2,7 +2,12 @@ import { InitialData } from "../index.types";
 import type { LoaderResult } from "@router/index";
 
 /**
- * Construye InitialData de forma consistente
+ * Builds InitialData in a consistent way.
+ *
+ * @param urlPath - URL path
+ * @param params - Route parameters
+ * @param loaderResult - Loader result
+ * @returns Initial data object
  */
 export function buildInitialData(
   urlPath: string,

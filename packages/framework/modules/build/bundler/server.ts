@@ -4,6 +4,7 @@ import esbuild from "esbuild";
 import { ensureDir } from "../utils";
 import { INIT_FILE_NAME } from "@server/init";
 import { CONFIG_FILE_NAME } from "@server/config";
+import { BUILD_FOLDER_NAME } from "@constants/globals";
 
 const SERVER_FILES = [INIT_FILE_NAME, CONFIG_FILE_NAME];
 
@@ -45,28 +46,28 @@ function collectAppSources(appDir: string): string[] {
 }
 
 /**
- * Opción B "Next-like":
- * - appDir → multi-entry bundlado (bundle: true)
- * - SERVER_FILES (init/config) → solo transpilado (bundle: false)
+ * Builds the server application.
+ *
+ * Compiles app directory with bundling enabled, and server files (init/config)
+ * without bundling for direct require access.
+ *
+ * @param projectRoot - Root directory of the project
+ * @param appDir - App directory to build
+ * @returns Promise resolving to build result with output directory
  */
 export async function buildServerApp(
   projectRoot: string,
   appDir: string
 ): Promise<BuildServerResult> {
-  const outDir = path.join(projectRoot, ".fw", "server");
+  const outDir = path.join(projectRoot, BUILD_FOLDER_NAME, "server");
 
   const entryPoints = collectAppSources(appDir);
   ensureDir(outDir);
 
   if (entryPoints.length === 0) {
-    console.warn(
-      "[framework][server-build] No source files found in appDir:",
-      appDir
-    );
     return { outDir };
   }
 
-  // 🔥 1) Compilar app/ → bundles CJS
   await esbuild.build({
     entryPoints,
     outdir: outDir,
@@ -76,23 +77,18 @@ export async function buildServerApp(
     target: "node18",
     jsx: "automatic",
     sourcemap: true,
-
-    bundle: true,       // ✅ bundlear routes/components
+    bundle: true,
     splitting: false,
     logLevel: "info",
     tsconfig: path.join(projectRoot, "tsconfig.json"),
-
     packages: "external",
   });
 
-  // 🔧 2) Compilar archivos de infra (init/config) sin bundle
   for (const fileName of SERVER_FILES) {
     const initTS = path.join(projectRoot, `${fileName}.ts`);
     const initJS = path.join(outDir, `${fileName}.js`);
 
     if (fs.existsSync(initTS)) {
-      console.log(`[Loly][server-build] Compiling ${fileName}.ts`);
-
       await esbuild.build({
         entryPoints: [initTS],
         outfile: initJS,
@@ -101,21 +97,12 @@ export async function buildServerApp(
         target: "node18",
         jsx: "automatic",
         sourcemap: true,
-
-        bundle: false,   // ⬅️ volvemos a NO bundlear acá
+        bundle: false,
         logLevel: "info",
         tsconfig: path.join(projectRoot, "tsconfig.json"),
       });
-
-      console.log(
-        `[framework][server-build] ${fileName}.ts compiled in`,
-        initJS
-      );
-    } else {
-      console.warn(`[Loly][server-build] Not found file ${fileName}.ts`);
     }
   }
 
-  console.log("[framework][server-build] Server build successful at", outDir);
   return { outDir };
 }

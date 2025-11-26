@@ -2,7 +2,10 @@ import { Response } from "express";
 import { LoaderResult } from "@router/index";
 
 /**
- * Maneja respuestas de data request (JSON).
+ * Handles data request responses (JSON).
+ *
+ * @param res - Express response object
+ * @param loaderResult - Loader result
  */
 export function handleDataResponse(
   res: Response,
@@ -32,7 +35,10 @@ export function handleDataResponse(
 }
 
 /**
- * Maneja redirects para HTML.
+ * Handles redirects for HTML responses.
+ *
+ * @param res - Express response object
+ * @param redirect - Redirect configuration
  */
 export function handleRedirect(
   res: Response,
@@ -43,13 +49,16 @@ export function handleRedirect(
 }
 
 /**
- * Maneja notFound para HTML.
+ * Handles not found responses for HTML.
+ *
+ * @param res - Express response object
+ * @param urlPath - Optional URL path for error message
  */
 export function handleNotFound(res: Response, urlPath?: string): void {
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   if (urlPath) {
-    res.end(`<h1>404 - Not Found</h1><p>No se encontró ruta para ${urlPath}</p>`);
+    res.end(`<h1>404 - Not Found</h1><p>Route not found: ${urlPath}</p>`);
   } else {
     res.end("<h1>404 - Not Found</h1>");
   }

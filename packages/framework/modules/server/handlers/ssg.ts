@@ -3,7 +3,11 @@ import path from "path";
 import { Response } from "express";
 
 /**
- * Obtiene el directorio SSG para una ruta.
+ * Gets the SSG directory path for a route.
+ *
+ * @param baseDir - Base SSG output directory
+ * @param urlPath - URL path
+ * @returns Directory path for the route
  */
 export function getSsgDirForPath(baseDir: string, urlPath: string): string {
   const clean = urlPath === "/" ? "" : urlPath.replace(/^\/+/, "");
@@ -11,7 +15,11 @@ export function getSsgDirForPath(baseDir: string, urlPath: string): string {
 }
 
 /**
- * Obtiene la ruta del HTML SSG para una URL.
+ * Gets the SSG HTML file path for a URL.
+ *
+ * @param baseDir - Base SSG output directory
+ * @param urlPath - URL path
+ * @returns HTML file path
  */
 export function getSsgHtmlPath(baseDir: string, urlPath: string): string {
   const dir = getSsgDirForPath(baseDir, urlPath);
@@ -19,7 +27,11 @@ export function getSsgHtmlPath(baseDir: string, urlPath: string): string {
 }
 
 /**
- * Obtiene la ruta del data.json SSG para una URL.
+ * Gets the SSG data.json file path for a URL.
+ *
+ * @param baseDir - Base SSG output directory
+ * @param urlPath - URL path
+ * @returns Data JSON file path
  */
 export function getSsgDataPath(baseDir: string, urlPath: string): string {
   const dir = getSsgDirForPath(baseDir, urlPath);
@@ -27,8 +39,12 @@ export function getSsgDataPath(baseDir: string, urlPath: string): string {
 }
 
 /**
- * Intenta servir el HTML SSG si existe.
- * Retorna true si se sirvió, false si no existe.
+ * Attempts to serve SSG HTML if it exists.
+ *
+ * @param res - Express response object
+ * @param ssgOutDir - SSG output directory
+ * @param urlPath - URL path
+ * @returns True if served, false if not found
  */
 export function tryServeSsgHtml(
   res: Response,
@@ -49,8 +65,12 @@ export function tryServeSsgHtml(
 }
 
 /**
- * Intenta servir el data.json SSG si existe.
- * Retorna true si se sirvió, false si no existe.
+ * Attempts to serve SSG data.json if it exists.
+ *
+ * @param res - Express response object
+ * @param ssgOutDir - SSG output directory
+ * @param urlPath - URL path
+ * @returns True if served, false if not found
  */
 export function tryServeSsgData(
   res: Response,
@@ -69,7 +89,7 @@ export function tryServeSsgData(
     res.status(200).end(raw);
     return true;
   } catch (err) {
-    console.error("[framework][prod] Error leyendo SSG data:", err);
+    console.error("[framework][prod] Error reading SSG data:", err);
     return false;
   }
 }

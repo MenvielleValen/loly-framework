@@ -120,11 +120,11 @@ export function copyDirRecursive(srcDir: string, destDir: string): void {
  * @param outDir - Output directory to copy assets to
  * 
  * @example
- * copyStaticAssets('/project', '/project/.fw/client');
- * // Copies assets/ and favicon.* to .fw/client/
+ * copyStaticAssets('/project', '/project/{BUILD_FOLDER_NAME}/client');
+ * // Copies assets/ and favicon.* to {BUILD_FOLDER_NAME}/client/
  */
 export function copyStaticAssets(projectRoot: string, outDir: string): void {
-  // 1) Copy assets/ directory (if exists) → .fw/client/assets/
+  // 1) Copy assets/ directory (if exists) → {BUILD_FOLDER_NAME}/client/assets/
   const assetsSrc = path.join(projectRoot, "assets");
   const assetsDest = path.join(outDir, "assets");
   copyDirRecursive(assetsSrc, assetsDest);

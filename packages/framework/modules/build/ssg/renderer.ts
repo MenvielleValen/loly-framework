@@ -25,7 +25,7 @@ import { ensureDir } from "../utils";
  * @example
  * await renderStaticRoute(
  *   '/project',
- *   '/project/.fw/ssg',
+ *   '/project/{BUILD_FOLDER_NAME}/ssg',
  *   route,
  *   '/blog/my-post',
  *   { slug: 'my-post' }
@@ -38,8 +38,6 @@ export async function renderStaticRoute(
   urlPath: string,
   params: Record<string, string>
 ): Promise<void> {
-  console.log(`[framework][ssg] Generating ${urlPath}`);
-
   const routeChunks = loadChunksFromManifest(projectRoot);
   const chunkHref = routeChunks[route.pattern];
 
@@ -86,17 +84,7 @@ export async function renderStaticRoute(
     loaderResult = await route.loader(ctx);
   }
 
-  // Skip pages that redirect or return 404 during build
-  if (loaderResult.redirect) {
-    console.warn(
-      `[framework][ssg] Route ${urlPath} returned redirect during build, skipping SSG.`
-    );
-    return;
-  }
-  if (loaderResult.notFound) {
-    console.warn(
-      `[framework][ssg] Route ${urlPath} returned notFound during build, skipping.`
-    );
+  if (loaderResult.redirect || loaderResult.notFound) {
     return;
   }
 

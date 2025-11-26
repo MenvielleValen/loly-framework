@@ -7,6 +7,7 @@ import {
   PageRouteManifestEntry,
   RoutesManifest,
 } from "./index.types";
+import { BUILD_FOLDER_NAME, STYLE_FILE_NAME } from "@constants/globals";
 
 /**
  * Writes the client-side routes manifest file.
@@ -17,31 +18,12 @@ import {
  *
  * @param routes - Array of loaded routes
  * @param projectRoot - Root directory of the project
- *
- * @example
- * // Generated .fw/routes-client.ts
- * export const routes = [
- *   {
- *     pattern: "/blog/[slug]",
- *     paramNames: ["slug"],
- *     load: async () => {
- *       const mods = await Promise.all([
- *         import("./app/blog/[slug]/page"),
- *         import("./app/layout"),
- *       ]);
- *       return {
- *         Page: mods[0].default,
- *         layouts: [mods[1].default],
- *       };
- *     },
- *   },
- * ];
  */
 export function writeClientRoutesManifest(
   routes: LoadedRoute[],
   projectRoot: string
 ): void {
-  const fwDir = path.join(projectRoot, ".fw");
+  const fwDir = path.join(projectRoot, BUILD_FOLDER_NAME);
   if (!fs.existsSync(fwDir)) {
     fs.mkdirSync(fwDir, { recursive: true });
   }
@@ -49,14 +31,41 @@ export function writeClientRoutesManifest(
   const manifestPath = path.join(fwDir, "routes-client.ts");
   const manifestDir = path.dirname(manifestPath);
 
-  /**
-   * Converts an absolute file path to a relative import path from the manifest.
-   */
   function toImportPath(filePath: string): string {
     const relRaw = path.relative(manifestDir, filePath).replace(/\\/g, "/");
     const rel = relRaw.startsWith(".") ? relRaw : "./" + relRaw;
     // Remove extension so bundler can resolve .tsx, .ts, .jsx, .js
     return rel.replace(/\.(tsx|ts|jsx|js)$/, "");
+  }
+
+  function findUserNotFound(): string | null {
+    const candidates = [
+      "app/not-found/page.tsx",
+      "app/not-found/page.ts",
+      "app/not-found/page.jsx",
+      "app/not-found/page.js",
+    ];
+
+    for (const rel of candidates) {
+      const full = path.join(projectRoot, rel);
+      if (fs.existsSync(full)) return full;
+    }
+    return null;
+  }
+
+  function findRootLayout(): string | null {
+    const candidates = [
+      "app/layout.tsx",
+      "app/layout.ts",
+      "app/layout.jsx",
+      "app/layout.js",
+    ];
+
+    for (const rel of candidates) {
+      const full = path.join(projectRoot, rel);
+      if (fs.existsSync(full)) return full;
+    }
+    return null;
   }
 
   const lines: string[] = [];
@@ -78,27 +87,25 @@ export function writeClientRoutesManifest(
   lines.push(`}`);
   lines.push("");
 
+  // --- rutas normales ---
   lines.push(`export const routes: ClientRouteLoaded[] = [`);
 
   for (const route of routes) {
     const pattern = route.pattern;
     const paramNames = route.paramNames;
 
-    // page + layouts
     const modulePaths = [route.pageFile, ...route.layoutFiles].map(
       toImportPath
     );
 
-    // Safe name for webpack chunks: /blog/[slug] -> blog_slug
     const safeName =
       pattern
-        .replace(/^\//, "") // Remove leading slash
-        .replace(/\//g, "_") // / -> _
-        .replace(/\[|\]/g, "") || // Remove []
-      "root";
+        .replace(/^\//, "")
+        .replace(/\//g, "_")
+        .replace(/\[|\]/g, "") || "root";
 
     const chunkName = `route-${safeName}`;
-    chunkMap[pattern] = chunkName; 
+    chunkMap[pattern] = chunkName;
 
     lines.push("  {");
     lines.push(`    pattern: ${JSON.stringify(pattern)},`);
@@ -125,37 +132,109 @@ export function writeClientRoutesManifest(
   lines.push("];");
   lines.push("");
 
-  fs.writeFileSync(manifestPath, lines.join("\n"), "utf-8");
-  console.log(
-    `[framework] Client routes manifest generated at ${manifestPath}`
-  );
+  const notFoundPath = findUserNotFound();
+  const rootLayoutPath = findRootLayout();
 
-  // Save route chunks
+  if (notFoundPath) {
+    const notFoundImportPath = toImportPath(notFoundPath);
+    const chunkName = "route-not-found";
+
+    lines.push(`export const notFoundRoute: ClientRouteLoaded = {`);
+    lines.push(`  pattern: "__fw_not_found__",`);
+    lines.push(`  paramNames: [],`);
+    lines.push(`  load: async () => {`);
+    lines.push(`    const mods = await Promise.all([`);
+    lines.push(
+      `      import(/* webpackChunkName: "${chunkName}" */ "${notFoundImportPath}"),`
+    );
+
+    if (rootLayoutPath) {
+      const rootLayoutImportPath = toImportPath(rootLayoutPath);
+      lines.push(
+        `      import(/* webpackChunkName: "${chunkName}" */ "${rootLayoutImportPath}"),`
+      );
+    }
+
+    lines.push(`    ]);`);
+    lines.push(`    const [pageMod, ...layoutMods] = mods;`);
+    lines.push(`    return {`);
+    lines.push(`      Page: pageMod.default,`);
+    lines.push(`      layouts: layoutMods.map((m) => m.default),`);
+    lines.push(`    };`);
+    lines.push(`  },`);
+    lines.push(`};`);
+    lines.push("");
+
+    chunkMap["__fw_not_found__"] = chunkName;
+  } else {
+    lines.push(`export const notFoundRoute: ClientRouteLoaded | null = null;`);
+    lines.push("");
+  }
+
+  fs.writeFileSync(manifestPath, lines.join("\n"), "utf-8");
+
   const chunksJsonPath = path.join(fwDir, "route-chunks.json");
   fs.writeFileSync(chunksJsonPath, JSON.stringify(chunkMap, null, 2), "utf-8");
-  console.log(
-    `[framework] Route chunks manifest generated at ${chunksJsonPath}`
-  );
 }
 
 /**
- * Genera `.fw/routes-manifest.json` con sólo datos (sin funciones).
+ * Writes the client bootstrap manifest file.
  *
- * Este manifest es:
- *  - legible por Node sin compilar TS
- *  - usable por el servidor de prod
- *  - usable por procesos de build/SSG
+ * @param projectRoot - Root directory of the project
+ */
+export function writeClientBoostrapManifest(projectRoot: string): void {
+  const buildDir = path.join(projectRoot, BUILD_FOLDER_NAME);
+  if (!fs.existsSync(buildDir)) {
+    fs.mkdirSync(buildDir, { recursive: true });
+  }
+
+  const manifestPath = path.join(buildDir, "boostrap.ts");
+
+  const lines: string[] = [];
+
+  lines.push(`import "../app/${STYLE_FILE_NAME}";`);
+  lines.push("");
+
+  lines.push(`import {`);
+  lines.push(`    routes,`);
+  lines.push(`    type ClientRouteLoaded,`);
+  lines.push(`    notFoundRoute,`);
+  lines.push(`} from "./routes-client";`);
+  lines.push("");
+
+  lines.push(
+    `import { bootstrapClient } from "@loly/core/modules/runtime/client"`
+  );
+  lines.push("");
+  lines.push("bootstrapClient(routes as ClientRouteLoaded[], notFoundRoute);");
+
+  fs.writeFileSync(manifestPath, lines.join("\n"), "utf-8");
+}
+
+/**
+ * Writes the routes manifest JSON file.
  *
- * Cada entrada de page incluye pattern, params, archivos de page+layouts y dynamic.
+ * This manifest contains only data (no functions) and is:
+ * - Readable by Node without compiling TypeScript
+ * - Usable by the production server
+ * - Usable by build/SSG processes
+ *
+ * @param routes - Array of loaded page routes
+ * @param apiRoutes - Array of loaded API routes
+ * @param notFoundRoute - Not-found route definition
+ * @param projectRoot - Root directory of the project
+ * @param serverOutDir - Server output directory from buildServerApp
+ * @param appDir - Absolute path to the app directory
  */
 export function writeRoutesManifest(
   routes: LoadedRoute[],
   apiRoutes: ApiRoute[],
+  notFoundRoute: LoadedRoute,
   projectRoot: string,
-  serverOutDir: string, // viene de buildServerApp
-  appDir: string        // ruta absoluta a app/
+  serverOutDir: string,
+  appDir: string
 ) {
-  const fwDir = path.join(projectRoot, ".fw");
+  const fwDir = path.join(projectRoot, BUILD_FOLDER_NAME);
   if (!fs.existsSync(fwDir)) {
     fs.mkdirSync(fwDir, { recursive: true });
   }
@@ -168,20 +247,17 @@ export function writeRoutesManifest(
   const convertToJs = (file: string) =>
     file.replace(/\.(ts|tsx|jsx|mjs|cjs)$/i, ".js");
 
-  // --------- PAGES ---------
   const pageEntries: PageRouteManifestEntry[] = routes.map((r) => {
-    // ej: appDir = /.../app
-    // r.pageFile = /.../app/blog/[slug]/page.tsx
-    const relativeSource = path.relative(appDir, r.pageFile); // blog/[slug]/page.tsx
+    const relativeSource = path.relative(appDir, r.pageFile);
 
     const jsPageFile = path.join(
       serverOutDir,
-      convertToJs(relativeSource) // blog/[slug]/page.js
+      convertToJs(relativeSource)
     );
 
     const jsLayoutFiles = r.layoutFiles.map((lf) => {
-      const rel = path.relative(appDir, lf);  // ej: layout.tsx
-      return path.join(serverOutDir, convertToJs(rel)); // → .js
+      const rel = path.relative(appDir, lf);
+      return path.join(serverOutDir, convertToJs(rel));
     });
 
     return {
@@ -194,26 +270,20 @@ export function writeRoutesManifest(
     };
   });
 
-  // --------- API ROUTES ---------
   const apiEntries: ApiRouteManifestEntry[] = apiRoutes
     .map((r) => {
       const anyRoute = r as any;
       const filePath: string | undefined = anyRoute.filePath;
 
       if (!filePath) {
-        // si por alguna razón no seteaste filePath en loadApiRoutes, lo salteamos
-        console.warn(
-          `[framework] ApiRoute sin filePath para pattern "${r.pattern}", se ignora en manifest.`
-        );
         return undefined;
       }
 
-      // filePath = /.../app/api/posts/[id]/route.ts
-      const relSource = path.relative(appDir, filePath); // api/posts/[id]/route.ts
+      const relSource = path.relative(appDir, filePath);
 
       const jsApiFile = path.join(
         serverOutDir,
-        convertToJs(relSource) // api/posts/[id]/route.js
+        convertToJs(relSource)
       );
 
       const methods = Object.keys(r.handlers || {});
@@ -230,6 +300,29 @@ export function writeRoutesManifest(
     })
     .filter((e): e is ApiRouteManifestEntry => !!e);
 
+  if(!notFoundRoute?.layoutFiles){
+    return;
+  }
+
+  const jsLayoutFiles = notFoundRoute.layoutFiles.map((lf) => {
+    const rel = path.relative(appDir, lf);
+    return path.join(serverOutDir, convertToJs(rel));
+  });
+
+  const notFoundPage: PageRouteManifestEntry = {
+    type: "page",
+    pageFile: toRelative(
+      path.join(
+        serverOutDir,
+        convertToJs("/not-found/page.tsx")
+      )
+    ),
+    layoutFiles: jsLayoutFiles.map(toRelative),
+    dynamic: "force-static",
+    paramNames: [],
+    pattern: "/not-found",
+  };
+
   const manifest: RoutesManifest = {
     version: 1,
     basePath: "",
@@ -237,8 +330,8 @@ export function writeRoutesManifest(
     pages404: true,
     routes: pageEntries,
     apiRoutes: apiEntries,
+    notFound: notFoundPage,
   };
 
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
-  console.log(`[framework] routes-manifest.json generado en ${manifestPath}`);
 }

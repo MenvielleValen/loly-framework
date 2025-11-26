@@ -8,6 +8,7 @@ import { setupApplication } from "@server/application";
 
 import dotenv from "dotenv";
 import { loadChunksFromManifest } from "@router/index";
+import { BUILD_FOLDER_NAME } from "@constants/globals";
 
 dotenv.config();
 
@@ -21,18 +22,18 @@ export interface StartProdServerOptions {
 /**
  * Server de producción:
  * - NO arranca bundler
- * - Sirve /static desde .fw/client (bundle ya buildeado)
- * - Intenta servir SSG desde .fw/ssg primero
+ * - Sirve /static desde {BUILD_FOLDER_NAME}/client (bundle ya buildeado)
+ * - Intenta servir SSG desde {BUILD_FOLDER_NAME}/ssg primero
  * - Si no hay SSG para esa ruta, hace SSR como en dev
  */
 export async function startProdServer(options: StartProdServerOptions = {}) {
   const port = options.port ?? 3000;
   const projectRoot = options.rootDir ?? process.cwd();
-  const serverRoutesDir = path.join(projectRoot, ".fw", "server");
+  const serverRoutesDir = path.join(projectRoot, BUILD_FOLDER_NAME, "server");
 
   if (!fs.existsSync(serverRoutesDir)) {
     console.error(
-      "[framework][prod] ERROR: No se encontró el directorio compilado .fw/server",
+      `[framework][prod] ERROR: No se encontró el directorio compilado ${BUILD_FOLDER_NAME}/server`,
       serverRoutesDir
     );
   }
@@ -44,14 +45,14 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
   // Ejecutar init.server.js compilado
   await runInitIfExists(projectRoot, { server: httpServer });
 
-  // Setup de rutas y estáticos, pero usando .fw/server
-  const { routes, apiRoutes } = setupServer(app, {
+  // Setup de rutas y estáticos, pero usando {BUILD_FOLDER_NAME}/server
+  const { routes, apiRoutes, notFoundPage } = setupServer(app, {
     projectRoot,
     appDir: serverRoutesDir,
     isDev: false,
   });
 
-  const ssgOutDir = path.join(projectRoot, ".fw", "ssg");
+  const ssgOutDir = path.join(projectRoot, BUILD_FOLDER_NAME, "ssg");
 
   // APIs
   app.all("/api/*", async (req, res) => {
@@ -65,11 +66,11 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
   });
 
   const routeChunks = loadChunksFromManifest(projectRoot);
-
   // Páginas
   app.get("*", async (req, res) => {
     await handlePageRequest({
       routes,
+      notFoundPage,
       routeChunks,
       urlPath: req.path,
       req,
@@ -82,8 +83,8 @@ export async function startProdServer(options: StartProdServerOptions = {}) {
   httpServer.listen(port, () => {
     console.log(`🚀 Prod server corriendo en http://localhost:${port}`);
     console.log(`🧭 Leyendo rutas compiladas desde: ${serverRoutesDir}`);
-    console.log(`📦 Cliente servido desde /static ( .fw/client )`);
-    console.log(`📄 SSG servido desde .fw/ssg (si existe)`);
+    console.log(`📦 Cliente servido desde /static ( ${BUILD_FOLDER_NAME}/client )`);
+    console.log(`📄 SSG servido desde ${BUILD_FOLDER_NAME}/ssg (si existe)`);
   });
 }
 
@@ -139,6 +140,7 @@ export async function startDevServer(options: StartDevServerOptions = {}) {
     
     await handlePageRequest({
       routes: currentRoutes,
+      notFoundPage: null, // @TODO Fix 
       routeChunks,
       urlPath: req.path,
       req,

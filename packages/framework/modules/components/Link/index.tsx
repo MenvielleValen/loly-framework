@@ -5,6 +5,12 @@ interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   children: React.ReactNode;
 }
 
+/**
+ * Link component for client-side navigation.
+ *
+ * @param props - Link component props
+ * @returns Anchor element
+ */
 export const Link = ({ href, children, ...rest }: LinkProps) => {
   return (
     <a href={href} {...rest}>

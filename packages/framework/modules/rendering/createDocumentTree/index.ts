@@ -1,10 +1,14 @@
-// server/rendering.ts
 import React, { ReactElement } from "react";
 import type { LoaderResult, PageComponent, LoadedRoute } from "@router/index";
 import { InitialData } from "../index.types";
 
 /**
- * Construye el appTree (Page + layouts) de la misma forma en SSR y SSG
+ * Builds the app tree (Page + layouts) in the same way for SSR and SSG.
+ *
+ * @param route - Route definition
+ * @param params - Route parameters
+ * @param props - Props from loader
+ * @returns React element tree
  */
 export function buildAppTree(
   route: LoadedRoute,
@@ -32,7 +36,10 @@ export function buildAppTree(
 }
 
 /**
- * Arma el árbol <html> completo. SSR y SSG usan esto.
+ * Builds the complete HTML document tree. Used by both SSR and SSG.
+ *
+ * @param options - Document tree options
+ * @returns React element representing the HTML document
  */
 export function createDocumentTree(options: {
   appTree: ReactElement;

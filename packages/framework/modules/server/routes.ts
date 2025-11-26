@@ -3,6 +3,7 @@ import { LoadedRoute, ApiRoute } from "@router/index.types";
 import { handleApiRequest, handlePageRequest } from "./handlers";
 import { RouteLoader } from "@router/index";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
+import { getBuildDir, type FrameworkConfig } from "@src/config";
 import path from "path";
 
 export interface SetupRoutesOptions {
@@ -18,6 +19,7 @@ export interface SetupRoutesOptions {
     routes: LoadedRoute[];
     apiRoutes: ApiRoute[];
   };
+  config?: FrameworkConfig;
 }
 
 /**
@@ -37,6 +39,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
     projectRoot,
     routeLoader,
     getRoutes,
+    config,
   } = options;
 
   // Cache route chunks - they don't change during runtime
@@ -44,7 +47,10 @@ export function setupRoutes(options: SetupRoutesOptions): void {
 
   const ssgOutDir = isDev
     ? undefined
-    : path.join(projectRoot, BUILD_FOLDER_NAME, "ssg");
+    : path.join(
+        config ? getBuildDir(projectRoot, config) : path.join(projectRoot, BUILD_FOLDER_NAME),
+        "ssg"
+      );
 
   app.all("/api/*", async (req, res) => {
     const apiRoutes = isDev && getRoutes

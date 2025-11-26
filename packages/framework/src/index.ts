@@ -12,3 +12,11 @@ export {
   ServerLoader,
 } from "@router/index.types";
 export { bootstrapClient } from '@runtime/client';
+export { 
+  FrameworkConfig, 
+  loadConfig, 
+  DEFAULT_CONFIG,
+  getAppDir,
+  getBuildDir,
+  getStaticDir,
+} from "./config";

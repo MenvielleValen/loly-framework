@@ -12,16 +12,19 @@ import {
 import { buildClientBundle } from "./bundler/client";
 import { buildStaticPages } from "./ssg";
 import { buildServerApp } from "./bundler/server";
-import { NOT_FOUND_PATTERN, NOT_FOUND_FILE_PREFIX } from "@constants/globals";
+import { NOT_FOUND_PATTERN } from "@constants/globals";
+import { loadConfig, getAppDir, type FrameworkConfig } from "@src/config";
 
 export interface BuildAppOptions {
   rootDir?: string;
   appDir?: string;
+  config?: FrameworkConfig;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
   const projectRoot = options.rootDir ?? process.cwd();
-  const appDir = options.appDir ?? path.resolve(projectRoot, "app");
+  const config = options.config ?? loadConfig(projectRoot);
+  const appDir = options.appDir ?? getAppDir(projectRoot, config);
 
   process.env.LOLY_BUILD = "1";
 
@@ -30,13 +33,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
 
   const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir);
 
-  // Load special error pages (Next.js style: _not-found.tsx, _error.tsx)
+  // Load special error pages (_not-found.tsx, _error.tsx)
   const notFoundRoute = loadNotFoundRouteFromFilesystem(appDir);
   const errorRoute = loadErrorRouteFromFilesystem(appDir);
 
   if (!notFoundRoute) {
     console.warn(
-      `[framework][build] No not-found route found. Consider creating app/${NOT_FOUND_FILE_PREFIX}.tsx`
+      `[framework][build] No not-found route found. Consider creating ${config.directories.app}/${config.conventions.notFound}.tsx`
     );
   }
 

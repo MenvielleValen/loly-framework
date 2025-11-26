@@ -5,7 +5,7 @@ import { setupServer } from "@server/setup";
 import { setupRoutes } from "@server/routes";
 import { setupApplication } from "@server/application";
 import { FilesystemRouteLoader, ManifestRouteLoader } from "@router/index";
-import { BUILD_FOLDER_NAME } from "@constants/globals";
+import { loadConfig, getAppDir, getBuildDir, type FrameworkConfig } from "./config";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -15,6 +15,7 @@ export interface StartServerOptions {
   rootDir?: string;
   appDir?: string;
   isDev?: boolean;
+  config?: FrameworkConfig;
 }
 
 /**
@@ -25,15 +26,20 @@ export interface StartServerOptions {
  */
 export async function startServer(options: StartServerOptions = {}) {
   const isDev = options.isDev ?? process.env.NODE_ENV === "development";
-  const port = options.port ?? 3000;
   const projectRoot = options.rootDir ?? process.cwd();
+  
+  // Load configuration
+  const config = options.config ?? loadConfig(projectRoot);
+  
+  // Use config values, but allow overrides from options
+  const port = options.port ?? config.server.port;
   const appDir = options.appDir ?? (isDev
-    ? path.resolve(projectRoot, "app")
-    : path.join(projectRoot, BUILD_FOLDER_NAME, "server"));
+    ? getAppDir(projectRoot, config)
+    : path.join(getBuildDir(projectRoot, config), "server"));
 
   if (!isDev && !fs.existsSync(appDir)) {
     console.error(
-      `[framework][prod] ERROR: Compiled directory not found: ${BUILD_FOLDER_NAME}/server`,
+      `[framework][prod] ERROR: Compiled directory not found: ${config.directories.build}/server`,
       appDir
     );
     process.exit(1);
@@ -49,6 +55,7 @@ export async function startServer(options: StartServerOptions = {}) {
     projectRoot,
     appDir,
     isDev,
+    config,
   });
 
   const routeLoader = isDev
@@ -65,18 +72,21 @@ export async function startServer(options: StartServerOptions = {}) {
     projectRoot,
     routeLoader,
     getRoutes,
+    config,
   });
 
-  httpServer.listen(port, () => {
+  const host = config.server.host;
+  httpServer.listen(port, host, () => {
     if (isDev) {
-      console.log(`🚀 Dev server running on http://localhost:${port}`);
+      console.log(`🚀 Dev server running on http://${host}:${port}`);
       console.log(`🧭 Reading routes from: ${appDir}`);
       console.log(`📦 Client served from /static/client.js`);
     } else {
-      console.log(`🚀 Prod server running on http://localhost:${port}`);
+      const buildDir = config.directories.build;
+      console.log(`🚀 Prod server running on http://${host}:${port}`);
       console.log(`🧭 Reading compiled routes from: ${appDir}`);
-      console.log(`📦 Client served from /static (${BUILD_FOLDER_NAME}/client)`);
-      console.log(`📄 SSG served from ${BUILD_FOLDER_NAME}/ssg (if exists)`);
+      console.log(`📦 Client served from /static (${buildDir}/client)`);
+      console.log(`📄 SSG served from ${buildDir}/ssg (if exists)`);
     }
   });
 }

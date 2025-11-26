@@ -11,13 +11,17 @@ import { setupHotReload } from "@dev/hot-reload-client";
 import { clearAppRequireCache } from "@dev/hot-reload-server";
 import { LoadedRoute, ApiRoute } from "@router/index.types";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
+import { getBuildDir } from "@src/config";
 
 export { RouteLoader };
+
+import type { FrameworkConfig } from "@src/config";
 
 export interface ServerSetupOptions {
   projectRoot: string;
   appDir: string;
   isDev: boolean;
+  config?: FrameworkConfig;
 }
 
 export interface ServerSetupResult {
@@ -42,7 +46,7 @@ export function setupServer(
   app: express.Application,
   options: ServerSetupOptions
 ): ServerSetupResult {
-  const { projectRoot, appDir, isDev } = options;
+  const { projectRoot, appDir, isDev, config } = options;
 
   const routeLoader: RouteLoader = isDev
     ? new FilesystemRouteLoader(appDir)
@@ -81,7 +85,8 @@ export function setupServer(
     const notFoundPage = routeLoader.loadNotFoundRoute();
     const errorPage = routeLoader.loadErrorRoute();
 
-    const clientOutDir = path.join(projectRoot, BUILD_FOLDER_NAME, "client");
+    const buildDir = config ? getBuildDir(projectRoot, config) : path.join(projectRoot, BUILD_FOLDER_NAME);
+    const clientOutDir = path.join(buildDir, "client");
     app.use(
       "/static",
       express.static(clientOutDir, {

@@ -11,7 +11,7 @@ import {
 } from "./index.types";
 import { buildRegexFromRoutePath } from "./path";
 import { loadLoaderForDir } from "./loader";
-import { BUILD_FOLDER_NAME } from "@constants/globals";
+import { BUILD_FOLDER_NAME, ERROR_PATTERN } from "@constants/globals";
 
 /**
  * Loads page and API routes from the routes manifest file.
@@ -272,8 +272,8 @@ export function loadErrorFromManifest(
   }
 
   return {
-    pattern: "/error",
-    regex: new RegExp("^/error/?$"),
+    pattern: ERROR_PATTERN,
+    regex: new RegExp(`^${ERROR_PATTERN}/?$`),
     paramNames: [],
     component,
     layouts: layouts,

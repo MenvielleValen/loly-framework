@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { hydrateRoot } from "react-dom/client";
 
+// Client-side constants (hardcoded to avoid alias resolution issues in Rspack)
+const WINDOW_DATA_KEY = '__FW_DATA__';
+const APP_CONTAINER_ID = '__app';
+
 type InitialData = {
   pathname: string;
   params: Record<string, string>;
   props: Record<string, any>;
   metadata?: { title?: string; description?: string } | null;
   notFound?: boolean;
+  error?: boolean;
 };
 
 declare global {
   interface Window {
-    __FW_DATA__?: InitialData;
+    [WINDOW_DATA_KEY]?: InitialData;
   }
 }
 
@@ -142,7 +147,7 @@ interface AppShellProps {
 
 function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellProps) {
   // Check if initial state indicates an error
-  const initialData = (window as any).__FW_DATA__ as any;
+  const initialData = (window as any)[WINDOW_DATA_KEY] as any;
   const hasError = initialData?.error === true;
   
   // If error, use error route instead
@@ -246,7 +251,7 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
           return;
         }
 
-        window.__FW_DATA__ = {
+        (window as any)[WINDOW_DATA_KEY] = {
           pathname: nextUrl,
           params: matched.params,
           props: newProps,
@@ -328,32 +333,40 @@ export function bootstrapClient(
 ) {
 
   (async function bootstrap() {
-    const container = document.getElementById("__app");
-    const initialData: InitialData | null = window.__FW_DATA__ ?? null;
+    const container = document.getElementById(APP_CONTAINER_ID);
+    const initialData: InitialData | null = (window as any)[WINDOW_DATA_KEY] ?? null;
 
     if (!container) {
-      console.error("Container #__app not found for hydration");
+      console.error(`Container #${APP_CONTAINER_ID} not found for hydration`);
       return;
     }
 
     const initialUrl = window.location.pathname + window.location.search;
     const isInitialNotFound = initialData?.notFound === true;
+    const isInitialError = initialData?.error === true;
 
     let initialRoute: ClientRouteLoaded | null = null;
     let initialParams: Record<string, string> = {};
     let initialComponents: ClientLoadedComponents | null = null;
 
-    if (!isInitialNotFound) {
+    if (isInitialError && errorRoute) {
+      // If error, use error route
+      initialRoute = errorRoute;
+      initialParams = initialData?.params ?? {};
+      initialComponents = await errorRoute.load();
+    } else if (isInitialNotFound && notFoundRoute) {
+      // If not found, use not-found route
+      initialRoute = notFoundRoute;
+      initialParams = {};
+      initialComponents = await notFoundRoute.load();
+    } else if (!isInitialNotFound && !isInitialError) {
+      // Normal route
       const match = matchRouteClient(initialUrl, routes);
       if (match) {
         initialRoute = match.route;
         initialParams = match.params;
         initialComponents = await match.route.load();
       }
-    } else if (notFoundRoute) {
-      initialRoute = notFoundRoute;
-      initialParams = {};
-      initialComponents = await notFoundRoute.load();
     }
 
     if (initialData?.metadata) {

@@ -12,6 +12,7 @@ import {
 import { buildClientBundle } from "./bundler/client";
 import { buildStaticPages } from "./ssg";
 import { buildServerApp } from "./bundler/server";
+import { NOT_FOUND_PATTERN, NOT_FOUND_FILE_PREFIX } from "@constants/globals";
 
 export interface BuildAppOptions {
   rootDir?: string;
@@ -35,14 +36,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
 
   if (!notFoundRoute) {
     console.warn(
-      "[framework][build] No not-found route found. Consider creating app/_not-found.tsx"
+      `[framework][build] No not-found route found. Consider creating app/${NOT_FOUND_FILE_PREFIX}.tsx`
     );
   }
 
   // Create a minimal not-found route if none exists
   const fallbackNotFound: LoadedRoute = notFoundRoute || {
-    pattern: "/not-found",
-    regex: new RegExp("^/not-found/?$"),
+    pattern: NOT_FOUND_PATTERN,
+    regex: new RegExp(`^${NOT_FOUND_PATTERN}/?$`),
     paramNames: [],
     component: () => null,
     layouts: [],

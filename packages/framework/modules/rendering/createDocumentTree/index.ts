@@ -1,6 +1,13 @@
 import React, { ReactElement } from "react";
 import type { LoaderResult, PageComponent, LoadedRoute } from "@router/index";
 import { InitialData } from "../index.types";
+import {
+  WINDOW_DATA_KEY,
+  APP_CONTAINER_ID,
+  FAVICON_PATH,
+  CLIENT_CSS_PATH,
+  CLIENT_JS_PATH,
+} from "@constants/globals";
 
 /**
  * Builds the app tree (Page + layouts) in the same way for SSR and SSG.
@@ -112,26 +119,26 @@ export function createDocumentTree(options: {
         }),
       React.createElement("link", {
         rel: "icon",
-        href: "/static/favicon.png",
+        href: FAVICON_PATH,
         type: "image/png",
       }),
       React.createElement("link", {
         rel: "stylesheet",
-        href: "/static/client.css",
+        href: CLIENT_CSS_PATH,
       }),
       React.createElement("script", {
-        src: "/static/client.js",
+        src: CLIENT_JS_PATH,
         defer: true,
       })
     ),
     React.createElement(
       "body",
       { style: { margin: 0 }, className: initialData.className },
-      React.createElement("div", { id: "__app" }, appTree)
+      React.createElement("div", { id: APP_CONTAINER_ID }, appTree)
     ),
     React.createElement("script", {
       dangerouslySetInnerHTML: {
-        __html: `window.__FW_DATA__ = ${serialized};`,
+        __html: `window.${WINDOW_DATA_KEY} = ${serialized};`,
       },
     })
   );

@@ -1,11 +1,10 @@
 import { Request, Response } from "express";
-import { renderToPipeableStream, renderToString } from "react-dom/server";
+import { renderToPipeableStream } from "react-dom/server";
 import {
   ServerContext,
   LoadedRoute,
   LoaderResult,
   matchRoute,
-  loadChunksFromManifest,
 } from "@router/index";
 import {
   buildAppTree,
@@ -16,6 +15,7 @@ import { runRouteMiddlewares } from "./middleware";
 import { runRouteLoader } from "./loader";
 import { handleDataResponse, handleRedirect, handleNotFound } from "./response";
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
+import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
@@ -220,7 +220,7 @@ async function handlePageRequestInternal(
   const appTree = buildAppTree(route, params, initialData.props);
 
   const chunkName = routeChunks[route.pattern];
-  const chunkHref = chunkName != null ? `/static/${chunkName}.js` : null;
+  const chunkHref = chunkName != null ? `${STATIC_PATH}/${chunkName}.js` : null;
 
   const documentTree = createDocumentTree({
     appTree,
@@ -301,8 +301,8 @@ async function renderErrorPageWithStream(
     initialData.error = true;
     const appTree = buildAppTree(errorPage, { error: String(error) }, initialData.props);
 
-    const chunkName = routeChunks["__fw_error__"];
-    const chunkHref = chunkName != null ? `/static/${chunkName}.js` : null;
+    const chunkName = routeChunks[ERROR_CHUNK_KEY];
+    const chunkHref = chunkName != null ? `${STATIC_PATH}/${chunkName}.js` : null;
 
     const documentTree = createDocumentTree({
       appTree,
@@ -354,20 +354,3 @@ async function renderErrorPageWithStream(
   }
 }
 
-/**
- * Renders the error page when an error occurs (fallback for non-streaming cases).
- *
- * @param errorPage - Error page route
- * @param req - Express request
- * @param res - Express response
- * @param error - Error that occurred
- */
-async function renderErrorPage(
-  errorPage: LoadedRoute,
-  req: Request,
-  res: Response,
-  error: unknown
-): Promise<void> {
-  // Use streaming version with empty route chunks
-  await renderErrorPageWithStream(errorPage, req, res, error, {});
-}

@@ -2,7 +2,7 @@ import path from "path";
 import { rspack, type Configuration } from "@rspack/core";
 import { loadAliasesFromTsconfig } from "../utils";
 import dotenv from 'dotenv';
-import { BUILD_FOLDER_NAME } from "@constants/globals";
+import { BUILD_FOLDER_NAME, STATIC_PATH } from "@constants/globals";
 
 /**
  * Creates Rspack configuration for client bundle.
@@ -43,7 +43,7 @@ export function createClientConfig(
       path: outDir,
       filename: "client.js", // Main entry
       chunkFilename: "[name].js", // Code-split chunks (route-..., 0.js, etc.)
-      publicPath: "/static/",
+      publicPath: `${STATIC_PATH}/`,
     },
     context: projectRoot,
     resolve: {

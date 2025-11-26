@@ -2,3 +2,5 @@ node_modules
 dist
 .loly
 .env*
+IMPROVEMENT_PLAN.md
+IMPROVEMENTS_COMPLETED.md

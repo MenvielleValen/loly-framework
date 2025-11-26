@@ -1,14 +1,13 @@
 import fs from "fs";
 import path from "path";
 import { ApiRoute, LoadedRoute, PageComponent } from "./index.types";
-import { PAGE_FILE_REGEX } from "./constants";
-import { buildRoutePathFromDir } from "./path";
+
 import { loadLayoutsForDir } from "./layout";
 import { loadLoaderForDir } from "./loader";
 import { loadRoutesFromManifest, loadNotFoundFromManifest, loadErrorFromManifest, loadChunksFromManifest } from "./loader-routes";
 import { loadRoutes } from "./loader-pages";
 import { loadApiRoutes } from "./loader-api";
-import { BUILD_FOLDER_NAME } from "@constants/globals";
+import { NOT_FOUND_PATTERN, ERROR_PATTERN, NOT_FOUND_FILE_PREFIX, ERROR_FILE_PREFIX } from "@constants/globals";
 
 /**
  * Unified interface for loading routes from different sources.
@@ -90,10 +89,10 @@ export class ManifestRouteLoader implements RouteLoader {
  */
 export function loadNotFoundRouteFromFilesystem(appDir: string): LoadedRoute | null {
   const notFoundCandidates = [
-    path.join(appDir, "_not-found.tsx"),
-    path.join(appDir, "_not-found.ts"),
-    path.join(appDir, "_not-found.jsx"),
-    path.join(appDir, "_not-found.js"),
+    path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.tsx`),
+    path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.ts`),
+    path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.jsx`),
+    path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.js`),
     // Fallback to old style for backward compatibility
     path.join(appDir, "not-found", "page.tsx"),
     path.join(appDir, "not-found", "page.ts"),
@@ -122,7 +121,7 @@ export function loadNotFoundRouteFromFilesystem(appDir: string): LoadedRoute | n
   }
 
   // For _not-found.tsx in root, use appDir as the directory
-  const notFoundDir = notFoundFile.includes("_not-found")
+  const notFoundDir = notFoundFile.includes(NOT_FOUND_FILE_PREFIX)
     ? appDir
     : path.dirname(notFoundFile);
 
@@ -135,8 +134,8 @@ export function loadNotFoundRouteFromFilesystem(appDir: string): LoadedRoute | n
     loadLoaderForDir(notFoundDir);
 
   return {
-    pattern: "/not-found",
-    regex: new RegExp("^/not-found/?$"),
+    pattern: NOT_FOUND_PATTERN,
+    regex: new RegExp(`^${NOT_FOUND_PATTERN}/?$`),
     paramNames: [],
     component,
     layouts,
@@ -158,10 +157,10 @@ export function loadNotFoundRouteFromFilesystem(appDir: string): LoadedRoute | n
  */
 export function loadErrorRouteFromFilesystem(appDir: string): LoadedRoute | null {
   const errorCandidates = [
-    path.join(appDir, "_error.tsx"),
-    path.join(appDir, "_error.ts"),
-    path.join(appDir, "_error.jsx"),
-    path.join(appDir, "_error.js"),
+    path.join(appDir, `${ERROR_FILE_PREFIX}.tsx`),
+    path.join(appDir, `${ERROR_FILE_PREFIX}.ts`),
+    path.join(appDir, `${ERROR_FILE_PREFIX}.jsx`),
+    path.join(appDir, `${ERROR_FILE_PREFIX}.js`),
   ];
 
   let errorFile: string | null = null;
@@ -193,8 +192,8 @@ export function loadErrorRouteFromFilesystem(appDir: string): LoadedRoute | null
     loadLoaderForDir(appDir);
 
   return {
-    pattern: "/error",
-    regex: new RegExp("^/error/?$"),
+    pattern: ERROR_PATTERN,
+    regex: new RegExp(`^${ERROR_PATTERN}/?$`),
     paramNames: [],
     component,
     layouts,

@@ -142,7 +142,7 @@ export function copyStaticAssets(projectRoot: string, outDir: string): void {
     else if (fs.existsSync(fromRoot)) src = fromRoot;
 
     if (src) {
-      const dest = path.join(outDir, name); // Will be served as /static/favicon.*
+      const dest = path.join(outDir, name); // Will be served as ${STATIC_PATH}/favicon.*
       ensureDir(path.dirname(dest));
       fs.copyFileSync(src, dest);
       break; // Use the first one found

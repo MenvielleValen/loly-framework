@@ -7,7 +7,16 @@ import {
   PageRouteManifestEntry,
   RoutesManifest,
 } from "./index.types";
-import { BUILD_FOLDER_NAME, STYLE_FILE_NAME } from "@constants/globals";
+import {
+  BUILD_FOLDER_NAME,
+  STYLE_FILE_NAME,
+  NOT_FOUND_FILE_PREFIX,
+  ERROR_FILE_PREFIX,
+  NOT_FOUND_CHUNK_KEY,
+  ERROR_CHUNK_KEY,
+  NOT_FOUND_PATTERN,
+  ERROR_PATTERN,
+} from "@constants/globals";
 
 /**
  * Writes the client-side routes manifest file.
@@ -42,10 +51,10 @@ export function writeClientRoutesManifest(
 
   function findUserNotFound(): string | null {
     const candidates = [
-      "app/_not-found.tsx",
-      "app/_not-found.ts",
-      "app/_not-found.jsx",
-      "app/_not-found.js",
+      `app/${NOT_FOUND_FILE_PREFIX}.tsx`,
+      `app/${NOT_FOUND_FILE_PREFIX}.ts`,
+      `app/${NOT_FOUND_FILE_PREFIX}.jsx`,
+      `app/${NOT_FOUND_FILE_PREFIX}.js`,
       // Fallback to old style for backward compatibility
       "app/not-found/page.tsx",
       "app/not-found/page.ts",
@@ -62,10 +71,10 @@ export function writeClientRoutesManifest(
 
   function findUserError(): string | null {
     const candidates = [
-      "app/_error.tsx",
-      "app/_error.ts",
-      "app/_error.jsx",
-      "app/_error.js",
+      `app/${ERROR_FILE_PREFIX}.tsx`,
+      `app/${ERROR_FILE_PREFIX}.ts`,
+      `app/${ERROR_FILE_PREFIX}.jsx`,
+      `app/${ERROR_FILE_PREFIX}.js`,
     ];
 
     for (const rel of candidates) {
@@ -163,7 +172,7 @@ export function writeClientRoutesManifest(
     const chunkName = "route-not-found";
 
     lines.push(`export const notFoundRoute: ClientRouteLoaded = {`);
-    lines.push(`  pattern: "__fw_not_found__",`);
+    lines.push(`  pattern: "${NOT_FOUND_CHUNK_KEY}",`);
     lines.push(`  paramNames: [],`);
     lines.push(`  load: async () => {`);
     lines.push(`    const mods = await Promise.all([`);
@@ -188,7 +197,7 @@ export function writeClientRoutesManifest(
     lines.push(`};`);
     lines.push("");
 
-    chunkMap["__fw_not_found__"] = chunkName;
+    chunkMap[NOT_FOUND_CHUNK_KEY] = chunkName;
   } else {
     lines.push(`export const notFoundRoute: ClientRouteLoaded | null = null;`);
     lines.push("");
@@ -199,7 +208,7 @@ export function writeClientRoutesManifest(
     const chunkName = "route-error";
 
     lines.push(`export const errorRoute: ClientRouteLoaded = {`);
-    lines.push(`  pattern: "__fw_error__",`);
+    lines.push(`  pattern: "${ERROR_CHUNK_KEY}",`);
     lines.push(`  paramNames: [],`);
     lines.push(`  load: async () => {`);
     lines.push(`    const mods = await Promise.all([`);
@@ -224,7 +233,7 @@ export function writeClientRoutesManifest(
     lines.push(`};`);
     lines.push("");
 
-    chunkMap["__fw_error__"] = chunkName;
+    chunkMap[ERROR_CHUNK_KEY] = chunkName;
   } else {
     lines.push(`export const errorRoute: ClientRouteLoaded | null = null;`);
     lines.push("");
@@ -370,10 +379,10 @@ export function writeRoutesManifest(
 
   const notFoundRelativeSource = notFoundRoute.pageFile
     ? path.relative(appDir, notFoundRoute.pageFile)
-    : "_not-found.tsx";
+    : `${NOT_FOUND_FILE_PREFIX}.tsx`;
   const notFoundJsPageFile = notFoundRoute.pageFile
     ? path.join(serverOutDir, convertToJs(notFoundRelativeSource))
-    : path.join(serverOutDir, convertToJs("_not-found.tsx"));
+    : path.join(serverOutDir, convertToJs(`${NOT_FOUND_FILE_PREFIX}.tsx`));
 
   const notFoundPage: PageRouteManifestEntry = {
     type: "page",
@@ -381,7 +390,7 @@ export function writeRoutesManifest(
     layoutFiles: notFoundJsLayoutFiles.map(toRelative),
     dynamic: "force-static",
     paramNames: [],
-    pattern: "/not-found",
+    pattern: NOT_FOUND_PATTERN,
   };
 
   // Build error page entry (if exists)
@@ -402,7 +411,7 @@ export function writeRoutesManifest(
       layoutFiles: errorJsLayoutFiles.map(toRelative),
       dynamic: "force-static",
       paramNames: [],
-      pattern: "/error",
+      pattern: ERROR_PATTERN,
     };
   }
 

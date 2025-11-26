@@ -137,10 +137,35 @@ interface AppShellProps {
   initialState: RouteViewState;
   routes: ClientRouteLoaded[];
   notFoundRoute: ClientRouteLoaded | null;
+  errorRoute: ClientRouteLoaded | null;
 }
 
-function AppShell({ initialState, routes, notFoundRoute }: AppShellProps) {
-  const [state, setState] = useState<RouteViewState>(initialState);
+function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellProps) {
+  // Check if initial state indicates an error
+  const initialData = (window as any).__FW_DATA__ as any;
+  const hasError = initialData?.error === true;
+  
+  // If error, use error route instead
+  const effectiveInitialState = hasError && errorRoute
+    ? {
+        url: initialState.url,
+        route: errorRoute,
+        params: initialState.params,
+        components: null,
+        props: initialState.props,
+      }
+    : initialState;
+
+  const [state, setState] = useState<RouteViewState>(effectiveInitialState);
+  
+  // Load error route components if needed
+  useEffect(() => {
+    if (hasError && errorRoute && !state.components) {
+      errorRoute.load().then((components) => {
+        setState((prev) => ({ ...prev, components }));
+      });
+    }
+  }, [hasError, errorRoute, state.components]);
 
   useEffect(() => {
     async function navigate(nextUrl: string) {
@@ -166,6 +191,22 @@ function AppShell({ initialState, routes, notFoundRoute }: AppShellProps) {
         }
 
         const json = await res.json();
+
+        if (json.error) {
+          if (errorRoute) {
+            const components = await errorRoute.load();
+            setState({
+              url: nextUrl,
+              route: errorRoute,
+              params: json.params || {},
+              components,
+              props: json.props || { error: json.message || "An error occurred" },
+            });
+          } else {
+            window.location.href = nextUrl;
+          }
+          return;
+        }
 
         if (json.redirect) {
           window.location.href = json.redirect.destination;
@@ -278,10 +319,12 @@ function AppShell({ initialState, routes, notFoundRoute }: AppShellProps) {
  *
  * @param routes - Array of client routes
  * @param notFoundRoute - Not-found route definition
+ * @param errorRoute - Error route definition
  */
 export function bootstrapClient(
   routes: ClientRouteLoaded[],
-  notFoundRoute: ClientRouteLoaded | null
+  notFoundRoute: ClientRouteLoaded | null,
+  errorRoute: ClientRouteLoaded | null = null
 ) {
 
   (async function bootstrap() {
@@ -331,6 +374,7 @@ export function bootstrapClient(
         initialState={initialState}
         routes={routes}
         notFoundRoute={notFoundRoute}
+        errorRoute={errorRoute}
       />
     );
   })();

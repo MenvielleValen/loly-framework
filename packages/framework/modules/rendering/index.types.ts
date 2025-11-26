@@ -5,4 +5,5 @@ export interface InitialData {
   metadata: any;
   className: string;
   notFound?: boolean;
+  error?: boolean;
 }

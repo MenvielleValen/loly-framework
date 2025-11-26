@@ -42,6 +42,11 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
 
       if (!PAGE_FILE_REGEX.test(entry.name)) continue;
 
+      // Skip special error pages - they're handled separately
+      if (entry.name.startsWith("_not-found.") || entry.name.startsWith("_error.")) {
+        continue;
+      }
+
       const relDir = path.relative(appDir, currentDir);
       const routePath = buildRoutePathFromDir(relDir);
       const { regex, paramNames } = buildRegexFromRoutePath(routePath);

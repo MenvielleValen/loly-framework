@@ -45,7 +45,7 @@ export async function startServer(options: StartServerOptions = {}) {
 
   await runInitIfExists(projectRoot, { server: httpServer });
 
-  const { routes, apiRoutes, notFoundPage, getRoutes } = setupServer(app, {
+  const { routes, apiRoutes, notFoundPage, errorPage, getRoutes } = setupServer(app, {
     projectRoot,
     appDir,
     isDev,
@@ -60,6 +60,7 @@ export async function startServer(options: StartServerOptions = {}) {
     routes,
     apiRoutes,
     notFoundPage,
+    errorPage,
     isDev,
     projectRoot,
     routeLoader,

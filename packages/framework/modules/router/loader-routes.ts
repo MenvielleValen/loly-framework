@@ -217,3 +217,71 @@ export function loadNotFoundFromManifest(
     generateStaticParams: null,
   };
 }
+
+/**
+ * Loads the error route from the routes manifest.
+ *
+ * @param projectRoot - Root directory of the project
+ * @returns LoadedRoute for the error page, or null if not found
+ */
+export function loadErrorFromManifest(
+  projectRoot: string
+): LoadedRoute | null {
+  const manifestPath = path.join(
+    projectRoot,
+    BUILD_FOLDER_NAME,
+    "routes-manifest.json"
+  );
+
+  if (!fs.existsSync(manifestPath)) {
+    return null;
+  }
+  const raw = fs.readFileSync(manifestPath, "utf-8");
+  const manifest: RoutesManifest = JSON.parse(raw);
+
+  // Check if error page exists in manifest
+  const errorEntry = (manifest as any).error;
+  if (!errorEntry) {
+    return null;
+  }
+
+  const pageFile = path.join(projectRoot, errorEntry.pageFile);
+  const layoutFiles = (errorEntry.layoutFiles || []).map((f: string) =>
+    path.join(projectRoot, f)
+  );
+
+  const layoutMods = layoutFiles.map((lf: string) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require(lf);
+    } catch (err) {
+      return null;
+    }
+  });
+
+  const layouts: LayoutComponent[] = layoutMods
+    .filter((m: any): m is { default: LayoutComponent } => !!m?.default)
+    .map((m: { default: LayoutComponent }) => m.default);
+
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const pageMod = require(pageFile);
+  const component: PageComponent = pageMod.default;
+
+  if (!component) {
+    return null;
+  }
+
+  return {
+    pattern: "/error",
+    regex: new RegExp("^/error/?$"),
+    paramNames: [],
+    component,
+    layouts: layouts,
+    pageFile: pageFile,
+    layoutFiles: [],
+    middlewares: [],
+    loader: null,
+    dynamic: "force-static",
+    generateStaticParams: null,
+  };
+}

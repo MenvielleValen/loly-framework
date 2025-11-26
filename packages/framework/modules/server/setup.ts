@@ -23,6 +23,7 @@ export interface ServerSetupOptions {
 export interface ServerSetupResult {
   routes: LoadedRoute[];
   notFoundPage: LoadedRoute | null;
+  errorPage: LoadedRoute | null;
   apiRoutes: ApiRoute[];
   getRoutes?: () => {
     routes: LoadedRoute[];
@@ -52,6 +53,7 @@ export function setupServer(
 
     const routes = routeLoader.loadRoutes();
     const notFoundPage = routeLoader.loadNotFoundRoute();
+    const errorPage = routeLoader.loadErrorRoute();
     writeClientRoutesManifest(routes, projectRoot);
 
     const { outDir } = startClientBundler(projectRoot);
@@ -69,6 +71,7 @@ export function setupServer(
     return {
       routes,
       notFoundPage,
+      errorPage,
       apiRoutes: routeLoader.loadApiRoutes(),
       getRoutes,
     };
@@ -76,6 +79,7 @@ export function setupServer(
     const routes = routeLoader.loadRoutes();
     const apiRoutes = routeLoader.loadApiRoutes();
     const notFoundPage = routeLoader.loadNotFoundRoute();
+    const errorPage = routeLoader.loadErrorRoute();
 
     const clientOutDir = path.join(projectRoot, BUILD_FOLDER_NAME, "client");
     app.use(
@@ -90,6 +94,7 @@ export function setupServer(
       routes,
       apiRoutes,
       notFoundPage,
+      errorPage,
     };
   }
 }

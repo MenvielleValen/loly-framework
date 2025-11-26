@@ -6,6 +6,8 @@ import {
   writeClientBoostrapManifest,
   writeClientRoutesManifest,
   writeRoutesManifest,
+  loadNotFoundRouteFromFilesystem,
+  loadErrorRouteFromFilesystem,
 } from "@router/index";
 import { buildClientBundle } from "./bundler/client";
 import { buildStaticPages } from "./ssg";
@@ -27,12 +29,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
 
   const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir);
 
-  const notFoundRoute = routes.find(r => r.pattern === '/not-found');
-  const filteredRoutes = routes.filter(r => r.pattern !== '/not-found');
+  // Load special error pages (Next.js style: _not-found.tsx, _error.tsx)
+  const notFoundRoute = loadNotFoundRouteFromFilesystem(appDir);
+  const errorRoute = loadErrorRouteFromFilesystem(appDir);
 
   if (!notFoundRoute) {
     console.warn(
-      "[framework][build] No not-found route found. Consider creating app/not-found/page.tsx"
+      "[framework][build] No not-found route found. Consider creating app/_not-found.tsx"
     );
   }
 
@@ -51,11 +54,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
     generateStaticParams: null,
   };
 
-  writeRoutesManifest(filteredRoutes, apiRoutes, fallbackNotFound, projectRoot, serverOutDir, appDir);
+  writeRoutesManifest(routes, apiRoutes, fallbackNotFound, errorRoute, projectRoot, serverOutDir, appDir);
 
   writeClientBoostrapManifest(projectRoot);
 
-  writeClientRoutesManifest(routes, projectRoot);
+  writeClientRoutesManifest(routes, projectRoot, errorRoute);
 
   await buildClientBundle(projectRoot);
 

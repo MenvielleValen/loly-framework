@@ -18,10 +18,12 @@ import { BUILD_FOLDER_NAME, STYLE_FILE_NAME } from "@constants/globals";
  *
  * @param routes - Array of loaded routes
  * @param projectRoot - Root directory of the project
+ * @param errorRoute - Optional error route for client-side error handling
  */
 export function writeClientRoutesManifest(
   routes: LoadedRoute[],
-  projectRoot: string
+  projectRoot: string,
+  errorRoute?: LoadedRoute | null
 ): void {
   const fwDir = path.join(projectRoot, BUILD_FOLDER_NAME);
   if (!fs.existsSync(fwDir)) {
@@ -40,10 +42,30 @@ export function writeClientRoutesManifest(
 
   function findUserNotFound(): string | null {
     const candidates = [
+      "app/_not-found.tsx",
+      "app/_not-found.ts",
+      "app/_not-found.jsx",
+      "app/_not-found.js",
+      // Fallback to old style for backward compatibility
       "app/not-found/page.tsx",
       "app/not-found/page.ts",
       "app/not-found/page.jsx",
       "app/not-found/page.js",
+    ];
+
+    for (const rel of candidates) {
+      const full = path.join(projectRoot, rel);
+      if (fs.existsSync(full)) return full;
+    }
+    return null;
+  }
+
+  function findUserError(): string | null {
+    const candidates = [
+      "app/_error.tsx",
+      "app/_error.ts",
+      "app/_error.jsx",
+      "app/_error.js",
     ];
 
     for (const rel of candidates) {
@@ -133,6 +155,7 @@ export function writeClientRoutesManifest(
   lines.push("");
 
   const notFoundPath = findUserNotFound();
+  const errorPath = findUserError();
   const rootLayoutPath = findRootLayout();
 
   if (notFoundPath) {
@@ -168,6 +191,42 @@ export function writeClientRoutesManifest(
     chunkMap["__fw_not_found__"] = chunkName;
   } else {
     lines.push(`export const notFoundRoute: ClientRouteLoaded | null = null;`);
+    lines.push("");
+  }
+
+  if (errorPath) {
+    const errorImportPath = toImportPath(errorPath);
+    const chunkName = "route-error";
+
+    lines.push(`export const errorRoute: ClientRouteLoaded = {`);
+    lines.push(`  pattern: "__fw_error__",`);
+    lines.push(`  paramNames: [],`);
+    lines.push(`  load: async () => {`);
+    lines.push(`    const mods = await Promise.all([`);
+    lines.push(
+      `      import(/* webpackChunkName: "${chunkName}" */ "${errorImportPath}"),`
+    );
+
+    if (rootLayoutPath) {
+      const rootLayoutImportPath = toImportPath(rootLayoutPath);
+      lines.push(
+        `      import(/* webpackChunkName: "${chunkName}" */ "${rootLayoutImportPath}"),`
+      );
+    }
+
+    lines.push(`    ]);`);
+    lines.push(`    const [pageMod, ...layoutMods] = mods;`);
+    lines.push(`    return {`);
+    lines.push(`      Page: pageMod.default,`);
+    lines.push(`      layouts: layoutMods.map((m) => m.default),`);
+    lines.push(`    };`);
+    lines.push(`  },`);
+    lines.push(`};`);
+    lines.push("");
+
+    chunkMap["__fw_error__"] = chunkName;
+  } else {
+    lines.push(`export const errorRoute: ClientRouteLoaded | null = null;`);
     lines.push("");
   }
 
@@ -222,6 +281,7 @@ export function writeClientBoostrapManifest(projectRoot: string): void {
  * @param routes - Array of loaded page routes
  * @param apiRoutes - Array of loaded API routes
  * @param notFoundRoute - Not-found route definition
+ * @param errorRoute - Error route definition (optional)
  * @param projectRoot - Root directory of the project
  * @param serverOutDir - Server output directory from buildServerApp
  * @param appDir - Absolute path to the app directory
@@ -230,6 +290,7 @@ export function writeRoutesManifest(
   routes: LoadedRoute[],
   apiRoutes: ApiRoute[],
   notFoundRoute: LoadedRoute,
+  errorRoute: LoadedRoute | null,
   projectRoot: string,
   serverOutDir: string,
   appDir: string
@@ -300,28 +361,50 @@ export function writeRoutesManifest(
     })
     .filter((e): e is ApiRouteManifestEntry => !!e);
 
-  if(!notFoundRoute?.layoutFiles){
-    return;
-  }
-
-  const jsLayoutFiles = notFoundRoute.layoutFiles.map((lf) => {
+  // Build not-found page entry
+  const notFoundLayoutFiles = notFoundRoute.layoutFiles || [];
+  const notFoundJsLayoutFiles = notFoundLayoutFiles.map((lf) => {
     const rel = path.relative(appDir, lf);
     return path.join(serverOutDir, convertToJs(rel));
   });
 
+  const notFoundRelativeSource = notFoundRoute.pageFile
+    ? path.relative(appDir, notFoundRoute.pageFile)
+    : "_not-found.tsx";
+  const notFoundJsPageFile = notFoundRoute.pageFile
+    ? path.join(serverOutDir, convertToJs(notFoundRelativeSource))
+    : path.join(serverOutDir, convertToJs("_not-found.tsx"));
+
   const notFoundPage: PageRouteManifestEntry = {
     type: "page",
-    pageFile: toRelative(
-      path.join(
-        serverOutDir,
-        convertToJs("/not-found/page.tsx")
-      )
-    ),
-    layoutFiles: jsLayoutFiles.map(toRelative),
+    pageFile: toRelative(notFoundJsPageFile),
+    layoutFiles: notFoundJsLayoutFiles.map(toRelative),
     dynamic: "force-static",
     paramNames: [],
     pattern: "/not-found",
   };
+
+  // Build error page entry (if exists)
+  let errorPageEntry: PageRouteManifestEntry | undefined;
+  if (errorRoute && errorRoute.pageFile) {
+    const errorLayoutFiles = errorRoute.layoutFiles || [];
+    const errorJsLayoutFiles = errorLayoutFiles.map((lf) => {
+      const rel = path.relative(appDir, lf);
+      return path.join(serverOutDir, convertToJs(rel));
+    });
+
+    const errorRelativeSource = path.relative(appDir, errorRoute.pageFile);
+    const errorJsPageFile = path.join(serverOutDir, convertToJs(errorRelativeSource));
+
+    errorPageEntry = {
+      type: "page",
+      pageFile: toRelative(errorJsPageFile),
+      layoutFiles: errorJsLayoutFiles.map(toRelative),
+      dynamic: "force-static",
+      paramNames: [],
+      pattern: "/error",
+    };
+  }
 
   const manifest: RoutesManifest = {
     version: 1,
@@ -331,6 +414,7 @@ export function writeRoutesManifest(
     routes: pageEntries,
     apiRoutes: apiEntries,
     notFound: notFoundPage,
+    ...(errorPageEntry && { error: errorPageEntry }),
   };
 
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");

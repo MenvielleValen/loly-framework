@@ -134,4 +134,5 @@ export interface RoutesManifest {
   routes: PageRouteManifestEntry[];
   apiRoutes: ApiRouteManifestEntry[];
   notFound: PageRouteManifestEntry;
+  error?: PageRouteManifestEntry;
 }

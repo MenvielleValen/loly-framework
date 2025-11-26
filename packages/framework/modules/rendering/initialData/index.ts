@@ -20,5 +20,7 @@ export function buildInitialData(
     props: loaderResult.props ?? {},
     metadata: loaderResult.metadata ?? null,
     className: loaderResult.className ?? "",
+    error: false,
+    notFound: false,
   };
 }

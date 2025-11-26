@@ -10,6 +10,7 @@ export interface SetupRoutesOptions {
   routes: LoadedRoute[];
   apiRoutes: ApiRoute[];
   notFoundPage: LoadedRoute | null;
+  errorPage: LoadedRoute | null;
   isDev: boolean;
   projectRoot: string;
   routeLoader: RouteLoader;
@@ -31,6 +32,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
     routes: initialRoutes,
     apiRoutes: initialApiRoutes,
     notFoundPage,
+    errorPage,
     isDev,
     projectRoot,
     routeLoader,
@@ -68,9 +70,14 @@ export function setupRoutes(options: SetupRoutesOptions): void {
       currentNotFoundPage = routeLoader.loadNotFoundRoute();
     }
 
+    const currentErrorPage = isDev && getRoutes
+      ? routeLoader.loadErrorRoute()
+      : errorPage;
+
     await handlePageRequest({
       routes,
       notFoundPage: currentNotFoundPage,
+      errorPage: currentErrorPage,
       routeChunks,
       urlPath: req.path,
       req,

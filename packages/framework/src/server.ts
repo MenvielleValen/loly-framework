@@ -32,7 +32,8 @@ export async function startServer(options: StartServerOptions = {}) {
   const config = options.config ?? loadConfig(projectRoot);
   
   // Use config values, but allow overrides from options
-  const port = options.port ?? config.server.port;
+  const portEnv = isNaN(Number(process?.env?.PORT)) ? undefined : Number(process?.env?.PORT);
+  const port = portEnv ?? options.port ?? config.server.port;
   const appDir = options.appDir ?? (isDev
     ? getAppDir(projectRoot, config)
     : path.join(getBuildDir(projectRoot, config), "server"));

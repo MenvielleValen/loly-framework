@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-export default function HomePage() {
+export default function HomePage({ data }: any) {
+
+  console.log("DESDE EL NAVEGADOR", data)
+
   return (
     <main className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -19,7 +22,7 @@ export default function HomePage() {
             </div>
 
             <h1 className="mb-6 text-5xl font-bold tracking-tight text-foreground sm:text-7xl text-balance">
-              El framework React{" "}
+              {data?.name}{" "}
               <span className="bg-clip-text text-transparent bg-[linear-gradient(to_right,oklch(0.7_0.25_200),oklch(0.75_0.2_180))]">
                 ultrarrápido
               </span>

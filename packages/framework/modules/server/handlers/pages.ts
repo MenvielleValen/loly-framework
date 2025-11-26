@@ -110,7 +110,7 @@ async function handlePageRequestInternal(
       };
 
       const loaderResult = await runRouteLoader(notFoundPage, ctx);
-
+    
       const initialData = buildInitialData(urlPath, {}, loaderResult);
       const appTree = buildAppTree(notFoundPage, {}, initialData.props);
       initialData.notFound = true;
@@ -129,7 +129,7 @@ async function handlePageRequestInternal(
       const { pipe, abort } = renderToPipeableStream(documentTree, {
         onShellReady() {
           if (didError || res.headersSent) return;
-
+    
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/html; charset=utf-8");
           pipe(res);

@@ -31,9 +31,18 @@ export async function startServer(options: StartServerOptions = {}) {
   // Load configuration
   const config = options.config ?? loadConfig(projectRoot);
   
-  // Use config values, but allow overrides from options
-  const portEnv = isNaN(Number(process?.env?.PORT)) ? undefined : Number(process?.env?.PORT);
-  const port = portEnv ?? options.port ?? config.server.port;
+  // Use config values, but allow overrides from options and environment variables
+  // PORT and HOST are standard environment variables in hosting platforms (Render, Heroku, etc.)
+  const port = options.port 
+    ?? (process.env.PORT ? parseInt(process.env.PORT, 10) : undefined)
+    ?? config.server.port;
+  
+  // In production, default to 0.0.0.0 to be accessible from outside
+  // This is required for platforms like Render.com, Heroku, etc.
+  const host = process.env.HOST 
+    ?? (!isDev ? '0.0.0.0' : undefined)
+    ?? config.server.host;
+  
   const appDir = options.appDir ?? (isDev
     ? getAppDir(projectRoot, config)
     : path.join(getBuildDir(projectRoot, config), "server"));
@@ -76,7 +85,6 @@ export async function startServer(options: StartServerOptions = {}) {
     config,
   });
 
-  const host = config.server.host;
   httpServer.listen(port, host, () => {
     if (isDev) {
       console.log(`🚀 Dev server running on http://${host}:${port}`);

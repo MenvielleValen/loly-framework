@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 
 export default function RootLayout({
   children,
+  appName
 }: {
   children: React.ReactNode;
+  appName: string
 }) {
   return (
     <>
@@ -15,7 +17,7 @@ export default function RootLayout({
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[linear-gradient(135deg,oklch(0.7_0.25_200),oklch(0.75_0.2_180))]">
                 <span className="text-lg font-bold text-white">L</span>
               </div>
-              <span className="text-xl font-bold text-foreground">Loly</span>
+              <span className="text-xl font-bold text-foreground">{appName}</span>
             </a>
 
             <div className="hidden items-center gap-6 md:flex">

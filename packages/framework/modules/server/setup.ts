@@ -1,16 +1,18 @@
 import express from "express";
 import path from "path";
 import {
-  loadRoutes,
-  loadApiRoutes,
-  loadRoutesFromManifest,
-  loadNotFoundFromManifest,
+  FilesystemRouteLoader,
+  ManifestRouteLoader,
+  RouteLoader,
+  writeClientRoutesManifest,
 } from "@router/index";
 import { startClientBundler } from "@build/bundler/client";
 import { setupHotReload } from "@dev/hot-reload-client";
 import { clearAppRequireCache } from "@dev/hot-reload-server";
-import { writeClientRoutesManifest } from "@router/index";
+import { LoadedRoute, ApiRoute } from "@router/index.types";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
+
+export { RouteLoader };
 
 export interface ServerSetupOptions {
   projectRoot: string;
@@ -19,12 +21,12 @@ export interface ServerSetupOptions {
 }
 
 export interface ServerSetupResult {
-  routes: ReturnType<typeof loadRoutes>;
-  notFoundPage: ReturnType<typeof loadNotFoundFromManifest>;
-  apiRoutes: ReturnType<typeof loadApiRoutes>;
+  routes: LoadedRoute[];
+  notFoundPage: LoadedRoute | null;
+  apiRoutes: ApiRoute[];
   getRoutes?: () => {
-    routes: ReturnType<typeof loadRoutes>;
-    apiRoutes: ReturnType<typeof loadApiRoutes>;
+    routes: LoadedRoute[];
+    apiRoutes: ApiRoute[];
   };
 }
 
@@ -41,30 +43,39 @@ export function setupServer(
 ): ServerSetupResult {
   const { projectRoot, appDir, isDev } = options;
 
+  const routeLoader: RouteLoader = isDev
+    ? new FilesystemRouteLoader(appDir)
+    : new ManifestRouteLoader(projectRoot);
+
   if (isDev) {
     setupHotReload({ app, appDir });
 
-    function getRoutes() {
-      clearAppRequireCache(appDir);
-      return loadRoutesFromManifest(projectRoot);
-    }
-
-    const { routes: manifestRoutes } = getRoutes();
-    const notFoundPage = loadNotFoundFromManifest(projectRoot);
-    writeClientRoutesManifest(manifestRoutes, projectRoot);
+    const routes = routeLoader.loadRoutes();
+    const notFoundPage = routeLoader.loadNotFoundRoute();
+    writeClientRoutesManifest(routes, projectRoot);
 
     const { outDir } = startClientBundler(projectRoot);
     app.use("/static", express.static(outDir));
 
+    function getRoutes() {
+      clearAppRequireCache(appDir);
+      const loader = new FilesystemRouteLoader(appDir);
+      return {
+        routes: loader.loadRoutes(),
+        apiRoutes: loader.loadApiRoutes(),
+      };
+    }
+
     return {
-      routes: manifestRoutes,
+      routes,
       notFoundPage,
-      apiRoutes: loadApiRoutes(appDir),
+      apiRoutes: routeLoader.loadApiRoutes(),
       getRoutes,
     };
   } else {
-    const { routes, apiRoutes } = loadRoutesFromManifest(projectRoot);
-    const notFoundPage = loadNotFoundFromManifest(projectRoot);
+    const routes = routeLoader.loadRoutes();
+    const apiRoutes = routeLoader.loadApiRoutes();
+    const notFoundPage = routeLoader.loadNotFoundRoute();
 
     const clientOutDir = path.join(projectRoot, BUILD_FOLDER_NAME, "client");
     app.use(
@@ -78,7 +89,7 @@ export function setupServer(
     return {
       routes,
       apiRoutes,
-      notFoundPage
+      notFoundPage,
     };
   }
 }

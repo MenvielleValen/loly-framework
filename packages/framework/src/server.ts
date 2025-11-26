@@ -1,157 +1,119 @@
 import fs from "fs";
-
 import path from "path";
 import { runInitIfExists } from "@server/init";
 import { setupServer } from "@server/setup";
-import { handleApiRequest, handlePageRequest } from "@server/handlers";
+import { setupRoutes } from "@server/routes";
 import { setupApplication } from "@server/application";
-
-import dotenv from "dotenv";
-import { loadChunksFromManifest } from "@router/index";
+import { FilesystemRouteLoader, ManifestRouteLoader } from "@router/index";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-//#region PROD
-export interface StartProdServerOptions {
+export interface StartServerOptions {
   port?: number;
-  rootDir?: string; // raíz del proyecto de la app (ej: apps/example)
-  appDir?: string; // por defecto rootDir + "/app"
+  rootDir?: string;
+  appDir?: string;
+  isDev?: boolean;
 }
 
 /**
- * Server de producción:
- * - NO arranca bundler
- * - Sirve /static desde {BUILD_FOLDER_NAME}/client (bundle ya buildeado)
- * - Intenta servir SSG desde {BUILD_FOLDER_NAME}/ssg primero
- * - Si no hay SSG para esa ruta, hace SSR como en dev
+ * Unified server startup function.
+ * Handles both development and production modes.
+ *
+ * @param options - Server startup options
  */
-export async function startProdServer(options: StartProdServerOptions = {}) {
+export async function startServer(options: StartServerOptions = {}) {
+  const isDev = options.isDev ?? process.env.NODE_ENV === "development";
   const port = options.port ?? 3000;
   const projectRoot = options.rootDir ?? process.cwd();
-  const serverRoutesDir = path.join(projectRoot, BUILD_FOLDER_NAME, "server");
+  const appDir = options.appDir ?? (isDev
+    ? path.resolve(projectRoot, "app")
+    : path.join(projectRoot, BUILD_FOLDER_NAME, "server"));
 
-  if (!fs.existsSync(serverRoutesDir)) {
+  if (!isDev && !fs.existsSync(appDir)) {
     console.error(
-      `[framework][prod] ERROR: No se encontró el directorio compilado ${BUILD_FOLDER_NAME}/server`,
-      serverRoutesDir
+      `[framework][prod] ERROR: Compiled directory not found: ${BUILD_FOLDER_NAME}/server`,
+      appDir
     );
+    process.exit(1);
   }
 
   const { app, httpServer } = await setupApplication({
     projectRoot,
   });
 
-  // Ejecutar init.server.js compilado
   await runInitIfExists(projectRoot, { server: httpServer });
 
-  // Setup de rutas y estáticos, pero usando {BUILD_FOLDER_NAME}/server
-  const { routes, apiRoutes, notFoundPage } = setupServer(app, {
+  const { routes, apiRoutes, notFoundPage, getRoutes } = setupServer(app, {
     projectRoot,
-    appDir: serverRoutesDir,
-    isDev: false,
+    appDir,
+    isDev,
   });
 
-  const ssgOutDir = path.join(projectRoot, BUILD_FOLDER_NAME, "ssg");
+  const routeLoader = isDev
+    ? new FilesystemRouteLoader(appDir)
+    : new ManifestRouteLoader(projectRoot);
 
-  // APIs
-  app.all("/api/*", async (req, res) => {
-    await handleApiRequest({
-      apiRoutes,
-      urlPath: req.path,
-      req,
-      res,
-      env: "prod",
-    });
-  });
-
-  const routeChunks = loadChunksFromManifest(projectRoot);
-  // Páginas
-  app.get("*", async (req, res) => {
-    await handlePageRequest({
-      routes,
-      notFoundPage,
-      routeChunks,
-      urlPath: req.path,
-      req,
-      res,
-      env: "prod",
-      ssgOutDir,
-    });
+  setupRoutes({
+    app,
+    routes,
+    apiRoutes,
+    notFoundPage,
+    isDev,
+    projectRoot,
+    routeLoader,
+    getRoutes,
   });
 
   httpServer.listen(port, () => {
-    console.log(`🚀 Prod server corriendo en http://localhost:${port}`);
-    console.log(`🧭 Leyendo rutas compiladas desde: ${serverRoutesDir}`);
-    console.log(`📦 Cliente servido desde /static ( ${BUILD_FOLDER_NAME}/client )`);
-    console.log(`📄 SSG servido desde ${BUILD_FOLDER_NAME}/ssg (si existe)`);
+    if (isDev) {
+      console.log(`🚀 Dev server running on http://localhost:${port}`);
+      console.log(`🧭 Reading routes from: ${appDir}`);
+      console.log(`📦 Client served from /static/client.js`);
+    } else {
+      console.log(`🚀 Prod server running on http://localhost:${port}`);
+      console.log(`🧭 Reading compiled routes from: ${appDir}`);
+      console.log(`📦 Client served from /static (${BUILD_FOLDER_NAME}/client)`);
+      console.log(`📄 SSG served from ${BUILD_FOLDER_NAME}/ssg (if exists)`);
+    }
   });
 }
-
-//#endregion
 
 export interface StartDevServerOptions {
   port?: number;
-  rootDir?: string; // raíz del proyecto de la app (ej: apps/example)
-  appDir?: string; // opcional, por defecto rootDir + "/app"
+  rootDir?: string;
+  appDir?: string;
 }
 
 /**
- * Server de desarrollo:
- * - Usa Express
- * - Escanea appDir (por defecto `rootDir/app`)
- * - Matchea la URL contra las rutas y hace SSR
- * - Arranca bundler de cliente (Rspack) y sirve /static/client.js
+ * Development server startup.
+ * Wrapper around startServer for backward compatibility.
+ *
+ * @param options - Server options
  */
 export async function startDevServer(options: StartDevServerOptions = {}) {
-  const port = options.port ?? 3000;
-  const projectRoot = options.rootDir ?? process.cwd();
-  const appDir = options.appDir ?? path.resolve(projectRoot, "app");
-
-  const { app, httpServer } = await setupApplication({
-    projectRoot,
-  });
-
-  await runInitIfExists(projectRoot, { server: httpServer });
-
-  // Setup de rutas y bundler (con hot reload en dev)
-  const { getRoutes } = setupServer(app, {
-    projectRoot,
-    appDir,
+  return startServer({
+    ...options,
     isDev: true,
   });
+}
 
-  // APIs (en dev recargamos rutas en cada request)
-  app.all("/api/*", async (req, res) => {
-    const { apiRoutes: currentApiRoutes } = getRoutes!();
-    await handleApiRequest({
-      apiRoutes: currentApiRoutes,
-      urlPath: req.path,
-      req,
-      res,
-      env: "dev",
-    });
-  });
+export interface StartProdServerOptions {
+  port?: number;
+  rootDir?: string;
+  appDir?: string;
+}
 
-  // Páginas (en dev recargamos rutas en cada request)
-  app.get("*", async (req, res) => {
-    const { routes: currentRoutes } = getRoutes!();
-    const routeChunks = loadChunksFromManifest(projectRoot);
-    
-    await handlePageRequest({
-      routes: currentRoutes,
-      notFoundPage: null, // @TODO Fix 
-      routeChunks,
-      urlPath: req.path,
-      req,
-      res,
-      env: "dev",
-    });
-  });
-
-  httpServer.listen(port, () => {
-    console.log(`🚀 Dev server corriendo en http://localhost:${port}`);
-    console.log(`🧭 Leyendo rutas desde: ${appDir}`);
-    console.log(`📦 Cliente servido desde /static/client.js`);
+/**
+ * Production server startup.
+ * Wrapper around startServer for backward compatibility.
+ *
+ * @param options - Server options
+ */
+export async function startProdServer(options: StartProdServerOptions = {}) {
+  return startServer({
+    ...options,
+    isDev: false,
   });
 }

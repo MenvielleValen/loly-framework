@@ -30,7 +30,28 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
   const notFoundRoute = routes.find(r => r.pattern === '/not-found');
   const filteredRoutes = routes.filter(r => r.pattern !== '/not-found');
 
-  writeRoutesManifest(filteredRoutes, apiRoutes, notFoundRoute as LoadedRoute, projectRoot, serverOutDir, appDir);
+  if (!notFoundRoute) {
+    console.warn(
+      "[framework][build] No not-found route found. Consider creating app/not-found/page.tsx"
+    );
+  }
+
+  // Create a minimal not-found route if none exists
+  const fallbackNotFound: LoadedRoute = notFoundRoute || {
+    pattern: "/not-found",
+    regex: new RegExp("^/not-found/?$"),
+    paramNames: [],
+    component: () => null,
+    layouts: [],
+    pageFile: "",
+    layoutFiles: [],
+    middlewares: [],
+    loader: null,
+    dynamic: "force-static",
+    generateStaticParams: null,
+  };
+
+  writeRoutesManifest(filteredRoutes, apiRoutes, fallbackNotFound, projectRoot, serverOutDir, appDir);
 
   writeClientBoostrapManifest(projectRoot);
 

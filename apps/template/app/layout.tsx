@@ -1,5 +1,6 @@
 import React from "react";
 import { ThemeProvider } from "@loly/core/modules/components/themes";
+import { ThemeSwitch } from "@/components/shared/theme-switch";
 
 export default function RootLayout({
   children,
@@ -18,7 +19,9 @@ export default function RootLayout({
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[linear-gradient(135deg,oklch(0.7_0.25_200),oklch(0.75_0.2_180))]">
                 <span className="text-lg font-bold text-white">L</span>
               </div>
-              <span className="text-xl font-bold text-foreground">{appName}</span>
+              <span className="text-xl font-bold text-foreground">
+                {appName}
+              </span>
             </a>
 
             <div className="hidden items-center gap-6 md:flex">
@@ -44,6 +47,7 @@ export default function RootLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeSwitch />
             <a
               href="https://github.com"
               className="text-muted-foreground transition-colors hover:text-foreground"

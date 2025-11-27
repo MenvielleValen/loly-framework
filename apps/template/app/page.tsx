@@ -13,7 +13,7 @@ import type {
   PulseMetrics,
 } from "@/lib/site-data";
 import { ArrowUpRight, Sparkles, Terminal } from "lucide-react";
-import { useTheme } from "@loly/core/modules/components";
+
 
 type HomePageProps = {
   data: LaunchInsights;
@@ -29,11 +29,8 @@ export default function HomePage({
   const { hero, metrics, release, features, launchChecklist, timeline, automation, streamingPreview } =
     data;
 
-  const { theme, handleThemeChange } = useTheme();
-
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <Button onClick={() => handleThemeChange(theme === "light" ? "dark" : "light")}>Change theme</Button>
       <section className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,oklch(0.3_0.15_220),transparent_50%),radial-gradient(circle_at_70%_60%,oklch(0.25_0.12_200),transparent_60%)] blur-3xl opacity-70" />
         <div className="relative mx-auto grid max-w-7xl gap-16 px-6 py-24 sm:py-32 lg:grid-cols-[1.15fr_0.85fr] lg:px-8">

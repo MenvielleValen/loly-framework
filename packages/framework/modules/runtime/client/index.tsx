@@ -262,6 +262,11 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
 
         const components = await matched.route.load();
 
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        })
+
         setState({
           url: nextUrl,
           route: matched.route,

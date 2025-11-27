@@ -9,7 +9,9 @@
     "full-dev": "pnpm build & pnpm dev",
     "start": "pnpm --filter loly-template start",
     "build": "pnpm -r build",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "dev-app": "node dev",
+    "start-app": "node dev"
   },
   "keywords": [],
   "author": "",

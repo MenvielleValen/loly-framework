@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "@loly/core/modules/components";
+import { Link } from "@loly/core/components";
 
 export default function RootLayout({
   children,

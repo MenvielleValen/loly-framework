@@ -1,5 +1,4 @@
-import { usePageProps } from "@loly/core/modules/components";
-import axios from "axios";
+import { usePageProps } from "@loly/core/components";
 import { PropsWithChildren } from "react";
 
 export const Button = ({

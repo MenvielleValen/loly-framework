@@ -11,12 +11,13 @@ export {
   GenerateStaticParams,
   ServerLoader,
 } from "@router/index.types";
-export { bootstrapClient } from '@runtime/client';
-export { 
-  FrameworkConfig, 
-  loadConfig, 
+export { bootstrapClient } from "@runtime/client";
+export {
+  FrameworkConfig,
+  loadConfig,
   DEFAULT_CONFIG,
   getAppDir,
   getBuildDir,
   getStaticDir,
 } from "./config";
+export { withCache } from "@cache/index";

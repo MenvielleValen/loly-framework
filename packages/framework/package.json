@@ -1,12 +1,30 @@
 {
   "name": "@loly/core",
-  "version": "0.0.1",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
+  "version": "0.1.0-alpha.0",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./components": {
+      "types": "./dist/components.d.ts",
+      "import": "./dist/components.js",
+      "require": "./dist/components.cjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js",
+      "require": "./dist/runtime.cjs"
+    }
+  },
   "scripts": {
     "build": "tsup",
-    "dev": "node ./dev/dev-server.js"
+    "dev": "node ./dev/dev-server.js",
+    "prepublishOnly": "pnpm run build"
   },
   "bin": {
     "loly": "bin/loly.cjs"
@@ -17,16 +35,20 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "helmet": "^8.1.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "helmet": "^8.1.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
-    "@types/react": "^19.2.6",
-    "@types/react-dom": "^19.2.3",
     "chokidar": "^4.0.3",
     "css-loader": "^7.1.2",
     "esbuild": "^0.27.0",
@@ -34,5 +56,16 @@
     "style-loader": "^4.0.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
   }
 }

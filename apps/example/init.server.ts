@@ -1,12 +1,10 @@
-import { InitServerData } from "@loly/core";
-
 import { connectDB } from "config/db";
 import WebSocket from "ws";
 
 export async function init({
   serverContext,
 }: {
-  serverContext: InitServerData;
+  serverContext: any;
 }) {
   const wss = new WebSocket.Server({ server: serverContext?.server });
   

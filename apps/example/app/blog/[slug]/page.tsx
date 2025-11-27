@@ -1,6 +1,5 @@
 import React, { Suspense } from "react";
 import { Button } from "@components/atoms/Button";
-import { Image } from "@loly/core/modules/components";
 
 // 👇 Lazy load del componente Comments
 const Comments = React.lazy(() => import("./Comments"));

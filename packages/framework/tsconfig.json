@@ -15,6 +15,7 @@
       "@runtime/*": ["modules/runtime/*"],
       "@server/*": ["modules/server/*"],
       "@font/*": ["modules/font/*"],
+      "@cache/*": ["modules/cache/*"],
     }
   },
   "include": ["src", "constants", "modules"]

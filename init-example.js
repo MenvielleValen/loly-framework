@@ -8,9 +8,9 @@ if (args.length === 0) {
   process.exit(1);
 }
 
-const [app] = args;
+const [type, app] = args;
 
-const command = `pnpm --filter ${app} dev`;
+const command = `pnpm --filter ${app} ${type}`;
 
 console.log(`Exec: ${command}`);
 

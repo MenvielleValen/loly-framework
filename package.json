@@ -10,8 +10,8 @@
     "start": "pnpm --filter loly-template start",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "dev-app": "node dev",
-    "start-app": "node dev"
+    "dev-app": "node init-example dev",
+    "start-app": "node init-example start"
   },
   "keywords": [],
   "author": "",

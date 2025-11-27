@@ -27,6 +27,7 @@ export interface HandlePageRequestOptions {
   res: Response;
   env?: "dev" | "prod";
   ssgOutDir?: string;
+  theme?: string;
 }
 
 /**
@@ -54,9 +55,9 @@ export async function handlePageRequest(
   try {
     await handlePageRequestInternal(options);
   } catch (error) {
-    const { errorPage, req, res, routeChunks } = options;
+    const { errorPage, req, res, routeChunks, theme } = options;
     if (errorPage) {
-      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {});
+      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme);
     } else {
       console.error("[framework] Unhandled error:", error);
       if (!res.headersSent) {
@@ -81,6 +82,7 @@ async function handlePageRequestInternal(
     res,
     env = "dev",
     ssgOutDir,
+    theme,
   } = options;
 
   const isDataReq = isDataRequest(req);
@@ -101,7 +103,7 @@ async function handlePageRequestInternal(
 
   if (!matched) {
     if (notFoundPage) {
-      const ctx: ServerContext = {
+      const ctx: ServerContext & { theme?: string } = {
         req,
         res,
         params: {},
@@ -122,6 +124,7 @@ async function handlePageRequestInternal(
         titleFallback: "Not found",
         descriptionFallback: "Loly demo",
         chunkHref: null,
+        theme,
       });
     
       let didError = false;
@@ -198,7 +201,7 @@ async function handlePageRequestInternal(
   }
 
   if (isDataReq) {
-    handleDataResponse(res, loaderResult);
+    handleDataResponse(res, loaderResult, theme);
     return;
   }
 
@@ -229,6 +232,7 @@ async function handlePageRequestInternal(
     titleFallback: "Loly framework",
     descriptionFallback: "Loly demo",
     chunkHref,
+    theme,
   });
 
   let didError = false;
@@ -284,7 +288,8 @@ async function renderErrorPageWithStream(
   req: Request,
   res: Response,
   error: unknown,
-  routeChunks: Record<string, string>
+  routeChunks: Record<string, string>,
+  theme?: string,
 ): Promise<void> {
   try {
     const ctx: ServerContext = {
@@ -311,6 +316,7 @@ async function renderErrorPageWithStream(
       titleFallback: "Error",
       descriptionFallback: "An error occurred",
       chunkHref,
+      theme,
     });
 
     let didError = false;

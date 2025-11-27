@@ -2,6 +2,7 @@ import http from "http";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import { getServerConfig } from "@server/config";
 
 interface SetupAppOptions {
@@ -35,6 +36,8 @@ export const setupApplication = async ({
       credentials: true,
     })
   );
+
+  app.use(cookieParser());
 
   app.use(express.json({ limit: bodyLimit }));
   app.use(express.urlencoded({ extended: true, limit: bodyLimit }));

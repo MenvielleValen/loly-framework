@@ -55,6 +55,7 @@ export function createDocumentTree(options: {
   titleFallback?: string;
   descriptionFallback?: string;
   chunkHref?: string | null;
+  theme?: string;
 }): ReactElement {
   const {
     appTree,
@@ -63,6 +64,7 @@ export function createDocumentTree(options: {
     titleFallback,
     descriptionFallback,
     chunkHref,
+    theme,
   } = options;
 
   const metaObj = meta ?? {};
@@ -96,7 +98,10 @@ export function createDocumentTree(options: {
     }
   }
 
-  const serialized = JSON.stringify(initialData);
+  const serialized = JSON.stringify({
+    ...initialData,
+    theme,
+  });
 
   const documentTree = React.createElement(
     "html",
@@ -133,7 +138,7 @@ export function createDocumentTree(options: {
     ),
     React.createElement(
       "body",
-      { style: { margin: 0 }, className: initialData.className },
+      { style: { margin: 0 }, className: `${initialData.className} ${theme}` },
       React.createElement("div", { id: APP_CONTAINER_ID }, appTree)
     ),
     React.createElement("script", {

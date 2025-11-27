@@ -12,6 +12,7 @@ type InitialData = {
   metadata?: { title?: string; description?: string } | null;
   notFound?: boolean;
   error?: boolean;
+  theme?: string;
 };
 
 declare global {
@@ -256,6 +257,7 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
           params: matched.params,
           props: newProps,
           metadata: json.metadata ?? null,
+          theme: json.theme ?? (window as any)[WINDOW_DATA_KEY]?.theme ?? null,
         };
 
         const components = await matched.route.load();

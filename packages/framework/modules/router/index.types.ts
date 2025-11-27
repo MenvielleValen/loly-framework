@@ -35,7 +35,7 @@ export interface ServerContext {
 }
 
 export type RouteMiddleware = (
-  ctx: ServerContext,
+  ctx: ServerContext & { theme?: string },
   next: () => Promise<void>
 ) => Promise<void> | void;
 

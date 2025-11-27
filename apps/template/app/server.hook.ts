@@ -42,6 +42,5 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
       title: `${launchData.appName} | Product template`,
       description: launchData.hero.punchline,
     },
-    className: "dark",
   };
 };

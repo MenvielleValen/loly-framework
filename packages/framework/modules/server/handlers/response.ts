@@ -6,10 +6,12 @@ import { LoaderResult } from "@router/index";
  *
  * @param res - Express response object
  * @param loaderResult - Loader result
+ * @param theme - Optional theme value to include in response
  */
 export function handleDataResponse(
   res: Response,
-  loaderResult: LoaderResult
+  loaderResult: LoaderResult,
+  theme?: string
 ): void {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
 
@@ -30,6 +32,7 @@ export function handleDataResponse(
     JSON.stringify({
       props: loaderResult.props ?? {},
       metadata: loaderResult.metadata ?? null,
+      theme: theme ?? null,
     })
   );
 }

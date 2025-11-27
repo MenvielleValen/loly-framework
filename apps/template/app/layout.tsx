@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { ThemeProvider } from "@loly/core/modules/components/themes";
 
 export default function RootLayout({
   children,
-  appName
+  appName,
 }: {
   children: React.ReactNode;
-  appName: string
+  appName: string;
 }) {
   return (
-    <>
+    <ThemeProvider>
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
@@ -154,6 +155,6 @@ export default function RootLayout({
           </div>
         </div>
       </footer>
-    </>
+    </ThemeProvider>
   );
 }

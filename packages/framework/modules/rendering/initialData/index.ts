@@ -12,7 +12,7 @@ import type { LoaderResult } from "@router/index";
 export function buildInitialData(
   urlPath: string,
   params: Record<string, string>,
-  loaderResult: LoaderResult
+  loaderResult: LoaderResult,
 ): InitialData {
   return {
     pathname: urlPath,

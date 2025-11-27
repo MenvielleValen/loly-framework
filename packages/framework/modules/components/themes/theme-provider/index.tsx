@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useBroadcastChannel } from "../../hooks/useBroadcastChannel";
 
-export const ThemeContext = createContext<{
+const ThemeContext = createContext<{
   theme: string;
   handleThemeChange: (theme: string) => void;
 }>({ theme: "light", handleThemeChange: () => {} });
@@ -23,6 +24,8 @@ export const ThemeProvider = ({
   children: React.ReactNode;
   initialTheme?: string;
 }) => {
+  const { message: themeMessage, sendMessage } = useBroadcastChannel('theme_channel');
+
   // Initialize theme from multiple sources (priority order):
   // 1. initialTheme prop (from server)
   // 2. window.__FW_DATA__.theme (from SSR)
@@ -52,6 +55,13 @@ export const ThemeProvider = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (!themeMessage) return;
+    if (themeMessage !== theme) {
+      setTheme(themeMessage);
+    }
+  }, [themeMessage]);
+
   // Update body class when theme changes
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -67,6 +77,8 @@ export const ThemeProvider = ({
     
     // Add new theme class
     body.className = [...filteredClasses, theme].filter(Boolean).join(" ");
+
+    sendMessage(theme);
   }, [theme]);
 
   const handleThemeChange = (newTheme: string) => {

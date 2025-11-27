@@ -1,4 +1,4 @@
-import { usePageProps } from "@loly/core/components";
+import { usePageProps } from "@loly/core/hooks";
 import axios from "axios";
 import { PropsWithChildren } from "react";
 

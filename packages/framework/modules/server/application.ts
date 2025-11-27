@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import compression from "compression";
 import { getServerConfig } from "@server/config";
 
 interface SetupAppOptions {
@@ -41,6 +42,8 @@ export const setupApplication = async ({
 
   app.use(express.json({ limit: bodyLimit }));
   app.use(express.urlencoded({ extended: true, limit: bodyLimit }));
+
+  app.use(compression());
 
   // Create http server
   const httpServer = http.createServer(app);

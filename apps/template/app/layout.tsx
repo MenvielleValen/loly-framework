@@ -1,5 +1,5 @@
 import React from "react";
-import { ThemeProvider } from "@loly/core/components";
+import { ThemeProvider } from "@loly/core/themes";
 import { ThemeSwitch } from "@/components/shared/theme-switch";
 
 export default function RootLayout({

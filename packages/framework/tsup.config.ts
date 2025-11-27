@@ -4,7 +4,9 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     cli: "modules/cli/index.ts",
-    components: "modules/components/index.ts",
+    ['react/components']: "modules/react/components/index.ts",
+    ['react/hooks']: "modules/react/hooks/index.ts",
+    ['react/themes']: "modules/react/themes/index.ts",
     runtime: "modules/runtime/client/index.tsx",
   },
   dts: true,

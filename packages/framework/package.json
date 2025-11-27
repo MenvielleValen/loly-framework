@@ -10,15 +10,25 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./components": {
-      "types": "./dist/components.d.ts",
-      "import": "./dist/components.js",
-      "require": "./dist/components.cjs"
-    },
     "./runtime": {
       "types": "./dist/runtime.d.ts",
       "import": "./dist/runtime.js",
       "require": "./dist/runtime.cjs"
+    },
+    "./components": {
+      "types": "./dist/react/components.d.ts",
+      "import": "./dist/react/components.js",
+      "require": "./dist/react/components.cjs"
+    },
+    "./themes": {
+      "types": "./dist/react/themes.d.ts",
+      "import": "./dist/react/themes.js",
+      "require": "./dist/react/themes.cjs"
+    },
+    "./hooks": {
+      "types": "./dist/react/hooks.d.ts",
+      "import": "./dist/react/hooks.js",
+      "require": "./dist/react/hooks.cjs"
     }
   },
   "scripts": {
@@ -31,6 +41,7 @@
   },
   "dependencies": {
     "@rspack/core": "^1.6.4",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -42,17 +53,18 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "@types/react": "^19.2.6",
-    "@types/react-dom": "^19.2.3",
+    "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
     "chokidar": "^4.0.3",
     "css-loader": "^7.1.2",
     "esbuild": "^0.27.0",
     "postcss-loader": "^8.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "style-loader": "^4.0.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"

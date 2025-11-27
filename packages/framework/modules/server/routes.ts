@@ -91,6 +91,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
       env: isDev ? "dev" : "prod",
       ssgOutDir,
       theme: req.cookies?.theme || "light",
+      projectRoot,
     });
   });
 }

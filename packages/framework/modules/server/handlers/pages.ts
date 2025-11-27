@@ -16,6 +16,7 @@ import { runRouteLoader } from "./loader";
 import { handleDataResponse, handleRedirect, handleNotFound } from "./response";
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
+import { getClientJsPath, getClientCssPath, loadAssetManifest } from "@build/utils";
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
@@ -28,6 +29,7 @@ export interface HandlePageRequestOptions {
   env?: "dev" | "prod";
   ssgOutDir?: string;
   theme?: string;
+  projectRoot?: string;
 }
 
 /**
@@ -55,9 +57,9 @@ export async function handlePageRequest(
   try {
     await handlePageRequestInternal(options);
   } catch (error) {
-    const { errorPage, req, res, routeChunks, theme } = options;
+    const { errorPage, req, res, routeChunks, theme, projectRoot } = options;
     if (errorPage) {
-      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme);
+      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme, projectRoot);
     } else {
       console.error("[framework] Unhandled error:", error);
       if (!res.headersSent) {
@@ -83,7 +85,13 @@ async function handlePageRequestInternal(
     env = "dev",
     ssgOutDir,
     theme,
+    projectRoot,
   } = options;
+
+  // Get asset paths with hashes (if in production and manifest exists)
+  const clientJsPath = projectRoot ? getClientJsPath(projectRoot) : "/static/client.js";
+  const clientCssPath = projectRoot ? getClientCssPath(projectRoot) : "/static/client.css";
+  const assetManifest = projectRoot ? loadAssetManifest(projectRoot) : null;
 
   const isDataReq = isDataRequest(req);
 
@@ -125,6 +133,8 @@ async function handlePageRequestInternal(
         descriptionFallback: "Loly demo",
         chunkHref: null,
         theme,
+        clientJsPath,
+        clientCssPath,
       });
     
       let didError = false;
@@ -192,7 +202,7 @@ async function handlePageRequestInternal(
     } else {
       // For HTML requests, render error page
       if (errorPage) {
-        await renderErrorPageWithStream(errorPage, req, res, error, routeChunks);
+        await renderErrorPageWithStream(errorPage, req, res, error, routeChunks, theme, projectRoot);
         return;
       } else {
         throw error; // Re-throw to be caught by outer try-catch
@@ -222,8 +232,18 @@ async function handlePageRequestInternal(
   const initialData = buildInitialData(urlPath, params, loaderResult);
   const appTree = buildAppTree(route, params, initialData.props);
 
+  // Get chunk href with hash if available
   const chunkName = routeChunks[route.pattern];
-  const chunkHref = chunkName != null ? `${STATIC_PATH}/${chunkName}.js` : null;
+  let chunkHref: string | null = null;
+  if (chunkName != null) {
+    if (assetManifest && assetManifest.chunks[chunkName]) {
+      // Use hashed filename from manifest
+      chunkHref = `${STATIC_PATH}/${assetManifest.chunks[chunkName]}`;
+    } else {
+      // Fallback to non-hashed filename
+      chunkHref = `${STATIC_PATH}/${chunkName}.js`;
+    }
+  }
 
   const documentTree = createDocumentTree({
     appTree,
@@ -233,6 +253,8 @@ async function handlePageRequestInternal(
     descriptionFallback: "Loly demo",
     chunkHref,
     theme,
+    clientJsPath,
+    clientCssPath,
   });
 
   let didError = false;
@@ -253,7 +275,7 @@ async function handlePageRequestInternal(
       console.error("[framework][prod] SSR shell error:", err);
 
       if (!res.headersSent && errorPage) {
-        renderErrorPageWithStream(errorPage, req, res, err, routeChunks);
+        renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot);
       } else if (!res.headersSent) {
         res.statusCode = 500;
         res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -290,6 +312,7 @@ async function renderErrorPageWithStream(
   error: unknown,
   routeChunks: Record<string, string>,
   theme?: string,
+  projectRoot?: string,
 ): Promise<void> {
   try {
     const ctx: ServerContext = {
@@ -306,8 +329,20 @@ async function renderErrorPageWithStream(
     initialData.error = true;
     const appTree = buildAppTree(errorPage, { error: String(error) }, initialData.props);
 
+    // Get asset paths with hashes (if in production and manifest exists)
+    const clientJsPath = projectRoot ? getClientJsPath(projectRoot) : "/static/client.js";
+    const clientCssPath = projectRoot ? getClientCssPath(projectRoot) : "/static/client.css";
+    const assetManifest = projectRoot ? loadAssetManifest(projectRoot) : null;
+
     const chunkName = routeChunks[ERROR_CHUNK_KEY];
-    const chunkHref = chunkName != null ? `${STATIC_PATH}/${chunkName}.js` : null;
+    let chunkHref: string | null = null;
+    if (chunkName != null) {
+      if (assetManifest && assetManifest.chunks[chunkName]) {
+        chunkHref = `${STATIC_PATH}/${assetManifest.chunks[chunkName]}`;
+      } else {
+        chunkHref = `${STATIC_PATH}/${chunkName}.js`;
+      }
+    }
 
     const documentTree = createDocumentTree({
       appTree,
@@ -317,6 +352,8 @@ async function renderErrorPageWithStream(
       descriptionFallback: "An error occurred",
       chunkHref,
       theme,
+      clientJsPath,
+      clientCssPath,
     });
 
     let didError = false;

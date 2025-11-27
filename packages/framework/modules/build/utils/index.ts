@@ -149,3 +149,130 @@ export function copyStaticAssets(projectRoot: string, outDir: string): void {
     }
   }
 }
+
+/**
+ * Asset manifest interface for tracking hashed filenames.
+ */
+export interface AssetManifest {
+  client: {
+    js: string; // e.g., "client.abc123.js"
+    css: string; // e.g., "client.def456.css"
+  };
+  chunks: Record<string, string>; // chunk name -> hashed filename, e.g., "route-root" -> "route-root.xyz789.js"
+}
+
+/**
+ * Generates an asset manifest by scanning the build output directory.
+ * 
+ * Finds files with content hashes and maps them to their logical names.
+ * 
+ * @param outDir - Output directory to scan
+ * @returns Asset manifest with hashed filenames
+ * 
+ * @example
+ * const manifest = generateAssetManifest('/project/.loly/client');
+ * // { client: { js: 'client.abc123.js', css: 'client.def456.css' }, chunks: {...} }
+ */
+export function generateAssetManifest(outDir: string): AssetManifest {
+  const manifest: AssetManifest = {
+    client: {
+      js: "client.js",
+      css: "client.css",
+    },
+    chunks: {},
+  };
+
+  if (!fs.existsSync(outDir)) {
+    return manifest;
+  }
+
+  const files = fs.readdirSync(outDir);
+  
+  // Find client.js (with or without hash)
+  const clientJsMatch = files.find((f) => /^client\.[\w-]+\.js$/.test(f) || f === "client.js");
+  if (clientJsMatch) {
+    manifest.client.js = clientJsMatch;
+  }
+
+  // Find client.css (with or without hash)
+  const clientCssMatch = files.find((f) => /^client\.[\w-]+\.css$/.test(f) || f === "client.css");
+  if (clientCssMatch) {
+    manifest.client.css = clientCssMatch;
+  }
+
+  // Find all chunk files (route-*.js, 0.js, 1.js, etc. with or without hash)
+  // Pattern: route-*.js or numeric chunks like 0.js, 1.js, etc.
+  for (const file of files) {
+    if (!file.endsWith(".js")) continue;
+    
+    // Skip the main client.js file
+    if (file === manifest.client.js) continue;
+    
+    // Match route chunks: route-*.js or route-*.[hash].js
+    const routeMatch = file.match(/^(route-[^.]+)(\.[\w-]+)?\.js$/);
+    if (routeMatch) {
+      const chunkName = routeMatch[1]; // e.g., "route-root"
+      manifest.chunks[chunkName] = file;
+      continue;
+    }
+    
+    // Match numeric chunks: 0.js, 1.js, etc. or 0.[hash].js
+    const numericMatch = file.match(/^(\d+)(\.[\w-]+)?\.js$/);
+    if (numericMatch) {
+      const chunkName = numericMatch[1]; // e.g., "0"
+      manifest.chunks[chunkName] = file;
+    }
+  }
+
+  return manifest;
+}
+
+/**
+ * Loads the asset manifest from the build directory.
+ * 
+ * @param projectRoot - Root directory of the project
+ * @returns Asset manifest or null if not found
+ */
+export function loadAssetManifest(projectRoot: string): AssetManifest | null {
+  const { BUILD_FOLDER_NAME } = require("@constants/globals");
+  const manifestPath = path.join(projectRoot, BUILD_FOLDER_NAME, "asset-manifest.json");
+  
+  if (!fs.existsSync(manifestPath)) {
+    return null;
+  }
+
+  try {
+    const manifest: AssetManifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+    return manifest;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Gets the client JS path with hash from the asset manifest.
+ * Falls back to default path if manifest is not available.
+ * 
+ * @param projectRoot - Root directory of the project
+ * @returns Path to client JS file (e.g., "/static/client.abc123.js")
+ */
+export function getClientJsPath(projectRoot: string): string {
+  const { STATIC_PATH } = require("@constants/globals");
+  const manifest = loadAssetManifest(projectRoot);
+  const filename = manifest?.client.js || "client.js";
+  return `${STATIC_PATH}/${filename}`;
+}
+
+/**
+ * Gets the client CSS path with hash from the asset manifest.
+ * Falls back to default path if manifest is not available.
+ * 
+ * @param projectRoot - Root directory of the project
+ * @returns Path to client CSS file (e.g., "/static/client.def456.css")
+ */
+export function getClientCssPath(projectRoot: string): string {
+  const { STATIC_PATH } = require("@constants/globals");
+  const manifest = loadAssetManifest(projectRoot);
+  const filename = manifest?.client.css || "client.css";
+  return `${STATIC_PATH}/${filename}`;
+}

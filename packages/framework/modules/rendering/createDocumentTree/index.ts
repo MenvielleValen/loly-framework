@@ -5,8 +5,6 @@ import {
   WINDOW_DATA_KEY,
   APP_CONTAINER_ID,
   FAVICON_PATH,
-  CLIENT_CSS_PATH,
-  CLIENT_JS_PATH,
 } from "@constants/globals";
 
 /**
@@ -56,6 +54,8 @@ export function createDocumentTree(options: {
   descriptionFallback?: string;
   chunkHref?: string | null;
   theme?: string;
+  clientJsPath?: string;
+  clientCssPath?: string;
 }): ReactElement {
   const {
     appTree,
@@ -65,6 +65,8 @@ export function createDocumentTree(options: {
     descriptionFallback,
     chunkHref,
     theme,
+    clientJsPath = "/static/client.js",
+    clientCssPath = "/static/client.css",
   } = options;
 
   const metaObj = meta ?? {};
@@ -129,10 +131,10 @@ export function createDocumentTree(options: {
       }),
       React.createElement("link", {
         rel: "stylesheet",
-        href: CLIENT_CSS_PATH,
+        href: clientCssPath,
       }),
       React.createElement("script", {
-        src: CLIENT_JS_PATH,
+        src: clientJsPath,
         defer: true,
       })
     ),

@@ -1,6 +1,9 @@
 import { rspack, type Compiler } from "@rspack/core";
 import { createClientConfig } from "../config/client";
-import { copyStaticAssets } from "../utils";
+import { copyStaticAssets, generateAssetManifest, updateRouteChunksWithHashes } from "../utils";
+import path from "path";
+import fs from "fs";
+import { BUILD_FOLDER_NAME } from "@constants/globals";
 
 export interface ClientBundlerResult {
   outDir: string;
@@ -85,6 +88,16 @@ export function buildClientBundle(
       }
 
       copyStaticAssets(projectRoot, outDir);
+
+      // Generate asset manifest with hashed filenames
+      const assetManifest = generateAssetManifest(outDir);
+      
+      // Save asset manifest
+      const manifestPath = path.join(projectRoot, BUILD_FOLDER_NAME, "asset-manifest.json");
+      fs.writeFileSync(manifestPath, JSON.stringify(assetManifest, null, 2), "utf-8");
+      
+      // Update route-chunks.json with hashed filenames
+      updateRouteChunksWithHashes(projectRoot, assetManifest);
 
       resolve({ outDir });
     });

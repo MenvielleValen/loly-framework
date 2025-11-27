@@ -41,8 +41,8 @@ export function createClientConfig(
     },
     output: {
       path: outDir,
-      filename: "client.js", // Main entry
-      chunkFilename: "[name].js", // Code-split chunks (route-..., 0.js, etc.)
+      filename: mode === "production" ? "client.[contenthash].js" : "client.js", // Main entry
+      chunkFilename: mode === "production" ? "[name].[contenthash].js" : "[name].js", // Code-split chunks (route-..., 0.js, etc.)
       publicPath: `${STATIC_PATH}/`,
     },
     context: projectRoot,
@@ -84,7 +84,7 @@ export function createClientConfig(
         ...publicEnv,
       }),
       new rspack.CssExtractRspackPlugin({
-        filename: "client.css",
+        filename: mode === "production" ? "client.[contenthash].css" : "client.css",
       }),
     ],
     infrastructureLogging: {

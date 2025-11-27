@@ -3,8 +3,8 @@ const { spawn } = require("child_process");
 const args = process.argv.slice(2);
 
 if (args.length === 0) {
-  console.error("Error: debes pasar un comando");
-  console.log("Uso: node ejecutar.js <comando> [argumentos...]");
+  console.error("Error: You must pass a command");
+  console.log("Usage: node init-example.js [start|dev] [app name]");
   process.exit(1);
 }
 
@@ -14,15 +14,14 @@ const command = `pnpm --filter ${app} ${type}`;
 
 console.log(`Exec: ${command}`);
 
-// Ejecutamos el comando
 const proc = spawn(command, [], {
-  stdio: "inherit", // importante: muestra la salida en tiempo real
-  shell: true, // permite usar comandos como "npm", "code .", etc.
+  stdio: "inherit",
+  shell: true,
 });
 
 proc.on("close", (code) => {
   if (code !== 0) {
-    console.error(`El comando falló con código ${code}`);
+    console.error(`The command failed ${code}`);
     process.exit(code);
   }
 });

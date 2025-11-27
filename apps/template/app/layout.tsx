@@ -37,12 +37,6 @@ export default function RootLayout({
               >
                 Ejemplos
               </a>
-              <a
-                href="/blog"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Blog
-              </a>
             </div>
           </div>
 

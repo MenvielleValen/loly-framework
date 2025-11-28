@@ -69,6 +69,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
   await buildStaticPages(projectRoot, routes);
 
   delete process.env.LOLY_BUILD;
+  
+  console.log(`[framework][build] Build completed successfully`);
 }
 
 export { startClientBundler, buildClientBundle } from "./bundler/client";

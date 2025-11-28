@@ -57,6 +57,8 @@ export function tryServeSsgHtml(
     return false;
   }
 
+  console.log(`[framework][ssg] Serving SSG HTML for ${urlPath} from ${ssgHtmlPath}`);
+
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   const stream = fs.createReadStream(ssgHtmlPath, { encoding: "utf-8" });

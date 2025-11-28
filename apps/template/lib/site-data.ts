@@ -359,7 +359,14 @@ export async function getLaunchInsights(): Promise<LaunchInsights> {
 }
 
 export async function getDocsIndex(): Promise<DocSummary[]> {
-  await new Promise((resolve) => setTimeout(resolve, 20))
+  // During build, skip delays to prevent process from hanging
+  if (!process.env.LOLY_BUILD) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 20);
+      // Unref timer so it doesn't keep process alive
+      if (timer.unref) timer.unref();
+    });
+  }
 
   return docsPages.map(({ id, title, summary, minutes, category }) => ({
     id,
@@ -371,7 +378,14 @@ export async function getDocsIndex(): Promise<DocSummary[]> {
 }
 
 export async function getDocById(id: string): Promise<DocPage | undefined> {
-  await new Promise((resolve) => setTimeout(resolve, 10))
+  // During build, skip delays to prevent process from hanging
+  if (!process.env.LOLY_BUILD) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 10);
+      // Unref timer so it doesn't keep process alive
+      if (timer.unref) timer.unref();
+    });
+  }
 
   return docsPages.find((doc) => doc.id === id)
 }
@@ -384,7 +398,14 @@ export type PulseMetrics = {
 }
 
 export async function getLivePulse(): Promise<PulseMetrics> {
-  await new Promise((resolve) => setTimeout(resolve, 25))
+  // During build, skip delays to prevent process from hanging
+  if (!process.env.LOLY_BUILD) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 25);
+      // Unref timer so it doesn't keep process alive
+      if (timer.unref) timer.unref();
+    });
+  }
 
   const regions = ["iad1", "gru1", "mad1", "sfo1"]
   const dominantRegion = regions[Math.floor(Math.random() * regions.length)]

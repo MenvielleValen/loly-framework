@@ -57,8 +57,34 @@ export function loadLoaderForDir(currentDir: string): {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require(file);
+  // Ensure tsx is loaded for TypeScript files during build
+  // tsx automatically reads tsconfig.json from the project root to resolve path aliases
+  if (file.endsWith('.ts') || file.endsWith('.tsx')) {
+    try {
+      // Load tsx if not already loaded - it will handle TypeScript compilation and path resolution
+      require('tsx/cjs');
+    } catch (e) {
+      // tsx might already be loaded, ignore error
+    }
+  }
+
+  let mod;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    mod = require(file);
+  } catch (error) {
+    console.error(
+      `[framework][loader] Error loading server hook from ${file}:`,
+      error
+    );
+    // Return defaults if module fails to load
+    return {
+      middlewares: [],
+      loader: null,
+      dynamic: "auto",
+      generateStaticParams: null,
+    };
+  }
 
   const middlewares: RouteMiddleware[] = Array.isArray(
     mod?.[NAMING.BEFORE_MIDDLEWARES]

@@ -144,6 +144,10 @@ async function run(): Promise<void> {
       };
 
       await buildApp(options);
+      
+      // Force exit to ensure process terminates after build
+      // This prevents hanging due to open handles from loaded modules
+      process.exit(0);
       break;
     }
 

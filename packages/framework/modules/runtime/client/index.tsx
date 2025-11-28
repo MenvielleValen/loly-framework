@@ -75,7 +75,7 @@ function matchRouteClient(
 
     const params: Record<string, string> = {};
     r.paramNames.forEach((name, idx) => {
-      params[name] = match[idx + 1];
+      params[name] = decodeURIComponent(match[idx + 1] || "");
     });
 
     return { route: r, params };
@@ -372,7 +372,16 @@ export function bootstrapClient(
       if (match) {
         initialRoute = match.route;
         initialParams = match.params;
-        initialComponents = await match.route.load();
+        try {
+          initialComponents = await match.route.load();
+        } catch (error) {
+          console.error(`[client] Error loading route components for ${initialUrl}:`, error);
+          // Fallback: try to reload the page
+          window.location.reload();
+          return;
+        }
+      } else {
+        console.warn(`[client] No route match found for ${initialUrl}. Available routes:`, routes.map(r => r.pattern));
       }
     }
 

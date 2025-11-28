@@ -45,12 +45,11 @@ export function setupRoutes(options: SetupRoutesOptions): void {
   // Cache route chunks - they don't change during runtime
   const routeChunks = routeLoader.loadRouteChunks();
 
-  const ssgOutDir = isDev
-    ? undefined
-    : path.join(
-        config ? getBuildDir(projectRoot, config) : path.join(projectRoot, BUILD_FOLDER_NAME),
-        "ssg"
-      );
+  // SSG directory - available in both dev and prod if files exist
+  const ssgOutDir = path.join(
+    config ? getBuildDir(projectRoot, config) : path.join(projectRoot, BUILD_FOLDER_NAME),
+    "ssg"
+  );
 
   app.all("/api/*", async (req, res) => {
     const apiRoutes = isDev && getRoutes

@@ -37,15 +37,49 @@ export async function buildStaticPages(
       allParams = [{}];
     } else {
       if (!route.generateStaticParams) {
+        console.warn(
+          `[framework][ssg] Route ${route.pattern} is marked as force-static but has no generateStaticParams function. Skipping.`
+        );
         continue;
       }
-      const sp = await route.generateStaticParams();
-      allParams = sp;
+      
+      try {
+        console.log(`[framework][ssg] Generating static params for route: ${route.pattern}`);
+        
+        // Add timeout to detect hanging
+        let timeoutId: NodeJS.Timeout | null = null;
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error(`generateStaticParams for route ${route.pattern} timed out after 30 seconds`));
+          }, 30000);
+        });
+        
+        const sp = await Promise.race([
+          route.generateStaticParams(),
+          timeoutPromise
+        ]) as Array<Record<string, string>>;
+        
+        // Clear timeout if it's still pending
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        
+        allParams = sp;
+        console.log(`[framework][ssg] Generated ${sp.length} static params for route: ${route.pattern}`);
+      } catch (error) {
+        console.error(
+          `[framework][ssg] Error generating static params for route ${route.pattern}:`,
+          error
+        );
+        throw error;
+      }
     }
     for (const params of allParams) {
       const urlPath = buildPathFromPattern(route.pattern, params);
       await renderStaticRoute(projectRoot, ssgOutDir, route, urlPath, params);
     }
   }
+  
+  console.log(`[framework][ssg] Finished building all static pages`);
 }
 

@@ -26,18 +26,20 @@ export const ThemeProvider = ({
 }) => {
   const { message: themeMessage, sendMessage } = useBroadcastChannel('theme_channel');
 
-  // Initialize theme from multiple sources (priority order):
-  // 1. initialTheme prop (from server)
-  // 2. window.__FW_DATA__.theme (from SSR)
-  // 3. cookie
-  // 4. default "light"
+  // Initialize theme - priority: prop > window.__FW_DATA__ (from server) > cookie > default
   const getInitialTheme = (): string => {
+    // 1. Use prop if provided (highest priority - explicitly passed from layout)
     if (initialTheme) return initialTheme;
     
+    // 2. Use window.__FW_DATA__ from SSR (server already read cookie and injected it)
     if (typeof window !== "undefined") {
       const windowData = (window as any).__FW_DATA__;
       if (windowData?.theme) return windowData.theme;
-      
+    }
+    
+    // 3. Fallback to cookie (only if window.__FW_DATA__ not available yet)
+    // This should rarely happen, but covers edge cases
+    if (typeof window !== "undefined") {
       const cookieTheme = getCookie("theme");
       if (cookieTheme) return cookieTheme;
     }
@@ -46,14 +48,6 @@ export const ThemeProvider = ({
   };
 
   const [theme, setTheme] = useState<string>(getInitialTheme);
-
-  // Sync with cookie on mount (in case cookie changed externally)
-  useEffect(() => {
-    const cookieTheme = getCookie("theme");
-    if (cookieTheme && cookieTheme !== theme) {
-      setTheme(cookieTheme);
-    }
-  }, []);
 
   useEffect(() => {
     if (!themeMessage) return;

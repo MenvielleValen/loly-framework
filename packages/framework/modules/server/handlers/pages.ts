@@ -126,7 +126,11 @@ async function handlePageRequestInternal(
         locals: {},
       };
 
-      const loaderResult = await runRouteLoader(notFoundPage, ctx);
+      let loaderResult = await runRouteLoader(notFoundPage, ctx);
+      // Automatically inject theme from server into loaderResult if not already set
+      if (!loaderResult.theme) {
+        loaderResult.theme = theme;
+      }
     
       const initialData = buildInitialData(urlPath, {}, loaderResult);
       const appTree = buildAppTree(notFoundPage, {}, initialData.props);
@@ -207,6 +211,10 @@ async function handlePageRequestInternal(
   let loaderResult: LoaderResult;
   try {
     loaderResult = await runRouteLoader(route, ctx);
+    // Automatically inject theme from server into loaderResult if not already set
+    if (!loaderResult.theme) {
+      loaderResult.theme = theme;
+    }
   } catch (error) {
     // If loader throws, handle error appropriately
     if (isDataReq) {
@@ -347,7 +355,11 @@ async function renderErrorPageWithStream(
       locals: { error },
     };
 
-    const loaderResult = await runRouteLoader(errorPage, ctx);
+    let loaderResult = await runRouteLoader(errorPage, ctx);
+    // Automatically inject theme from server into loaderResult if not already set
+    if (!loaderResult.theme && theme) {
+      loaderResult.theme = theme;
+    }
 
     const initialData = buildInitialData(req.path, { error: String(error) }, loaderResult);
     initialData.error = true;
@@ -361,7 +373,7 @@ async function renderErrorPageWithStream(
         message: String(error),
         props: initialData.props,
         metadata: loaderResult.metadata ?? null,
-        theme: theme ?? null,
+        theme: loaderResult.theme ?? theme ?? null,
       }));
       return;
     }

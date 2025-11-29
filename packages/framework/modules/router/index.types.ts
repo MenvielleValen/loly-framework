@@ -46,6 +46,7 @@ export interface LoaderResult {
 
   metadata?: PageMetadata | null;
   className?: string;
+  theme?: string;
 }
 
 export type ServerLoader = (ctx: ServerContext) => Promise<LoaderResult>;

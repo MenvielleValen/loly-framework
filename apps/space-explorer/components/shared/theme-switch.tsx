@@ -4,10 +4,10 @@ import { Switch } from "@/components/ui/switch";
 export const ThemeSwitch = () => {
   const { theme, handleThemeChange } = useTheme();
 
-  const handleSwitch = () => {
-    handleThemeChange(theme === "light" ? "dark" : "light");
+  const handleSwitch = (checked: boolean) => {
+    handleThemeChange(checked ? "dark" : "light");
   };
 
-  return <Switch onClick={handleSwitch} />;
+  return <Switch checked={theme === "dark"} onCheckedChange={handleSwitch} />;
 };
 

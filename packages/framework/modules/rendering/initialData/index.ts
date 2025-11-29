@@ -14,10 +14,16 @@ export function buildInitialData(
   params: Record<string, string>,
   loaderResult: LoaderResult,
 ): InitialData {
+  // Include theme in props so it's available to layouts and pages
+  const props = {
+    ...(loaderResult.props ?? {}),
+    ...(loaderResult.theme ? { theme: loaderResult.theme } : {}),
+  };
+  
   return {
     pathname: urlPath,
     params,
-    props: loaderResult.props ?? {},
+    props,
     metadata: loaderResult.metadata ?? null,
     className: loaderResult.className ?? "",
     error: false,

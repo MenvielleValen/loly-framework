@@ -32,7 +32,7 @@ export function handleDataResponse(
     JSON.stringify({
       props: loaderResult.props ?? {},
       metadata: loaderResult.metadata ?? null,
-      theme: theme ?? null,
+      theme: loaderResult.theme ?? theme ?? null,
     })
   );
 }

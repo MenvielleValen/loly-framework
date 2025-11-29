@@ -13,8 +13,6 @@ import type {
   PulseMetrics,
 } from "@/lib/site-data";
 import { ArrowUpRight, Sparkles, Terminal } from "lucide-react";
-import { useEffect } from "react";
-
 
 type HomePageProps = {
   data: LaunchInsights;
@@ -30,16 +28,6 @@ export default function HomePage({
   const { hero, metrics, release, features, launchChecklist, timeline, automation, streamingPreview } =
     data;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const response = await fetch("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap");
-      const data = await response.json();
-      console.log(data);
-    };
-
-    fetchData();
-  }, []);
-
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="relative overflow-hidden border-b border-border">
@@ -52,7 +40,7 @@ export default function HomePage({
             </div>
             <div className="space-y-6">
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-                {hero.title} es{" "} aaaaaaaaaaaaaaaaaaaaaaaa
+                {hero.title} es{" "}
                 <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                   {hero.highlight}
                 </span>

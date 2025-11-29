@@ -5,5 +5,5 @@ dist
 IMPROVEMENT_PLAN.md
 IMPROVEMENTS_COMPLETED.md
 REFACTORING_SUMMARY.md
-loly-core*
 docs
+*.tgz

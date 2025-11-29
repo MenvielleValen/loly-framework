@@ -64,12 +64,18 @@ export interface Astronaut {
 
 // NASA Astronomy Picture of the Day
 export async function getNASAPOD(date?: string): Promise<NASAPOD> {
-  const url = date
-    ? `${NASA_BASE}/planetary/apod?api_key=${NASA_API_KEY}&date=${date}`
-    : `${NASA_BASE}/planetary/apod?api_key=${NASA_API_KEY}`;
+  try {
+    const url = date
+      ? `${NASA_BASE}/planetary/apod?api_key=${NASA_API_KEY}&date=${date}`
+      : `${NASA_BASE}/planetary/apod?api_key=${NASA_API_KEY}`;
 
-  const response = await axios.get<NASAPOD>(url);
-  return response.data;
+    const response = await axios.get<NASAPOD>(url);
+
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching NASA APOD:", error);
+    throw error;
+  }
 }
 
 // SpaceX Launches
@@ -88,9 +94,13 @@ export async function getSpaceXLaunches(limit = 10): Promise<SpaceXLaunch[]> {
   return response.data.docs || [];
 }
 
-export async function getSpaceXLaunch(id: string): Promise<SpaceXLaunch | null> {
+export async function getSpaceXLaunch(
+  id: string
+): Promise<SpaceXLaunch | null> {
   try {
-    const response = await axios.get<SpaceXLaunch>(`${SPACEX_BASE}/launches/${id}`);
+    const response = await axios.get<SpaceXLaunch>(
+      `${SPACEX_BASE}/launches/${id}`
+    );
     return response.data;
   } catch {
     return null;
@@ -102,7 +112,8 @@ export const PLANETS: Planet[] = [
   {
     id: "mercury",
     name: "Mercury",
-    description: "The smallest planet in our solar system and closest to the Sun.",
+    description:
+      "The smallest planet in our solar system and closest to the Sun.",
     distanceFromSun: "57.9 million km",
     diameter: "4,879 km",
     mass: "3.3 × 10²³ kg",
@@ -113,7 +124,8 @@ export const PLANETS: Planet[] = [
   {
     id: "venus",
     name: "Venus",
-    description: "The hottest planet in our solar system, shrouded in thick clouds.",
+    description:
+      "The hottest planet in our solar system, shrouded in thick clouds.",
     distanceFromSun: "108.2 million km",
     diameter: "12,104 km",
     mass: "4.87 × 10²⁴ kg",
@@ -248,4 +260,3 @@ export function getAstronaut(id: string): Astronaut | null {
 export function getAllAstronauts(): Astronaut[] {
   return ASTRONAUTS;
 }
-

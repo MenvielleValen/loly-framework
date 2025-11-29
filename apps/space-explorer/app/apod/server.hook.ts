@@ -5,30 +5,29 @@ import { getNASAPOD } from "@/lib/space-api";
 export const dynamic = "force-dynamic" as const;
 
 export const getServerSideProps: ServerLoader = async (ctx: any) => {
-  const date = ctx.query.date as string | undefined;
-  const apod = await getNASAPOD(date);
+  const apod = await getNASAPOD('2025-11-29');
 
   return {
     props: {
       apod,
     },
     metadata: {
-      title: `${apod.title} | APOD | Space Explorer`,
+      title: `${apod?.title} | APOD | Space Explorer`,
       description: apod.explanation.substring(0, 160),
       metaTags: [
         {
           property: "og:title",
-          content: `${apod.title} | APOD`,
+          content: `${apod?.title} | APOD`,
         },
         {
           property: "og:description",
-          content: apod.explanation.substring(0, 160),
+          content: apod?.explanation.substring(0, 160),
         },
-        ...(apod.media_type === "image"
+        ...(apod?.media_type === "image"
           ? [
               {
                 property: "og:image",
-                content: apod.hdurl || apod.url,
+                content: apod?.hdurl || apod?.url,
               },
             ]
           : []),

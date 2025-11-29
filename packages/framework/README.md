@@ -172,7 +172,7 @@ export default function BlogPost() {
 
 ### Layouts
 
-Create nested layouts by adding `layout.tsx` files:
+Create nested layouts by adding `layout.tsx` files. The framework automatically generates the `<html>`, `<head>`, and `<body>` tags, so your layouts should only return content:
 
 ```tsx
 // app/layout.tsx (Root layout)
@@ -182,20 +182,18 @@ export default function RootLayout({
   children: React.ReactNode 
 }) {
   return (
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </head>
-      <body>
-        <nav>Navigation</nav>
-        <main>{children}</main>
-        <footer>Footer</footer>
-      </body>
-    </html>
+    <div className="app-container">
+      <nav>Navigation</nav>
+      <main>{children}</main>
+      <footer>Footer</footer>
+    </div>
   );
 }
+```
 
+**Nested Layouts**
+
+```tsx
 // app/blog/layout.tsx (Blog-specific layout)
 export default function BlogLayout({ 
   children 
@@ -210,6 +208,12 @@ export default function BlogLayout({
   );
 }
 ```
+
+**Note:** The framework automatically handles:
+- HTML document structure (`<html>`, `<head>`, `<body>`)
+- Meta tags (title, description, charset, viewport)
+- Required scripts (client.js, initial data)
+- App container for hydration
 
 ---
 

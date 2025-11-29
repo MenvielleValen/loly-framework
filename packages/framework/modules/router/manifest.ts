@@ -267,6 +267,7 @@ export function writeClientBoostrapManifest(projectRoot: string): void {
   lines.push(`    routes,`);
   lines.push(`    type ClientRouteLoaded,`);
   lines.push(`    notFoundRoute,`);
+  lines.push(`    errorRoute,`);
   lines.push(`} from "./routes-client";`);
   lines.push("");
 
@@ -274,7 +275,7 @@ export function writeClientBoostrapManifest(projectRoot: string): void {
     `import { bootstrapClient } from "@loly/core/runtime"`
   );
   lines.push("");
-  lines.push("bootstrapClient(routes as ClientRouteLoaded[], notFoundRoute);");
+  lines.push("bootstrapClient(routes as ClientRouteLoaded[], notFoundRoute, errorRoute);");
 
   fs.writeFileSync(manifestPath, lines.join("\n"), "utf-8");
 }

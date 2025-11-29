@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { hydrateRoot } from "react-dom/client";
 
 // Client-side constants (hardcoded to avoid alias resolution issues in Rspack)
-const WINDOW_DATA_KEY = '__FW_DATA__';
-const APP_CONTAINER_ID = '__app';
+const WINDOW_DATA_KEY = "__FW_DATA__";
+const APP_CONTAINER_ID = "__app";
 
 type InitialData = {
   pathname: string;
@@ -32,6 +32,11 @@ export type ClientRouteLoaded = {
   load: () => Promise<ClientLoadedComponents>;
 };
 
+export type ClientRouteMatch = {
+  route: ClientRouteLoaded;
+  params: Record<string, string>;
+};
+
 function buildClientRegexFromPattern(pattern: string): RegExp {
   const segments = pattern.split("/").filter(Boolean);
   const regexParts: string[] = [];
@@ -50,11 +55,13 @@ function buildClientRegexFromPattern(pattern: string): RegExp {
       continue;
     }
 
+    // dynamic [id]
     if (seg.startsWith("[") && seg.endsWith("]")) {
       regexParts.push("([^/]+)");
       continue;
     }
 
+    // static segment
     const escaped = seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     regexParts.push(escaped);
   }
@@ -66,7 +73,7 @@ function buildClientRegexFromPattern(pattern: string): RegExp {
 function matchRouteClient(
   pathWithSearch: string,
   routes: ClientRouteLoaded[]
-): { route: ClientRouteLoaded; params: Record<string, string> } | null {
+): ClientRouteMatch | null {
   const [pathname] = pathWithSearch.split("?");
   for (const r of routes) {
     const regex = buildClientRegexFromPattern(r.pattern);
@@ -115,6 +122,10 @@ type RouteViewState = {
 
 function RouterView({ state }: { state: RouteViewState }) {
   if (!state.route) {
+    // Don't show 404 if we're waiting for components to load
+    if (state.components === null) {
+      return null;
+    }
     return <h1>404 - Route not found</h1>;
   }
 
@@ -146,32 +157,13 @@ interface AppShellProps {
   errorRoute: ClientRouteLoaded | null;
 }
 
-function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellProps) {
-  // Check if initial state indicates an error
-  const initialData = (window as any)[WINDOW_DATA_KEY] as any;
-  const hasError = initialData?.error === true;
-  
-  // If error, use error route instead
-  const effectiveInitialState = hasError && errorRoute
-    ? {
-        url: initialState.url,
-        route: errorRoute,
-        params: initialState.params,
-        components: null,
-        props: initialState.props,
-      }
-    : initialState;
-
-  const [state, setState] = useState<RouteViewState>(effectiveInitialState);
-  
-  // Load error route components if needed
-  useEffect(() => {
-    if (hasError && errorRoute && !state.components) {
-      errorRoute.load().then((components) => {
-        setState((prev) => ({ ...prev, components }));
-      });
-    }
-  }, [hasError, errorRoute, state.components]);
+function AppShell({
+  initialState,
+  routes,
+  notFoundRoute,
+  errorRoute,
+}: AppShellProps) {
+  const [state, setState] = useState<RouteViewState>(initialState);
 
   useEffect(() => {
     async function navigate(nextUrl: string) {
@@ -186,8 +178,79 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
           }
         );
 
+        let json: any = {};
+        try {
+          const text = await res.text();
+          if (text) {
+            json = JSON.parse(text);
+          }
+        } catch (parseError) {
+          // Si falla el parseo y además no es OK, hacemos fallback a full reload
+          if (!res.ok) {
+            console.error(
+              "[client] Failed to parse response as JSON:",
+              parseError
+            );
+            window.location.href = nextUrl;
+            return;
+          }
+        }
+
+        // Manejo de error explícito en payload
+        if (json && json.error) {
+          console.log("[client] Error detected in response:", json);
+
+          if (errorRoute) {
+            try {
+              const components = await errorRoute.load();
+
+              // Marcamos flags en window para mantener estado consistente
+              (window as any)[WINDOW_DATA_KEY] = {
+                pathname: nextUrl,
+                params: json.params || {},
+                props: json.props || {
+                  error: json.message || "An error occurred",
+                },
+                metadata: json.metadata ?? null,
+                theme:
+                  json.theme ??
+                  (window as any)[WINDOW_DATA_KEY]?.theme ??
+                  null,
+                notFound: false,
+                error: true,
+              };
+
+              setState({
+                url: nextUrl,
+                route: errorRoute,
+                params: json.params || {},
+                components,
+                props:
+                  json.props || {
+                    error: json.message || "An error occurred",
+                  },
+              });
+              return;
+            } catch (loadError) {
+              console.error(
+                "[client] Error loading error route components:",
+                loadError
+              );
+              window.location.href = nextUrl;
+              return;
+            }
+          } else {
+            console.warn(
+              "[client] Error route not available, reloading page.",
+              errorRoute
+            );
+            window.location.href = nextUrl;
+            return;
+          }
+        }
+
+        // Manejo de respuestas no-OK sin error payload explícito
         if (!res.ok) {
-          const json = await res.json().catch(() => ({} as any));
           if (json && (json as any).redirect) {
             window.location.href = (json as any).redirect.destination;
             return;
@@ -196,30 +259,26 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
           return;
         }
 
-        const json = await res.json();
-
-        if (json.error) {
-          if (errorRoute) {
-            const components = await errorRoute.load();
-            setState({
-              url: nextUrl,
-              route: errorRoute,
-              params: json.params || {},
-              components,
-              props: json.props || { error: json.message || "An error occurred" },
-            });
-          } else {
-            window.location.href = nextUrl;
-          }
-          return;
-        }
-
+        // Redirección vía JSON
         if (json.redirect) {
           window.location.href = json.redirect.destination;
           return;
         }
 
+        // Manejo de notFound
         if (json.notFound) {
+          // Actualizamos flags globales
+          (window as any)[WINDOW_DATA_KEY] = {
+            pathname: nextUrl,
+            params: {},
+            props: json.props ?? {},
+            metadata: json.metadata ?? null,
+            theme:
+              json.theme ?? (window as any)[WINDOW_DATA_KEY]?.theme ?? null,
+            notFound: true,
+            error: false,
+          };
+
           if (notFoundRoute) {
             const components = await notFoundRoute.load();
             setState({
@@ -227,7 +286,7 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
               route: notFoundRoute,
               params: {},
               components,
-              props: {},
+              props: json.props ?? {},
             });
           } else {
             setState({
@@ -241,23 +300,28 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
           return;
         }
 
+        // Ruta normal
         applyMetadata(json.metadata ?? null);
-
         const newProps = json.props ?? {};
 
         const matched = matchRouteClient(nextUrl, routes);
 
         if (!matched) {
+          // No tenemos definición de ruta en el cliente → fallback a full reload
           window.location.href = nextUrl;
           return;
         }
 
+        // Limpiamos flags globales de error/notFound
         (window as any)[WINDOW_DATA_KEY] = {
           pathname: nextUrl,
           params: matched.params,
           props: newProps,
           metadata: json.metadata ?? null,
-          theme: json.theme ?? (window as any)[WINDOW_DATA_KEY]?.theme ?? null,
+          theme:
+            json.theme ?? (window as any)[WINDOW_DATA_KEY]?.theme ?? null,
+          notFound: false,
+          error: false,
         };
 
         const components = await matched.route.load();
@@ -265,7 +329,7 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
         window.scrollTo({
           top: 0,
           behavior: "smooth",
-        })
+        });
 
         setState({
           url: nextUrl,
@@ -321,9 +385,14 @@ function AppShell({ initialState, routes, notFoundRoute, errorRoute }: AppShellP
       window.removeEventListener("click", handleClick);
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [routes, notFoundRoute]);
+  }, [routes, notFoundRoute, errorRoute]);
 
-  return <RouterView state={state} />;
+  const isError = state.route === errorRoute;
+  const isNotFound = state.route === notFoundRoute;
+  const routeType = isError ? "error" : isNotFound ? "notfound" : "normal";
+  const routeKey = `${state.url}:${routeType}`;
+
+  return <RouterView key={routeKey} state={state} />;
 }
 
 /**
@@ -338,10 +407,10 @@ export function bootstrapClient(
   notFoundRoute: ClientRouteLoaded | null,
   errorRoute: ClientRouteLoaded | null = null
 ) {
-
   (async function bootstrap() {
     const container = document.getElementById(APP_CONTAINER_ID);
-    const initialData: InitialData | null = (window as any)[WINDOW_DATA_KEY] ?? null;
+    const initialData: InitialData | null =
+      ((window as any)[WINDOW_DATA_KEY] as InitialData | undefined) ?? null;
 
     if (!container) {
       console.error(`Container #${APP_CONTAINER_ID} not found for hydration`);
@@ -356,33 +425,43 @@ export function bootstrapClient(
     let initialParams: Record<string, string> = {};
     let initialComponents: ClientLoadedComponents | null = null;
 
-    if (isInitialError && errorRoute) {
-      // If error, use error route
-      initialRoute = errorRoute;
-      initialParams = initialData?.params ?? {};
-      initialComponents = await errorRoute.load();
-    } else if (isInitialNotFound && notFoundRoute) {
-      // If not found, use not-found route
-      initialRoute = notFoundRoute;
-      initialParams = {};
-      initialComponents = await notFoundRoute.load();
-    } else if (!isInitialNotFound && !isInitialError) {
-      // Normal route
-      const match = matchRouteClient(initialUrl, routes);
-      if (match) {
-        initialRoute = match.route;
-        initialParams = match.params;
-        try {
-          initialComponents = await match.route.load();
-        } catch (error) {
-          console.error(`[client] Error loading route components for ${initialUrl}:`, error);
-          // Fallback: try to reload the page
-          window.location.reload();
-          return;
-        }
+    try {
+      if (isInitialError && errorRoute) {
+        initialRoute = errorRoute;
+        initialParams = initialData?.params ?? {};
+        initialComponents = await errorRoute.load();
+      } else if (isInitialNotFound && notFoundRoute) {
+        initialRoute = notFoundRoute;
+        initialParams = {};
+        initialComponents = await notFoundRoute.load();
       } else {
-        console.warn(`[client] No route match found for ${initialUrl}. Available routes:`, routes.map(r => r.pattern));
+        // Ruta "normal"
+        const match = matchRouteClient(initialUrl, routes);
+        if (match) {
+          initialRoute = match.route;
+          initialParams = match.params;
+          initialComponents = await match.route.load();
+        } else if (notFoundRoute) {
+          // Si no matchea ninguna pero tenemos notFoundRoute, arrancamos en 404
+          initialRoute = notFoundRoute;
+          initialParams = {};
+          initialComponents = await notFoundRoute.load();
+        } else {
+          console.warn(
+            `[client] No route match found for ${initialUrl}. Available routes:`,
+            routes.map((r) => r.pattern)
+          );
+        }
       }
+    } catch (error) {
+      console.error(
+        "[client] Error loading initial route components for",
+        initialUrl,
+        error
+      );
+      // Fallback fuerte: recargar
+      window.location.reload();
+      return;
     }
 
     if (initialData?.metadata) {

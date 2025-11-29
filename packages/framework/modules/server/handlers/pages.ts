@@ -337,6 +337,8 @@ async function renderErrorPageWithStream(
   projectRoot?: string,
 ): Promise<void> {
   try {
+    const isDataReq = isDataRequest(req);
+    
     const ctx: ServerContext = {
       req,
       res,
@@ -349,6 +351,20 @@ async function renderErrorPageWithStream(
 
     const initialData = buildInitialData(req.path, { error: String(error) }, loaderResult);
     initialData.error = true;
+    
+    // If this is a data request, return JSON instead of HTML
+    if (isDataReq) {
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify({
+        error: true,
+        message: String(error),
+        props: initialData.props,
+        metadata: loaderResult.metadata ?? null,
+        theme: theme ?? null,
+      }));
+      return;
+    }
     const appTree = buildAppTree(errorPage, { error: String(error) }, initialData.props);
 
     // Get asset paths with hashes (if in production and manifest exists)

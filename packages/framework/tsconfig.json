@@ -16,6 +16,8 @@
       "@server/*": ["modules/server/*"],
       "@font/*": ["modules/font/*"],
       "@cache/*": ["modules/cache/*"],
+      "@security/*": ["modules/security/*"],
+      "@validation/*": ["modules/validation/*"],
     }
   },
   "include": ["src", "constants", "modules"]

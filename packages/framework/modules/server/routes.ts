@@ -4,6 +4,7 @@ import { handleApiRequest, handlePageRequest } from "./handlers";
 import { RouteLoader } from "@router/index";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
 import { getBuildDir, type FrameworkConfig } from "@src/config";
+import { getServerConfig } from "@server/config";
 import path from "path";
 
 export interface SetupRoutesOptions {
@@ -56,12 +57,17 @@ export function setupRoutes(options: SetupRoutesOptions): void {
       ? getRoutes().apiRoutes
       : initialApiRoutes;
 
+    // Get rate limit configuration for auto-application
+    const serverConfig = await getServerConfig(projectRoot);
+    const strictPatterns = serverConfig.rateLimit?.strictPatterns || [];
+
     await handleApiRequest({
       apiRoutes,
       urlPath: req.path,
       req,
       res,
       env: isDev ? "dev" : "prod",
+      strictRateLimitPatterns: strictPatterns,
     });
   });
 

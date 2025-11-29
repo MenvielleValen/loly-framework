@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { ApiContext, ApiRoute, matchApiRoute } from "@router/index";
+import { sanitizeParams, sanitizeQuery } from "@security/sanitize";
+import { getAutoRateLimiter } from "@server/middleware/auto-rate-limit";
 
 export interface HandleApiRequestOptions {
   apiRoutes: ApiRoute[];
@@ -7,6 +9,7 @@ export interface HandleApiRequestOptions {
   req: Request;
   res: Response;
   env?: "dev" | "prod";
+  strictRateLimitPatterns?: string[];
 }
 
 /**
@@ -37,23 +40,70 @@ export async function handleApiRequest(
     return;
   }
 
+  // Security: Sanitize route parameters and query parameters
+  const sanitizedParams = sanitizeParams(params);
+  const sanitizedQuery = sanitizeQuery(req.query as Record<string, any>);
+
   const ctx: ApiContext = {
     req,
     res,
     Response: (body: any = {}, status = 200) => res.status(status).json(body),
     NotFound: (body: any = {}) => res.status(404).json(body),
-    params,
+    params: sanitizedParams,
     pathname: urlPath,
     locals: {},
   };
 
+  // Update req.query with sanitized values
+  req.query = sanitizedQuery as any;
+
   try {
+    // Auto-apply rate limiting if route matches strict patterns and doesn't already have one
+    const autoRateLimiter = getAutoRateLimiter(
+      route,
+      options.strictRateLimitPatterns
+    );
+    
+    if (autoRateLimiter) {
+      console.log(`[api] Auto rate limiter applied to ${route.pattern}, patterns:`, options.strictRateLimitPatterns);
+    }
+
     const globalMws = route.middlewares ?? [];
     const perMethodMws = route.methodMiddlewares?.[method] ?? [];
-    const chain = [...globalMws, ...perMethodMws];
+    
+    // Prepend auto rate limiter if applicable
+    const chain = autoRateLimiter 
+      ? [autoRateLimiter, ...globalMws, ...perMethodMws]
+      : [...globalMws, ...perMethodMws];
 
     for (const mw of chain) {
-      await Promise.resolve(mw(ctx, async () => {}));
+      // Check if this is an express-rate-limit middleware (expects req, res, next)
+      // express-rate-limit middlewares have specific properties
+      const isExpressRateLimit = mw && typeof mw === 'function' && 
+        ((mw as any).skip || (mw as any).resetKey || mw.name?.includes('rateLimit'));
+      
+      if (isExpressRateLimit) {
+        // Call express-rate-limit middleware with (req, res, next)
+        await new Promise<void>((resolve, reject) => {
+          const next = (err?: any) => {
+            if (err) reject(err);
+            else resolve();
+          };
+          try {
+            const result = mw(req, res, next);
+            // If it returns a promise, wait for it
+            if (result && typeof result.then === 'function') {
+              result.then(() => resolve()).catch(reject);
+            }
+          } catch (err) {
+            reject(err);
+          }
+        });
+      } else {
+        // Call framework middleware with (ctx, next)
+        await Promise.resolve(mw(ctx, async () => {}));
+      }
+      
       if (res.headersSent) {
         return;
       }

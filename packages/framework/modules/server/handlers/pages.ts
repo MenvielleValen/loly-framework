@@ -17,6 +17,7 @@ import { handleDataResponse, handleRedirect, handleNotFound } from "./response";
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
 import { getClientJsPath, getClientCssPath, loadAssetManifest } from "@build/utils";
+import { sanitizeParams } from "@security/sanitize";
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
@@ -125,6 +126,9 @@ async function handlePageRequestInternal(
       const appTree = buildAppTree(notFoundPage, {}, initialData.props);
       initialData.notFound = true;
     
+      // Get nonce from res.locals (set by Helmet for CSP)
+      const nonce = (res.locals as any).nonce || undefined;
+
       const documentTree = createDocumentTree({
         appTree,
         initialData,
@@ -135,6 +139,7 @@ async function handlePageRequestInternal(
         theme,
         clientJsPath,
         clientCssPath,
+        nonce,
       });
     
       let didError = false;
@@ -175,10 +180,13 @@ async function handlePageRequestInternal(
 
   const { route, params } = matched;
 
+  // Security: Sanitize route parameters
+  const sanitizedParams = sanitizeParams(params);
+
   const ctx: ServerContext = {
     req,
     res,
-    params,
+    params: sanitizedParams,
     pathname: urlPath,
     locals: {},
   };
@@ -245,6 +253,9 @@ async function handlePageRequestInternal(
     }
   }
 
+  // Get nonce from res.locals (set by Helmet for CSP)
+  const nonce = (res.locals as any).nonce || undefined;
+
   const documentTree = createDocumentTree({
     appTree,
     initialData,
@@ -255,6 +266,7 @@ async function handlePageRequestInternal(
     theme,
     clientJsPath,
     clientCssPath,
+    nonce,
   });
 
   let didError = false;
@@ -344,6 +356,9 @@ async function renderErrorPageWithStream(
       }
     }
 
+    // Get nonce from res.locals (set by Helmet for CSP)
+    const nonce = (res.locals as any).nonce || undefined;
+
     const documentTree = createDocumentTree({
       appTree,
       initialData,
@@ -354,6 +369,7 @@ async function renderErrorPageWithStream(
       theme,
       clientJsPath,
       clientCssPath,
+      nonce,
     });
 
     let didError = false;

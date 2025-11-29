@@ -14,6 +14,7 @@ A modern, full-stack React framework with file-based routing, server-side render
 - 📦 **Rspack** - Lightning-fast bundling powered by Rust
 - 🎯 **Middleware Support** - Route-level and API middleware
 - 📊 **Metadata API** - Dynamic SEO and meta tags
+- 🔒 **Security Built-in** - Rate limiting, CORS, CSP, input sanitization, and validation
 
 ## Getting Started
 
@@ -244,6 +245,145 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 - `"force-dynamic"` - Always use SSR
 - `"auto"` - Default, framework decides
 
+## Security
+
+Loly includes built-in security features to protect your application:
+
+### Rate Limiting
+
+Rate limiting is enabled by default to prevent abuse. The framework automatically applies:
+
+- **Global rate limiting** to all routes (100 requests per 15 minutes by default)
+- **Strict rate limiting** automatically to sensitive routes (auth, login, register, etc.)
+
+Configure it in `loly.config.ts`:
+
+```tsx
+// loly.config.ts
+export const config = (env: string) => {
+  return {
+    rateLimit: {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 100, // Limit each IP to 100 requests per window
+      apiMax: 100, // API-specific limit
+      strictMax: 5, // Strict limit for sensitive endpoints
+      // Auto-apply strict rate limiting to routes matching these patterns
+      strictPatterns: [
+        '/api/auth/**',
+        '/api/login/**',
+        '/api/register/**',
+        '/api/password/**',
+        // Add your own patterns here
+      ],
+    },
+  };
+};
+```
+
+**Automatic Rate Limiting:** Routes matching the `strictPatterns` automatically get strict rate limiting (5 requests per 15 minutes). You don't need to add it manually!
+
+**Manual Rate Limiting:** If you need custom rate limiting for specific endpoints, you can still add it manually:
+
+```tsx
+import { strictRateLimiter, lenientRateLimiter } from "@loly/core";
+
+// Apply custom rate limiting to a specific endpoint
+export const beforeApi = [strictRateLimiter];
+```
+
+### CORS Configuration
+
+Configure CORS origins in `loly.config.ts`:
+
+```tsx
+// loly.config.ts
+export const config = (env: string) => {
+  return {
+    corsOrigin: env === "production" 
+      ? ["https://yourdomain.com"]
+      : true, // Allow all in development
+  };
+};
+```
+
+**⚠️ Security Note:** Never use `'*'` as CORS origin in production. Always specify allowed origins explicitly.
+
+### Content Security Policy (CSP)
+
+CSP is enabled by default with sensible defaults. Customize it in `loly.config.ts`:
+
+```tsx
+// loly.config.ts
+export const config = (env: string) => {
+  return {
+    security: {
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", "data:", "https:"],
+        },
+      },
+    },
+  };
+};
+```
+
+### Input Validation
+
+Validate request data using Zod schemas:
+
+```tsx
+// app/api/users/route.ts
+import { z } from "zod";
+import { validate } from "@loly/core";
+
+const createUserSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  age: z.number().int().min(0).max(150),
+});
+
+export async function POST(ctx: ApiContext) {
+  try {
+    const body = validate(createUserSchema, ctx.req.body);
+    // body is now type-safe and validated
+    const user = await createUser(body);
+    ctx.res.status(201).json(user);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      ctx.res.status(400).json({
+        error: "Validation failed",
+        details: error.format(),
+      });
+      return;
+    }
+    throw error;
+  }
+}
+```
+
+### Input Sanitization
+
+Route parameters and query strings are automatically sanitized to prevent XSS attacks. You can also manually sanitize data:
+
+```tsx
+import { sanitizeString, sanitizeObject } from "@loly/core";
+
+const userInput = sanitizeString(req.body.comment);
+const sanitizedData = sanitizeObject(req.body);
+```
+
+### Security Best Practices
+
+1. **Always validate input** - Use Zod schemas for request bodies
+2. **Configure CORS properly** - Never use `'*'` in production
+3. **Use rate limiting** - Protect against DDoS and brute force attacks
+4. **Keep dependencies updated** - Regularly update `@loly/core` and other dependencies
+5. **Use HTTPS in production** - Always use HTTPS for production deployments
+6. **Sanitize user input** - Framework sanitizes route params automatically, but validate request bodies
+
 ## API Routes
 
 Create API endpoints in the `app/api` directory:
@@ -280,6 +420,7 @@ export async function GET(ctx: ApiContext) {
 }
 
 export async function POST(ctx: ApiContext) {
+  // Always validate request bodies in production
   const body = ctx.req.body;
   const newPost = await createPost(body);
   ctx.res.status(201).json(newPost);

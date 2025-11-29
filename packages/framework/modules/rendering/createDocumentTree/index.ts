@@ -56,6 +56,7 @@ export function createDocumentTree(options: {
   theme?: string;
   clientJsPath?: string;
   clientCssPath?: string;
+  nonce?: string;
 }): ReactElement {
   const {
     appTree,
@@ -67,6 +68,7 @@ export function createDocumentTree(options: {
     theme,
     clientJsPath = "/static/client.js",
     clientCssPath = "/static/client.css",
+    nonce,
   } = options;
 
   const metaObj = meta ?? {};
@@ -144,6 +146,7 @@ export function createDocumentTree(options: {
       React.createElement("div", { id: APP_CONTAINER_ID }, appTree)
     ),
     React.createElement("script", {
+      nonce: nonce,
       dangerouslySetInnerHTML: {
         __html: `window.${WINDOW_DATA_KEY} = ${serialized};`,
       },

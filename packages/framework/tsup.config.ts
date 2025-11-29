@@ -27,6 +27,7 @@ export default defineConfig({
     ['react/components']: "modules/react/components/index.ts",
     ['react/hooks']: "modules/react/hooks/index.ts",
     ['react/themes']: "modules/react/themes/index.ts",
+    ['react/cache']: "modules/react/cache/index.ts",
     runtime: "modules/runtime/client/index.tsx",
   },
   dts: true,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { hydrateRoot } from "react-dom/client";
+import { getRouteData } from "../../react/cache/index";
 
 // Client-side constants (hardcoded to avoid alias resolution issues in Rspack)
 const WINDOW_DATA_KEY = "__FW_DATA__";
@@ -168,49 +169,24 @@ function AppShell({
   useEffect(() => {
     async function navigate(nextUrl: string) {
       try {
-        const res = await fetch(
-          nextUrl + (nextUrl.includes("?") ? "&" : "?") + "__fw_data=1",
-          {
-            headers: {
-              "x-fw-data": "1",
-              Accept: "application/json",
-            },
-          }
-        );
-
-        let json: any = {};
-        try {
-          const text = await res.text();
-          if (text) {
-            json = JSON.parse(text);
-          }
-        } catch (parseError) {
-          // Si falla el parseo y además no es OK, hacemos fallback a full reload
-          if (!res.ok) {
-            console.error(
-              "[client] Failed to parse response as JSON:",
-              parseError
-            );
-            window.location.href = nextUrl;
-            return;
-          }
-        }
-
+        // 👇 En vez de fetch + parse manual → usamos la caché
+        const { ok, json } = await getRouteData(nextUrl);
+    
         // Manejo de error explícito en payload
         if (json && json.error) {
           console.log("[client] Error detected in response:", json);
-
+    
           if (errorRoute) {
             try {
               const components = await errorRoute.load();
-
-              // Marcamos flags en window para mantener estado consistente
+    
               (window as any)[WINDOW_DATA_KEY] = {
                 pathname: nextUrl,
                 params: json.params || {},
-                props: json.props || {
-                  error: json.message || "An error occurred",
-                },
+                props:
+                  json.props || {
+                    error: json.message || "An error occurred",
+                  },
                 metadata: json.metadata ?? null,
                 theme:
                   json.theme ??
@@ -219,7 +195,7 @@ function AppShell({
                 notFound: false,
                 error: true,
               };
-
+    
               setState({
                 url: nextUrl,
                 route: errorRoute,
@@ -248,9 +224,9 @@ function AppShell({
             return;
           }
         }
-
-        // Manejo de respuestas no-OK sin error payload explícito
-        if (!res.ok) {
+    
+        // 🔴 HTTP error (404/500/etc)
+        if (!ok) {
           if (json && (json as any).redirect) {
             window.location.href = (json as any).redirect.destination;
             return;
@@ -258,16 +234,15 @@ function AppShell({
           window.location.href = nextUrl;
           return;
         }
-
+    
         // Redirección vía JSON
         if (json.redirect) {
           window.location.href = json.redirect.destination;
           return;
         }
-
+    
         // Manejo de notFound
         if (json.notFound) {
-          // Actualizamos flags globales
           (window as any)[WINDOW_DATA_KEY] = {
             pathname: nextUrl,
             params: {},
@@ -278,7 +253,7 @@ function AppShell({
             notFound: true,
             error: false,
           };
-
+    
           if (notFoundRoute) {
             const components = await notFoundRoute.load();
             setState({
@@ -299,19 +274,19 @@ function AppShell({
           }
           return;
         }
-
+    
         // Ruta normal
         applyMetadata(json.metadata ?? null);
         const newProps = json.props ?? {};
-
+    
         const matched = matchRouteClient(nextUrl, routes);
-
+    
         if (!matched) {
           // No tenemos definición de ruta en el cliente → fallback a full reload
           window.location.href = nextUrl;
           return;
         }
-
+    
         // Limpiamos flags globales de error/notFound
         (window as any)[WINDOW_DATA_KEY] = {
           pathname: nextUrl,
@@ -323,14 +298,14 @@ function AppShell({
           notFound: false,
           error: false,
         };
-
+    
         const components = await matched.route.load();
-
+    
         window.scrollTo({
           top: 0,
           behavior: "smooth",
         });
-
+    
         setState({
           url: nextUrl,
           route: matched.route,
@@ -435,14 +410,12 @@ export function bootstrapClient(
         initialParams = {};
         initialComponents = await notFoundRoute.load();
       } else {
-        // Ruta "normal"
         const match = matchRouteClient(initialUrl, routes);
         if (match) {
           initialRoute = match.route;
           initialParams = match.params;
           initialComponents = await match.route.load();
         } else if (notFoundRoute) {
-          // Si no matchea ninguna pero tenemos notFoundRoute, arrancamos en 404
           initialRoute = notFoundRoute;
           initialParams = {};
           initialComponents = await notFoundRoute.load();
@@ -459,7 +432,7 @@ export function bootstrapClient(
         initialUrl,
         error
       );
-      // Fallback fuerte: recargar
+
       window.location.reload();
       return;
     }

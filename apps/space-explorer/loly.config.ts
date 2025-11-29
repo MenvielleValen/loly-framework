@@ -5,7 +5,7 @@ const DEFAULT_CONFIG: ServerConfig = {
   corsOrigin: "*",
   rateLimit: {
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 1000,
     strictMax: 5,
     strictPatterns: [
       "/api/search/**",

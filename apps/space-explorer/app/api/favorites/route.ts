@@ -1,7 +1,6 @@
 import type { ApiContext, ApiMiddleware } from "@loly/core";
 import { z } from "zod";
 import { validate } from "@loly/core";
-import { strictRateLimiter } from "@loly/core";
 
 const favoriteSchema = z.object({
   type: z.enum(["planet", "launch", "astronaut"]),
@@ -12,7 +11,7 @@ const favoriteSchema = z.object({
 const favorites: Map<string, Set<string>> = new Map();
 
 // Apply strict rate limiting
-export const beforeApi: ApiMiddleware[] = [strictRateLimiter];
+export const beforeApi: ApiMiddleware[] = [];
 
 export async function POST(ctx: ApiContext) {
   try {

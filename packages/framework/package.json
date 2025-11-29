@@ -25,6 +25,11 @@
       "import": "./dist/react/themes.js",
       "require": "./dist/react/themes.cjs"
     },
+    "./client-cache": {
+      "types": "./dist/react/cache.d.ts",
+      "import": "./dist/react/cache.js",
+      "require": "./dist/react/cache.cjs"
+    },
     "./hooks": {
       "types": "./dist/react/hooks.d.ts",
       "import": "./dist/react/hooks.js",

@@ -1,7 +1,6 @@
 import type { ApiContext, ApiMiddleware } from "@loly/core";
 import { z } from "zod";
 import { validate } from "@loly/core";
-import { strictRateLimiter } from "@loly/core";
 import { getAllPlanets, getAllAstronauts, getSpaceXLaunches } from "@/lib/space-api";
 
 const searchSchema = z.object({
@@ -10,7 +9,7 @@ const searchSchema = z.object({
 });
 
 // Apply strict rate limiting to search endpoint
-export const beforeApi: ApiMiddleware[] = [strictRateLimiter];
+export const beforeApi: ApiMiddleware[] = [];
 
 export async function POST(ctx: ApiContext) {
   try {
@@ -78,8 +77,8 @@ export async function POST(ctx: ApiContext) {
 }
 
 export async function GET(ctx: ApiContext) {
-  const query = ctx.query.q as string | undefined;
-  const type = (ctx.query.type as string | undefined) || "all";
+  const query = ctx.req.query.q as string | undefined;
+  const type = (ctx.req.query.type as string | undefined) || "all";
 
   if (!query) {
     return ctx.Response(

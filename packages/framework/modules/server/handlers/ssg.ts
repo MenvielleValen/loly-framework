@@ -59,6 +59,22 @@ export function tryServeSsgHtml(
 
   console.log(`[framework][ssg] Serving SSG HTML for ${urlPath} from ${ssgHtmlPath}`);
 
+  // For SSG files, we need to allow 'unsafe-inline' since we can't generate nonces
+  // for static HTML files. Override the CSP header set by Helmet.
+  // Note: setHeader will override any existing header with the same name
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "script-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data: https:; " +
+    "connect-src 'self' https:; " +
+    "font-src 'self' data: https://fonts.gstatic.com; " +
+    "object-src 'none'; " +
+    "media-src 'self' https:; " +
+    "frame-src 'none';"
+  );
+
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   const stream = fs.createReadStream(ssgHtmlPath, { encoding: "utf-8" });

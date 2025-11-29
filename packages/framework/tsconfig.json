@@ -8,7 +8,6 @@
     "paths": {
       "@src/*": ["src/*"],
       "@constants/*": ["constants/*"],
-      "@components/*": ["modules/components/*"],
       "@rendering/*": ["modules/rendering/*"],
       "@router/*": ["modules/router/*"],
       "@build/*": ["modules/build/*"],

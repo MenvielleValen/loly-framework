@@ -36,11 +36,12 @@ export const setupApplication = async ({
       helmetConfig.contentSecurityPolicy = {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "ws:", "wss:"],
-          fontSrc: ["'self'", "data:"],
+          // Allow fetch/XHR to any HTTPS endpoint - users can restrict in their config if needed
+          connectSrc: ["'self'", "ws:", "wss:", "https:"],
+          fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         },
       };
     } else {
@@ -56,13 +57,14 @@ export const setupApplication = async ({
       const defaultCSP = {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           scriptSrc: ["'self'", nonceFunction],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'"],
-          fontSrc: ["'self'", "data:"],
+          // Allow fetch/XHR to any HTTPS endpoint - users can restrict in their config if needed
+          connectSrc: ["'self'", "https:"],
+          fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
           objectSrc: ["'none'"],
-          mediaSrc: ["'self'"],
+          mediaSrc: ["'self'", "https:"],
           frameSrc: ["'none'"],
         },
       };
@@ -92,6 +94,31 @@ export const setupApplication = async ({
           } else {
             mergedDirectives.scriptSrc = userScriptSrc;
           }
+        }
+        
+        // Ensure connectSrc includes https: for flexibility - merge arrays instead of replacing
+        const userConnectSrc = userDirectives.connectSrc;
+        if (userConnectSrc && Array.isArray(userConnectSrc)) {
+          // If user provided connectSrc, merge with defaults to ensure https: is included
+          const defaultConnectSrc = defaultCSP.directives.connectSrc || [];
+          const mergedConnectSrc = [...new Set([...defaultConnectSrc, ...userConnectSrc])];
+          mergedDirectives.connectSrc = mergedConnectSrc;
+        }
+        
+        // Ensure styleSrc includes Google Fonts
+        const userStyleSrc = userDirectives.styleSrc;
+        if (userStyleSrc && Array.isArray(userStyleSrc)) {
+          const defaultStyleSrc = defaultCSP.directives.styleSrc || [];
+          const mergedStyleSrc = [...new Set([...defaultStyleSrc, ...userStyleSrc])];
+          mergedDirectives.styleSrc = mergedStyleSrc;
+        }
+        
+        // Ensure fontSrc includes Google Fonts
+        const userFontSrc = userDirectives.fontSrc;
+        if (userFontSrc && Array.isArray(userFontSrc)) {
+          const defaultFontSrc = defaultCSP.directives.fontSrc || [];
+          const mergedFontSrc = [...new Set([...defaultFontSrc, ...userFontSrc])];
+          mergedDirectives.fontSrc = mergedFontSrc;
         }
         
         helmetConfig.contentSecurityPolicy = {

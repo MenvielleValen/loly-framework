@@ -32,10 +32,11 @@ export const config = (env: string): any => {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           scriptSrc: ["'self'", env === "development" ? "'unsafe-inline' 'unsafe-eval'" : "'self'"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'"],
+          connectSrc: ["'self'", "https:"], // Allow fetch to any HTTPS endpoint
+          fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         },
       },
     },

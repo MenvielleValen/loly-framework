@@ -18,6 +18,7 @@ import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
 import { getClientJsPath, getClientCssPath, loadAssetManifest } from "@build/utils";
 import { sanitizeParams } from "@security/sanitize";
+import { getRequestLogger, createModuleLogger } from "@logger/index";
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
@@ -59,10 +60,15 @@ export async function handlePageRequest(
     await handlePageRequestInternal(options);
   } catch (error) {
     const { errorPage, req, res, routeChunks, theme, projectRoot } = options;
+    const reqLogger = getRequestLogger(req);
+    
     if (errorPage) {
       await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme, projectRoot);
     } else {
-      console.error("[framework] Unhandled error:", error);
+      reqLogger.error("Unhandled error in page request", error, {
+        urlPath: options.urlPath,
+        hasErrorPage: !!errorPage,
+      });
       if (!res.headersSent) {
         res.statusCode = 500;
         res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -154,7 +160,8 @@ async function handlePageRequestInternal(
         },
         onShellError(err) {
           didError = true;
-          console.error("[framework][prod] SSR shell error:", err);
+          const reqLogger = getRequestLogger(req);
+          reqLogger.error("SSR shell error", err, { route: "not-found" });
           if (!res.headersSent && errorPage) {
             renderErrorPageWithStream(errorPage, req, res, err, routeChunks);
           } else if (!res.headersSent) {
@@ -166,7 +173,8 @@ async function handlePageRequestInternal(
         },
         onError(err) {
           didError = true;
-          console.error("[framework][prod] SSR error:", err);
+          const reqLogger = getRequestLogger(req);
+          reqLogger.error("SSR error", err, { route: "not-found" });
         },
       });
     
@@ -284,7 +292,8 @@ async function handlePageRequestInternal(
 
     onShellError(err) {
       didError = true;
-      console.error("[framework][prod] SSR shell error:", err);
+      const reqLogger = getRequestLogger(req);
+      reqLogger.error("SSR shell error", err, { route: matched?.route?.pattern || "unknown" });
 
       if (!res.headersSent && errorPage) {
         renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot);
@@ -299,7 +308,8 @@ async function handlePageRequestInternal(
 
     onError(err) {
       didError = true;
-      console.error("[framework][prod] SSR error:", err);
+      const reqLogger = getRequestLogger(req);
+      reqLogger.error("SSR error", err, { route: matched?.route?.pattern || "unknown" });
     },
   });
 
@@ -386,7 +396,8 @@ async function renderErrorPageWithStream(
       },
       onShellError(err) {
         didError = true;
-        console.error("[framework] Error rendering error page:", err);
+        const reqLogger = getRequestLogger(req);
+        reqLogger.error("Error rendering error page", err, { type: "shellError" });
         if (!res.headersSent) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -396,7 +407,8 @@ async function renderErrorPageWithStream(
       },
       onError(err) {
         didError = true;
-        console.error("[framework] Error in error page:", err);
+        const reqLogger = getRequestLogger(req);
+        reqLogger.error("Error in error page", err);
       },
     });
 
@@ -404,7 +416,8 @@ async function renderErrorPageWithStream(
       abort();
     });
   } catch (renderErr) {
-    console.error("[framework] Error rendering error page:", renderErr);
+    const reqLogger = getRequestLogger(req);
+    reqLogger.error("Error rendering error page (catch)", renderErr, { type: "renderException" });
     if (!res.headersSent) {
       res.statusCode = 500;
       res.setHeader("Content-Type", "text/html; charset=utf-8");

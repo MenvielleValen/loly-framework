@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import { Response } from "express";
+import { createModuleLogger } from "@logger/index";
+
+const logger = createModuleLogger("ssg");
 
 /**
  * Gets the SSG directory path for a route.
@@ -57,7 +60,7 @@ export function tryServeSsgHtml(
     return false;
   }
 
-  console.log(`[framework][ssg] Serving SSG HTML for ${urlPath} from ${ssgHtmlPath}`);
+  logger.info("Serving SSG HTML", { urlPath, ssgHtmlPath });
 
   // For SSG files, we need to allow 'unsafe-inline' since we can't generate nonces
   // for static HTML files. Override the CSP header set by Helmet.
@@ -107,7 +110,7 @@ export function tryServeSsgData(
     res.status(200).end(raw);
     return true;
   } catch (err) {
-    console.error("[framework][prod] Error reading SSG data:", err);
+    logger.error("Error reading SSG data", err, { urlPath, ssgDataPath });
     return false;
   }
 }

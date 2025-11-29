@@ -4,6 +4,7 @@
     "rootDir": ".",
     "baseUrl": ".",
     "outDir": "dist",
+    "types": ["node"],
     "paths": {
       "@src/*": ["src/*"],
       "@constants/*": ["constants/*"],
@@ -18,7 +19,8 @@
       "@cache/*": ["modules/cache/*"],
       "@security/*": ["modules/security/*"],
       "@validation/*": ["modules/validation/*"],
+      "@logger/*": ["modules/logger/*"],
     }
   },
-  "include": ["src", "constants", "modules"]
+  "include": ["src", "constants", "modules", "tsup.config.ts"]
 }

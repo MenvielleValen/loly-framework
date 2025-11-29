@@ -24,3 +24,17 @@ export { withCache } from "@cache/index";
 export { validate, safeValidate, ValidationError, commonSchemas } from "@validation/index";
 export { sanitizeString, sanitizeObject, sanitizeParams, sanitizeQuery } from "@security/sanitize";
 export { createRateLimiter, defaultRateLimiter, strictRateLimiter, lenientRateLimiter } from "@server/middleware/rate-limit";
+export {
+  logger,
+  Logger,
+  createModuleLogger,
+  getLogger,
+  setLogger,
+  resetLogger,
+  requestLoggerMiddleware,
+  getRequestLogger,
+  generateRequestId,
+  type LogLevel,
+  type LoggerContext,
+  type LoggerOptions,
+} from "@logger/index";

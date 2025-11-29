@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ApiContext, ApiRoute, matchApiRoute } from "@router/index";
 import { sanitizeParams, sanitizeQuery } from "@security/sanitize";
 import { getAutoRateLimiter } from "@server/middleware/auto-rate-limit";
+import { getRequestLogger, createModuleLogger } from "@logger/index";
 
 export interface HandleApiRequestOptions {
   apiRoutes: ApiRoute[];
@@ -64,8 +65,13 @@ export async function handleApiRequest(
       options.strictRateLimitPatterns
     );
     
+    const reqLogger = getRequestLogger(req);
+    
     if (autoRateLimiter) {
-      console.log(`[api] Auto rate limiter applied to ${route.pattern}, patterns:`, options.strictRateLimitPatterns);
+      reqLogger.debug("Auto rate limiter applied", {
+        route: route.pattern,
+        patterns: options.strictRateLimitPatterns,
+      });
     }
 
     const globalMws = route.middlewares ?? [];
@@ -111,7 +117,12 @@ export async function handleApiRequest(
 
     await handler(ctx);
   } catch (err) {
-    console.error(`[framework][api][${env}] Handler error:`, err);
+    const reqLogger = getRequestLogger(req);
+    reqLogger.error("API handler error", err, {
+      route: route.pattern,
+      method,
+      env,
+    });
     if (!res.headersSent) {
       res.status(500).json({ error: "Internal Server Error" });
     }

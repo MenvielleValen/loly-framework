@@ -6,9 +6,12 @@ import { setupRoutes } from "@server/routes";
 import { setupApplication } from "@server/application";
 import { FilesystemRouteLoader, ManifestRouteLoader } from "@router/index";
 import { loadConfig, getAppDir, getBuildDir, type FrameworkConfig } from "./config";
+import { createModuleLogger } from "@logger/index";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+const logger = createModuleLogger("server");
 
 export interface StartServerOptions {
   port?: number;
@@ -48,10 +51,11 @@ export async function startServer(options: StartServerOptions = {}) {
     : path.join(getBuildDir(projectRoot, config), "server"));
 
   if (!isDev && !fs.existsSync(appDir)) {
-    console.error(
-      `[framework][prod] ERROR: Compiled directory not found: ${config.directories.build}/server`,
-      appDir
-    );
+    logger.error("Compiled directory not found", undefined, {
+      buildDir: config.directories.build,
+      appDir,
+      environment: "production",
+    });
     process.exit(1);
   }
 
@@ -87,15 +91,15 @@ export async function startServer(options: StartServerOptions = {}) {
 
   httpServer.listen(port, host, () => {
     if (isDev) {
-      console.log(`🚀 Dev server running on http://${host}:${port}`);
-      console.log(`🧭 Reading routes from: ${appDir}`);
-      console.log(`📦 Client served from /static/client.js`);
+      logger.info("🚀 Dev server running", { url: `http://${host}:${port}`, appDir });
+      logger.info("🧭 Reading routes from", { appDir });
+      logger.info("📦 Client served from /static/client.js");
     } else {
       const buildDir = config.directories.build;
-      console.log(`🚀 Prod server running on http://${host}:${port}`);
-      console.log(`🧭 Reading compiled routes from: ${appDir}`);
-      console.log(`📦 Client served from /static (${buildDir}/client)`);
-      console.log(`📄 SSG served from ${buildDir}/ssg (if exists)`);
+      logger.info("🚀 Prod server running", { url: `http://${host}:${port}`, appDir, buildDir });
+      logger.info("🧭 Reading compiled routes from", { appDir });
+      logger.info("📦 Client served from", { path: `/static (${buildDir}/client)` });
+      logger.info("📄 SSG served from", { path: `${buildDir}/ssg (if exists)` });
     }
   });
 }

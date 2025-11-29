@@ -7,6 +7,7 @@ import compression from "compression";
 import crypto from "crypto";
 import { getServerConfig } from "@server/config";
 import { createRateLimiter } from "@server/middleware/rate-limit";
+import { requestLoggerMiddleware, createModuleLogger } from "@logger/index";
 
 interface SetupAppOptions {
   projectRoot: string;
@@ -155,6 +156,17 @@ export const setupApplication = async ({
   }
 
   app.use(helmet(helmetConfig));
+
+  // Logging: Request logger middleware (adds request ID and logs requests/responses)
+  // Must be early in the middleware chain to capture all requests
+  // Filters out static assets and other noisy paths by default
+  const appLogger = createModuleLogger("framework");
+  app.use(requestLoggerMiddleware({ 
+    logger: appLogger.child({ component: "server" }),
+    logRequests: process.env.LOG_REQUESTS === "true", // Default to false (only errors/warnings)
+    logResponses: process.env.LOG_RESPONSES !== "false", // Default to true (but filtered)
+    logStaticAssets: process.env.LOG_STATIC_ASSETS === "true", // Default to false
+  }));
 
   // Security: CORS with proper origin validation
   const corsOptions: cors.CorsOptions = {

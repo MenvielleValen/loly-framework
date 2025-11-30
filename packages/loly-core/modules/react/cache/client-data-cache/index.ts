@@ -106,15 +106,23 @@ function evictOldest(): void {
  * Set cache entry and maintain indexes
  */
 function setCacheEntry(key: string, entry: CacheEntry): void {
-  // Only track fulfilled entries in LRU (not pending/rejected)
+  const existingEntry = dataCache.get(key);
+  const wasFulfilled = existingEntry?.status === "fulfilled";
+  
+  dataCache.set(key, entry);
+  
+  // Only track fulfilled entries in LRU and index (not pending/rejected)
   if (entry.status === "fulfilled") {
-    if (!dataCache.has(key)) {
+    // Add to index if it wasn't already fulfilled (new entry or transition from pending/rejected)
+    if (!wasFulfilled) {
       addToIndex(key);
     }
     updateLRU(key);
     evictOldest();
+  } else if (wasFulfilled) {
+    // If entry was fulfilled and now isn't (transitioning to pending/rejected), remove from index
+    removeFromIndex(key);
   }
-  dataCache.set(key, entry);
 }
 
 /**

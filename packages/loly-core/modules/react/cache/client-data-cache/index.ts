@@ -246,6 +246,59 @@ export function revalidatePath(path: string): void {
 }
 
 /**
+ * Revalidates and refreshes the current page data.
+ * Similar to Next.js's `router.refresh()`.
+ * 
+ * This function:
+ * 1. Removes the current route from cache
+ * 2. Fetches fresh data from the server
+ * 3. Updates window.__FW_DATA__ with the new data
+ * 4. Dispatches a 'fw-data-refresh' event for components to listen to
+ * 
+ * @returns Promise that resolves with the fresh route data
+ * 
+ * @example
+ * ```ts
+ * // Refresh current page data after a mutation
+ * await revalidate();
+ * ```
+ */
+export async function revalidate(): Promise<RouteData> {
+  if (typeof window === "undefined") {
+    throw new Error("revalidate() can only be called on the client");
+  }
+
+  const pathname = window.location.pathname + window.location.search;
+  
+  // Revalidate the path (remove from cache)
+  revalidatePath(pathname);
+  
+  // Fetch fresh data
+  const freshData = await getRouteData(pathname, { revalidate: true });
+  
+  // Update window.__FW_DATA__ if it exists
+  if ((window as any).__FW_DATA__ && freshData.ok && freshData.json) {
+    const currentData = (window as any).__FW_DATA__;
+    (window as any).__FW_DATA__ = {
+      ...currentData,
+      pathname: pathname.split("?")[0],
+      params: freshData.json.params || currentData.params || {},
+      props: freshData.json.props || currentData.props || {},
+      metadata: freshData.json.metadata ?? currentData.metadata ?? null,
+      notFound: freshData.json.notFound ?? false,
+      error: freshData.json.error ?? false,
+    };
+    
+    // Dispatch event for components to listen to
+    window.dispatchEvent(new CustomEvent("fw-data-refresh", {
+      detail: { data: freshData },
+    }));
+  }
+  
+  return freshData;
+}
+
+/**
  * @deprecated Use `revalidatePath()` instead. This function is kept for backwards compatibility.
  */
 export function revalidateRouteData(url: string): void {

@@ -34,8 +34,11 @@ export function AppShell({
       errorRoute,
     };
 
-    async function handleNavigate(nextUrl: string) {
-      await navigate(nextUrl, handlers);
+    async function handleNavigate(
+      nextUrl: string,
+      options?: { revalidate?: boolean }
+    ) {
+      await navigate(nextUrl, handlers, options);
     }
 
     const handleClick = createClickHandler(handleNavigate);

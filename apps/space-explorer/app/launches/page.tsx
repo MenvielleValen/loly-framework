@@ -11,14 +11,15 @@ import {
 } from "@/components/ui/card";
 import { Rocket, ArrowRight, Calendar } from "lucide-react";
 import type { SpaceXLaunch } from "@/lib/space-api";
+import { revalidatePath } from "@loly/core/client-cache";
 
 type LaunchesPageProps = {
   launches: SpaceXLaunch[];
 };
 
 export default function LaunchesPage() {
-  const { props } = usePageProps<LaunchesPageProps>();
-  const { launches = [] } = props || {};
+  const { props } = usePageProps();
+  const { launches = [] } = (props as LaunchesPageProps) || {};
 
   return (
     <main className="min-h-screen bg-background py-12">
@@ -32,8 +33,12 @@ export default function LaunchesPage() {
           </p>
         </div>
 
+        <Button className="my-4" onClick={() => revalidatePath("/astronauts")}>
+          Revalidar datos de /astronauts
+        </Button>
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {launches.map((launch) => (
+          {launches.map((launch: SpaceXLaunch) => (
             <Card
               key={launch.id}
               className="border-border/70 bg-card/70 transition hover:border-primary/40"

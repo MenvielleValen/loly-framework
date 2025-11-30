@@ -142,14 +142,26 @@ async function handleNormalRoute(
   return true;
 }
 
+export type NavigateOptions = {
+  /**
+   * If true, forces revalidation of route data,
+   * ignoring the cache and fetching fresh data from the server.
+   * Similar to Next.js's `router.refresh()` behavior.
+   */
+  revalidate?: boolean;
+};
+
 export async function navigate(
   nextUrl: string,
-  handlers: NavigationHandlers
+  handlers: NavigationHandlers,
+  options?: NavigateOptions
 ): Promise<void> {
   const { setState, routes, notFoundRoute, errorRoute } = handlers;
 
   try {
-    const { ok, json } = await getRouteData(nextUrl);
+    const { ok, json } = await getRouteData(nextUrl, {
+      revalidate: options?.revalidate,
+    });
 
     if (json && json.error) {
       console.log("[client] Error detected in response:", json);
@@ -203,7 +215,7 @@ export async function navigate(
 }
 
 export function createClickHandler(
-  navigate: (url: string) => void
+  navigate: (url: string, options?: NavigateOptions) => void
 ): (ev: MouseEvent) => void {
   return function handleClick(ev: MouseEvent) {
     if (ev.defaultPrevented) return;
@@ -230,13 +242,18 @@ export function createClickHandler(
     const currentUrl = window.location.pathname + window.location.search;
     if (nextUrl === currentUrl) return;
 
+    // Detectar si el link tiene data-revalidate para forzar revalidación
+    const shouldRevalidate =
+      anchor.hasAttribute("data-revalidate") &&
+      anchor.getAttribute("data-revalidate") !== "false";
+
     window.history.pushState({}, "", nextUrl);
-    navigate(nextUrl);
+    navigate(nextUrl, shouldRevalidate ? { revalidate: true } : undefined);
   };
 }
 
 export function createPopStateHandler(
-  navigate: (url: string) => void
+  navigate: (url: string, options?: NavigateOptions) => void
 ): () => void {
   return function handlePopState() {
     const nextUrl = window.location.pathname + window.location.search;

@@ -9,7 +9,7 @@ import {
 import { startClientBundler } from "@build/bundler/client";
 import { setupHotReload } from "@dev/hot-reload-client";
 import { clearAppRequireCache } from "@dev/hot-reload-server";
-import { LoadedRoute, ApiRoute } from "@router/index.types";
+import { LoadedRoute, ApiRoute, WssRoute } from "@router/index.types";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
 import { getBuildDir } from "@src/config";
 
@@ -26,6 +26,7 @@ export interface ServerSetupOptions {
 
 export interface ServerSetupResult {
   routes: LoadedRoute[];
+  wssRoutes: WssRoute[];
   notFoundPage: LoadedRoute | null;
   errorPage: LoadedRoute | null;
   apiRoutes: ApiRoute[];
@@ -56,6 +57,7 @@ export function setupServer(
     setupHotReload({ app, appDir });
 
     const routes = routeLoader.loadRoutes();
+    const wssRoutes = routeLoader.loadWssRoutes();
     const notFoundPage = routeLoader.loadNotFoundRoute();
     const errorPage = routeLoader.loadErrorRoute();
     writeClientRoutesManifest(routes, projectRoot);
@@ -74,6 +76,7 @@ export function setupServer(
 
     return {
       routes,
+      wssRoutes,
       notFoundPage,
       errorPage,
       apiRoutes: routeLoader.loadApiRoutes(),
@@ -82,6 +85,7 @@ export function setupServer(
   } else {
     const routes = routeLoader.loadRoutes();
     const apiRoutes = routeLoader.loadApiRoutes();
+    const wssRoutes = routeLoader.loadWssRoutes();
     const notFoundPage = routeLoader.loadNotFoundRoute();
     const errorPage = routeLoader.loadErrorRoute();
 
@@ -98,6 +102,7 @@ export function setupServer(
     return {
       routes,
       apiRoutes,
+      wssRoutes,
       notFoundPage,
       errorPage,
     };

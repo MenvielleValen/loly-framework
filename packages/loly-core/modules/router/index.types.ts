@@ -1,6 +1,7 @@
 import React from "react";
 
 import type { Request, Response } from "express";
+import { Server, Socket } from "socket.io";
 
 export type PageComponent = React.ComponentType<any>;
 export type LayoutComponent = React.ComponentType<any>;
@@ -32,6 +33,15 @@ export interface ServerContext {
   params: Record<string, string>;
   pathname: string;
   locals: Record<string, any>;
+}
+
+// En packages/loly-core/modules/router/index.types.ts
+export interface WssContext {
+  socket: Socket;  // El socket del cliente
+  io: Server;      // Instancia del servidor Socket.IO
+  params: Record<string, string>;
+  pathname: string;
+  data?: any;      // Datos recibidos del evento
 }
 
 export type RouteMiddleware = (
@@ -91,6 +101,7 @@ export type ApiMiddleware = (
 ) => void | Promise<void>;
 
 export type ApiHandler = (ctx: ApiContext) => void | Promise<void>;
+export type WssHandler = (ctx: WssContext) => void | Promise<void>;
 
 export interface ApiRoute {
   pattern: string;
@@ -109,6 +120,8 @@ export interface ApiRoute {
   filePath: string;
 }
 
+export interface WssRoute extends ApiRoute {}
+
 export interface PageRouteManifestEntry {
   type: "page";
   pattern: string;            
@@ -126,6 +139,13 @@ export interface ApiRouteManifestEntry {
   methods: string[];          
 }
 
+export interface WssRouteManifestEntry {
+  type: "wss";
+  pattern: string;          
+  paramNames: string[];  
+  file: string;             
+  events: string[];          
+}
 
 export interface RoutesManifest {
   version: 1;
@@ -134,6 +154,7 @@ export interface RoutesManifest {
   pages404: boolean;       
   routes: PageRouteManifestEntry[];
   apiRoutes: ApiRouteManifestEntry[];
+  wssRoutes: WssRouteManifestEntry[];
   notFound: PageRouteManifestEntry;
   error?: PageRouteManifestEntry;
 }

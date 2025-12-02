@@ -10,6 +10,7 @@ export {
   MetadataLoader,
   GenerateStaticParams,
   ServerLoader,
+  WssContext,
 } from "@router/index.types";
 export { bootstrapClient } from "@runtime/client";
 export {

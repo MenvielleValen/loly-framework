@@ -8,10 +8,12 @@ import {
   LoadedRoute,
   PageComponent,
   RoutesManifest,
+  WssRoute,
 } from "./index.types";
 import { buildRegexFromRoutePath } from "./path";
 import { loadLoaderForDir } from "./loader";
 import { BUILD_FOLDER_NAME, ERROR_PATTERN } from "@constants/globals";
+import { isArray } from "util";
 
 /**
  * Loads page and API routes from the routes manifest file.
@@ -23,6 +25,7 @@ import { BUILD_FOLDER_NAME, ERROR_PATTERN } from "@constants/globals";
 export function loadRoutesFromManifest(projectRoot: string): {
   routes: LoadedRoute[];
   apiRoutes: ApiRoute[];
+  wssRoutes: WssRoute[];
 } {
   const manifestPath = path.join(
     projectRoot,
@@ -31,7 +34,7 @@ export function loadRoutesFromManifest(projectRoot: string): {
   );
 
   if (!fs.existsSync(manifestPath)) {
-    return { routes: [], apiRoutes: [] };
+    return { routes: [], apiRoutes: [], wssRoutes: [] };
   }
 
   const raw = fs.readFileSync(manifestPath, "utf-8");
@@ -129,7 +132,42 @@ export function loadRoutesFromManifest(projectRoot: string): {
     });
   }
 
-  return { routes: pageRoutes, apiRoutes };
+  const wssRoutes: WssRoute[] = [];
+
+  for (const entry of manifest.wssRoutes) {
+    const pattern = entry.pattern;
+    const { regex, paramNames } = buildRegexFromRoutePath(pattern);
+    const filePath = path.join(projectRoot, entry.file);
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require(filePath);
+
+    const handlers: Record<string, ApiHandler> = {};
+    const methodMiddlewares: Record<string, ApiMiddleware[]> = {};
+
+    for (const m of (entry.events || [])) {
+      if(Array.isArray(mod.events) && typeof m === "string") {
+        handlers[m] = mod.events.find((e: { name: string }) => e.name?.toLowerCase() === m.toLowerCase())?.handler as ApiHandler;
+      }
+    }
+
+    const globalMiddlewares: ApiMiddleware[] = Array.isArray(mod.beforeApi)
+      ? mod.beforeApi
+      : [];
+
+
+    wssRoutes.push({
+      pattern,
+      regex,
+      paramNames: entry.paramNames ?? paramNames,
+      handlers,
+      middlewares: globalMiddlewares,
+      methodMiddlewares,
+      filePath,
+    });
+  }
+
+  return { routes: pageRoutes, apiRoutes, wssRoutes };
 }
 
 /**

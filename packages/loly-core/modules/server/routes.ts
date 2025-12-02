@@ -1,5 +1,5 @@
 import express from "express";
-import { LoadedRoute, ApiRoute } from "@router/index.types";
+import { LoadedRoute, ApiRoute, WssRoute } from "@router/index.types";
 import { handleApiRequest, handlePageRequest } from "./handlers";
 import { RouteLoader } from "@router/index";
 import { BUILD_FOLDER_NAME } from "@constants/globals";

@@ -6,6 +6,8 @@ import {
   LoadedRoute,
   PageRouteManifestEntry,
   RoutesManifest,
+  WssRoute,
+  WssRouteManifestEntry,
 } from "./index.types";
 import {
   BUILD_FOLDER_NAME,
@@ -31,8 +33,7 @@ import {
  */
 export function writeClientRoutesManifest(
   routes: LoadedRoute[],
-  projectRoot: string,
-  errorRoute?: LoadedRoute | null
+  projectRoot: string
 ): void {
   const fwDir = path.join(projectRoot, BUILD_FOLDER_NAME);
   if (!fs.existsSync(fwDir)) {
@@ -130,10 +131,8 @@ export function writeClientRoutesManifest(
     );
 
     const safeName =
-      pattern
-        .replace(/^\//, "")
-        .replace(/\//g, "_")
-        .replace(/\[|\]/g, "") || "root";
+      pattern.replace(/^\//, "").replace(/\//g, "_").replace(/\[|\]/g, "") ||
+      "root";
 
     const chunkName = `route-${safeName}`;
     chunkMap[pattern] = chunkName;
@@ -271,11 +270,11 @@ export function writeClientBoostrapManifest(projectRoot: string): void {
   lines.push(`} from "./routes-client";`);
   lines.push("");
 
-  lines.push(
-    `import { bootstrapClient } from "@loly/core/runtime"`
-  );
+  lines.push(`import { bootstrapClient } from "@loly/core/runtime"`);
   lines.push("");
-  lines.push("bootstrapClient(routes as ClientRouteLoaded[], notFoundRoute, errorRoute);");
+  lines.push(
+    "bootstrapClient(routes as ClientRouteLoaded[], notFoundRoute, errorRoute);"
+  );
 
   fs.writeFileSync(manifestPath, lines.join("\n"), "utf-8");
 }
@@ -296,15 +295,25 @@ export function writeClientBoostrapManifest(projectRoot: string): void {
  * @param serverOutDir - Server output directory from buildServerApp
  * @param appDir - Absolute path to the app directory
  */
-export function writeRoutesManifest(
-  routes: LoadedRoute[],
-  apiRoutes: ApiRoute[],
-  notFoundRoute: LoadedRoute,
-  errorRoute: LoadedRoute | null,
-  projectRoot: string,
-  serverOutDir: string,
-  appDir: string
-) {
+export function writeRoutesManifest({
+  routes,
+  apiRoutes,
+  wssRoutes,
+  notFoundRoute,
+  errorRoute,
+  projectRoot,
+  serverOutDir,
+  appDir,
+}: {
+  routes: LoadedRoute[];
+  apiRoutes: ApiRoute[];
+  wssRoutes: WssRoute[];
+  notFoundRoute: LoadedRoute;
+  errorRoute: LoadedRoute | null;
+  projectRoot: string;
+  serverOutDir: string;
+  appDir: string;
+}) {
   const fwDir = path.join(projectRoot, BUILD_FOLDER_NAME);
   if (!fs.existsSync(fwDir)) {
     fs.mkdirSync(fwDir, { recursive: true });
@@ -321,10 +330,7 @@ export function writeRoutesManifest(
   const pageEntries: PageRouteManifestEntry[] = routes.map((r) => {
     const relativeSource = path.relative(appDir, r.pageFile);
 
-    const jsPageFile = path.join(
-      serverOutDir,
-      convertToJs(relativeSource)
-    );
+    const jsPageFile = path.join(serverOutDir, convertToJs(relativeSource));
 
     const jsLayoutFiles = r.layoutFiles.map((lf) => {
       const rel = path.relative(appDir, lf);
@@ -352,10 +358,7 @@ export function writeRoutesManifest(
 
       const relSource = path.relative(appDir, filePath);
 
-      const jsApiFile = path.join(
-        serverOutDir,
-        convertToJs(relSource)
-      );
+      const jsApiFile = path.join(serverOutDir, convertToJs(relSource));
 
       const methods = Object.keys(r.handlers || {});
 
@@ -370,6 +373,33 @@ export function writeRoutesManifest(
       return entry;
     })
     .filter((e): e is ApiRouteManifestEntry => !!e);
+
+  const wssEntries: WssRouteManifestEntry[] = wssRoutes
+    .map((r) => {
+      const anyRoute = r as any;
+      const filePath: string | undefined = anyRoute.filePath;
+
+      if (!filePath) {
+        return undefined;
+      }
+
+      const relSource = path.relative(appDir, filePath);
+
+      const jsApiFile = path.join(serverOutDir, convertToJs(relSource));
+
+      const events = Object.keys(r.handlers || {});
+
+      const entry: WssRouteManifestEntry = {
+        type: "wss",
+        pattern: r.pattern,
+        paramNames: r.paramNames,
+        file: toRelative(jsApiFile),
+        events,
+      };
+
+      return entry;
+    })
+    .filter((e): e is WssRouteManifestEntry => !!e);
 
   // Build not-found page entry
   const notFoundLayoutFiles = notFoundRoute.layoutFiles || [];
@@ -404,7 +434,10 @@ export function writeRoutesManifest(
     });
 
     const errorRelativeSource = path.relative(appDir, errorRoute.pageFile);
-    const errorJsPageFile = path.join(serverOutDir, convertToJs(errorRelativeSource));
+    const errorJsPageFile = path.join(
+      serverOutDir,
+      convertToJs(errorRelativeSource)
+    );
 
     errorPageEntry = {
       type: "page",
@@ -424,6 +457,7 @@ export function writeRoutesManifest(
     routes: pageEntries,
     apiRoutes: apiEntries,
     notFound: notFoundPage,
+    wssRoutes: wssEntries,
     ...(errorPageEntry && { error: errorPageEntry }),
   };
 

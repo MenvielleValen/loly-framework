@@ -14,6 +14,7 @@ import { buildStaticPages } from "./ssg";
 import { buildServerApp } from "./bundler/server";
 import { NOT_FOUND_PATTERN } from "@constants/globals";
 import { loadConfig, getAppDir, type FrameworkConfig } from "@src/config";
+import { loadWssRoutes } from "@router/loader-wss";
 
 export interface BuildAppOptions {
   rootDir?: string;
@@ -30,6 +31,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
 
   const routes = loadRoutes(appDir);
   const apiRoutes = loadApiRoutes(appDir);
+  const wssRoutes = loadWssRoutes(appDir);
 
   const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir);
 
@@ -58,18 +60,27 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
     generateStaticParams: null,
   };
 
-  writeRoutesManifest(routes, apiRoutes, fallbackNotFound, errorRoute, projectRoot, serverOutDir, appDir);
+  writeRoutesManifest({
+    routes,
+    apiRoutes,
+    wssRoutes,
+    notFoundRoute: fallbackNotFound,
+    errorRoute,
+    projectRoot,
+    serverOutDir,
+    appDir,
+  });
 
   writeClientBoostrapManifest(projectRoot);
 
-  writeClientRoutesManifest(routes, projectRoot, errorRoute);
+  writeClientRoutesManifest(routes, projectRoot);
 
   await buildClientBundle(projectRoot);
 
   await buildStaticPages(projectRoot, routes);
 
   delete process.env.LOLY_BUILD;
-  
+
   console.log(`[framework][build] Build completed successfully`);
 }
 

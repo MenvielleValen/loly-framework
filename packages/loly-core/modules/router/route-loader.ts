@@ -1,13 +1,24 @@
 import fs from "fs";
 import path from "path";
-import { ApiRoute, LoadedRoute, PageComponent } from "./index.types";
+import { ApiRoute, LoadedRoute, PageComponent, WssRoute } from "./index.types";
 
 import { loadLayoutsForDir } from "./layout";
 import { loadLoaderForDir } from "./loader";
-import { loadRoutesFromManifest, loadNotFoundFromManifest, loadErrorFromManifest, loadChunksFromManifest } from "./loader-routes";
+import {
+  loadRoutesFromManifest,
+  loadNotFoundFromManifest,
+  loadErrorFromManifest,
+  loadChunksFromManifest,
+} from "./loader-routes";
 import { loadRoutes } from "./loader-pages";
 import { loadApiRoutes } from "./loader-api";
-import { NOT_FOUND_PATTERN, ERROR_PATTERN, NOT_FOUND_FILE_PREFIX, ERROR_FILE_PREFIX } from "@constants/globals";
+import {
+  NOT_FOUND_PATTERN,
+  ERROR_PATTERN,
+  NOT_FOUND_FILE_PREFIX,
+  ERROR_FILE_PREFIX,
+} from "@constants/globals";
+import { loadWssRoutes } from "./loader-wss";
 
 /**
  * Unified interface for loading routes from different sources.
@@ -16,6 +27,7 @@ import { NOT_FOUND_PATTERN, ERROR_PATTERN, NOT_FOUND_FILE_PREFIX, ERROR_FILE_PRE
 export interface RouteLoader {
   loadRoutes(): LoadedRoute[];
   loadApiRoutes(): ApiRoute[];
+  loadWssRoutes(): WssRoute[];
   loadNotFoundRoute(): LoadedRoute | null;
   loadErrorRoute(): LoadedRoute | null;
   loadRouteChunks(): Record<string, string>;
@@ -34,6 +46,10 @@ export class FilesystemRouteLoader implements RouteLoader {
 
   loadApiRoutes(): ApiRoute[] {
     return loadApiRoutes(this.appDir);
+  }
+
+  loadWssRoutes(): WssRoute[] {
+    return loadWssRoutes(this.appDir);
   }
 
   loadNotFoundRoute(): LoadedRoute | null {
@@ -67,6 +83,11 @@ export class ManifestRouteLoader implements RouteLoader {
     return apiRoutes;
   }
 
+  loadWssRoutes(): WssRoute[] {
+    const { wssRoutes } = loadRoutesFromManifest(this.projectRoot);
+    return wssRoutes;
+  }
+
   loadNotFoundRoute(): LoadedRoute | null {
     return loadNotFoundFromManifest(this.projectRoot);
   }
@@ -83,11 +104,13 @@ export class ManifestRouteLoader implements RouteLoader {
 /**
  * Loads the not-found route from the filesystem.
  * Looks for `_not-found.tsx` in the app root (Next.js style).
- * 
+ *
  * @param appDir - Root directory of the app
  * @returns LoadedRoute for the not-found page, or null if not found
  */
-export function loadNotFoundRouteFromFilesystem(appDir: string): LoadedRoute | null {
+export function loadNotFoundRouteFromFilesystem(
+  appDir: string
+): LoadedRoute | null {
   const notFoundCandidates = [
     path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.tsx`),
     path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.ts`),
@@ -151,11 +174,13 @@ export function loadNotFoundRouteFromFilesystem(appDir: string): LoadedRoute | n
 /**
  * Loads the error route from the filesystem.
  * Looks for `_error.tsx` in the app root (Next.js style).
- * 
+ *
  * @param appDir - Root directory of the app
  * @returns LoadedRoute for the error page, or null if not found
  */
-export function loadErrorRouteFromFilesystem(appDir: string): LoadedRoute | null {
+export function loadErrorRouteFromFilesystem(
+  appDir: string
+): LoadedRoute | null {
   const errorCandidates = [
     path.join(appDir, `${ERROR_FILE_PREFIX}.tsx`),
     path.join(appDir, `${ERROR_FILE_PREFIX}.ts`),
@@ -205,4 +230,3 @@ export function loadErrorRouteFromFilesystem(appDir: string): LoadedRoute | null
     generateStaticParams,
   };
 }
-

@@ -1,4 +1,6 @@
+import { lolySocket } from "@loly/core/sockets";
 import React, { useEffect, useRef, useState } from "react";
+import { io, Socket } from "socket.io-client";
 
 type ChatMessage = {
   id: string;
@@ -7,77 +9,48 @@ type ChatMessage = {
   at: Date;
 };
 
-type IncomingPayload =
-  | {
-      type: "chat";
-      text: string;
-      fromClientId: string;
-      at?: number;
-    }
-  | Record<string, any>;
+type ChatPayload = {
+  type: "chat";
+  text: string;
+  fromClientId: string;
+  at?: number;
+};
 
 export default function HomePage() {
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // 👤 id único por pestaña
   const [clientId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
-    const wsUrl = `${process.env.PUBLIC_WS_BASE_URL}/chat`;
+    // El namespace debe coincidir con lo que el servidor crea
+    // El servidor crea el namespace quitando '/wss/' del pattern
+    // Pattern: /wss/chat -> Namespace: /chat
+    const namespace = "/chat";
 
+    const socketInstance = lolySocket(namespace);
 
-    console.log("WS0", wsUrl)
-
-    const ws = new WebSocket(wsUrl);
-    setSocket(ws);
+    setSocket(socketInstance);
 
     const addMessage = (msg: ChatMessage) =>
       setMessages((prev) => [...prev, msg]);
 
-    ws.onopen = () => {
+    // Evento: conexión establecida
+    socketInstance.on("connect", () => {
       setIsConnected(true);
       addMessage({
         id: crypto.randomUUID(),
-        text: "Conectado al servidor de WebSocket ✅",
+        text: "Conectado al servidor de Socket.IO ✅",
         from: "system",
         at: new Date(),
       });
-    };
+    });
 
-    ws.onmessage = (event) => {
-      const raw = event.data;
-
-      let parsed: IncomingPayload | null = null;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {}
-
-      if (parsed && parsed.type === "chat") {
-        const isMe = parsed.fromClientId === clientId;
-
-        addMessage({
-          id: crypto.randomUUID(),
-          text: parsed.text,
-          from: isMe ? "me" : "server",
-          at: new Date(parsed.at ?? Date.now()),
-        });
-        return;
-      }
-
-      // fallback: texto plano
-      addMessage({
-        id: crypto.randomUUID(),
-        text: String(raw),
-        from: "server",
-        at: new Date(),
-      });
-    };
-
-    ws.onclose = () => {
+    // Evento: desconexión
+    socketInstance.on("disconnect", () => {
       setIsConnected(false);
       addMessage({
         id: crypto.randomUUID(),
@@ -85,19 +58,33 @@ export default function HomePage() {
         from: "system",
         at: new Date(),
       });
-    };
+    });
 
-    ws.onerror = () => {
+    // Evento: error de conexión
+    socketInstance.on("connect_error", (error) => {
+      console.error("Socket.IO connection error:", error);
       addMessage({
         id: crypto.randomUUID(),
-        text: "Ocurrió un error en el WebSocket ⚠️",
+        text: "Error al conectar con el servidor ⚠️",
         from: "system",
         at: new Date(),
       });
-    };
+    });
+
+    // Event handler: receive chat messages
+    socketInstance.on("chat", (payload: ChatPayload) => {
+      const isMe = payload.fromClientId === clientId;
+
+      addMessage({
+        id: crypto.randomUUID(),
+        text: payload.text,
+        from: isMe ? "me" : "server",
+        at: new Date(payload.at ?? Date.now()),
+      });
+    });
 
     return () => {
-      ws.close();
+      socketInstance.close();
     };
   }, [clientId]);
 
@@ -109,18 +96,19 @@ export default function HomePage() {
   }, [messages]);
 
   function handleSend() {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    if (!socket || !socket.connected) return;
     const trimmed = input.trim();
     if (!trimmed) return;
 
-    const payload = {
-      type: "chat" as const,
+    const payload: ChatPayload = {
+      type: "chat",
       text: trimmed,
       fromClientId: clientId,
       at: Date.now(),
     };
 
-    socket.send(JSON.stringify(payload));
+    // Enviar evento 'chat' al servidor
+    socket.emit("chat", payload);
     setInput("");
   }
 
@@ -136,9 +124,9 @@ export default function HomePage() {
       <div className="w-full max-w-2xl bg-gray-800 border border-gray-700 rounded-xl p-5 flex flex-col gap-4 shadow-lg">
         <header className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-xl font-semibold">Chat demo (WebSocket)</h2>
+            <h2 className="text-xl font-semibold">Chat demo (Socket.IO)</h2>
             <p className="text-sm text-gray-300">
-              Página Home (/) – ejemplo de cliente WS con React.
+              Página Home (/) – ejemplo de cliente Socket.IO con React.
             </p>
           </div>
 
@@ -220,7 +208,7 @@ export default function HomePage() {
             placeholder={
               isConnected
                 ? "Escribí un mensaje y presioná Enter…"
-                : "Esperando conexión al WebSocket…"
+                : "Esperando conexión a Socket.IO…"
             }
             className="flex-1 rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -234,11 +222,9 @@ export default function HomePage() {
         </form>
 
         <p className="text-[11px] text-gray-400 mt-1">
-          Este componente se monta en Home (/) y se conecta a{" "}
-          <code className="bg-gray-900 px-1 rounded">
-            ws://localhost:3000/chat
-          </code>
-          .
+          Este componente se monta en Home (/) y se conecta al namespace{" "}
+          <code className="bg-gray-900 px-1 rounded">/chat</code> usando
+          Socket.IO.
         </p>
       </div>
     </main>

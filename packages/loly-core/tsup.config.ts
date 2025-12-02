@@ -28,6 +28,7 @@ export default defineConfig({
     ['react/hooks']: "modules/react/hooks/index.ts",
     ['react/themes']: "modules/react/themes/index.ts",
     ['react/cache']: "modules/react/cache/index.ts",
+    ['react/sockets']: "modules/react/sockets/index.ts",
     runtime: "modules/runtime/client/index.tsx",
   },
   dts: true,

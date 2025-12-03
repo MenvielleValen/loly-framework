@@ -23,15 +23,36 @@ async function handleErrorRoute(
 ): Promise<boolean> {
   try {
     const components = await errorRoute.load();
+    
+    // Get theme: prioritize cookie, then server, then window data, then default
+    let theme: string = "light";
+    if (typeof document !== "undefined") {
+      const cookieMatch = document.cookie.match(/theme=([^;]+)/);
+      if (cookieMatch) {
+        theme = cookieMatch[1];
+      } else if (json.theme) {
+        theme = json.theme;
+      } else {
+        const currentTheme = getCurrentTheme();
+        if (currentTheme) theme = currentTheme;
+      }
+    } else if (json.theme) {
+      theme = json.theme;
+    }
+    
+    const errorProps = {
+      ...(json.props || {
+        error: json.message || "An error occurred",
+      }),
+      theme,
+    };
 
     const windowData: InitialData = {
       pathname: nextUrl,
       params: json.params || {},
-      props: json.props || {
-        error: json.message || "An error occurred",
-      },
+      props: errorProps,
       metadata: json.metadata ?? null,
-      theme: json.theme ?? getCurrentTheme() ?? null,
+      theme,
       notFound: false,
       error: true,
     };
@@ -43,9 +64,7 @@ async function handleErrorRoute(
       route: errorRoute,
       params: json.params || {},
       components,
-      props: json.props || {
-        error: json.message || "An error occurred",
-      },
+      props: errorProps,
     });
     return true;
   } catch (loadError) {
@@ -64,12 +83,33 @@ async function handleNotFoundRoute(
   notFoundRoute: ClientRouteLoaded | null,
   setState: (state: RouteViewState) => void
 ): Promise<void> {
+  // Get theme: prioritize cookie, then server, then window data, then default
+  let theme: string = "light";
+  if (typeof document !== "undefined") {
+    const cookieMatch = document.cookie.match(/theme=([^;]+)/);
+    if (cookieMatch) {
+      theme = cookieMatch[1];
+    } else if (json.theme) {
+      theme = json.theme;
+    } else {
+      const currentTheme = getCurrentTheme();
+      if (currentTheme) theme = currentTheme;
+    }
+  } else if (json.theme) {
+    theme = json.theme;
+  }
+  
+  const notFoundProps = {
+    ...(json.props ?? {}),
+    theme,
+  };
+
   const windowData: InitialData = {
     pathname: nextUrl,
     params: {},
-    props: json.props ?? {},
+    props: notFoundProps,
     metadata: json.metadata ?? null,
-    theme: json.theme ?? getCurrentTheme() ?? null,
+    theme,
     notFound: true,
     error: false,
   };
@@ -83,7 +123,7 @@ async function handleNotFoundRoute(
       route: notFoundRoute,
       params: {},
       components,
-      props: json.props ?? {},
+      props: notFoundProps,
     });
   } else {
     setState({
@@ -103,7 +143,31 @@ async function handleNormalRoute(
   setState: (state: RouteViewState) => void
 ): Promise<boolean> {
   applyMetadata(json.metadata ?? null);
-  const newProps = json.props ?? {};
+  
+  // Get theme: prioritize cookie (source of truth), then server response, then window data, then default
+  // Cookie is the source of truth because it persists across navigation
+  let theme: string = "light"; // Default
+  if (typeof document !== "undefined") {
+    const cookieMatch = document.cookie.match(/theme=([^;]+)/);
+    if (cookieMatch) {
+      theme = cookieMatch[1];
+    } else if (json.theme) {
+      theme = json.theme;
+    } else {
+      const currentTheme = getCurrentTheme();
+      if (currentTheme) {
+        theme = currentTheme;
+      }
+    }
+  } else if (json.theme) {
+    theme = json.theme;
+  }
+  
+  // Include theme in props so layouts receive it during SPA navigation
+  const newProps = {
+    ...(json.props ?? {}),
+    theme, // Always include theme
+  };
 
   const matched = matchRouteClient(nextUrl, routes);
 
@@ -117,7 +181,7 @@ async function handleNormalRoute(
     params: matched.params,
     props: newProps,
     metadata: json.metadata ?? null,
-    theme: json.theme ?? getCurrentTheme() ?? null,
+    theme,
     notFound: false,
     error: false,
   };

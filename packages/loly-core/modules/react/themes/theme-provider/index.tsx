@@ -26,42 +26,78 @@ export const ThemeProvider = ({
 }) => {
   const { message: themeMessage, sendMessage } = useBroadcastChannel('theme_channel');
 
-  // Initialize theme - priority: prop > window.__FW_DATA__ (from server) > cookie > default
-  const getInitialTheme = (): string => {
-    // 1. Use prop if provided (highest priority - explicitly passed from layout)
+  // Initialize theme consistently between server and client
+  // The server renders with initialTheme, and we must use the same value on client
+  // to avoid hydration mismatch. Priority: initialTheme prop > window.__FW_DATA__ > cookie > default
+  const [theme, setTheme] = useState<string>(() => {
+    // 1. Use prop if provided (this should match what server rendered)
     if (initialTheme) return initialTheme;
     
-    // 2. Use window.__FW_DATA__ from SSR (server already read cookie and injected it)
+    // 2. On client, use window.__FW_DATA__ from SSR (this is set before hydration)
+    // This ensures consistency between server and client
     if (typeof window !== "undefined") {
       const windowData = (window as any).__FW_DATA__;
       if (windowData?.theme) return windowData.theme;
     }
     
     // 3. Fallback to cookie (only if window.__FW_DATA__ not available yet)
-    // This should rarely happen, but covers edge cases
     if (typeof window !== "undefined") {
       const cookieTheme = getCookie("theme");
       if (cookieTheme) return cookieTheme;
     }
     
+    // Default fallback
     return "light";
-  };
+  });
 
-  const [theme, setTheme] = useState<string>(getInitialTheme);
-
+  // Listen for theme changes from broadcast channel (other tabs/windows)
   useEffect(() => {
     if (!themeMessage) return;
     if (themeMessage !== theme) {
       setTheme(themeMessage);
     }
-  }, [themeMessage]);
+  }, [themeMessage, theme]);
 
-  // Update body class when theme changes
+  // Listen for theme changes from window.__FW_DATA__ during SPA navigation
+  useEffect(() => {
+    const handleDataRefresh = () => {
+      if (typeof window !== "undefined") {
+        const windowData = (window as any).__FW_DATA__;
+        if (windowData?.theme) {
+          // Use functional update to avoid stale closure
+          setTheme((currentTheme) => {
+            if (windowData.theme !== currentTheme) {
+              return windowData.theme;
+            }
+            return currentTheme;
+          });
+        }
+      }
+    };
+
+    window.addEventListener("fw-data-refresh", handleDataRefresh);
+
+    return () => {
+      window.removeEventListener("fw-data-refresh", handleDataRefresh);
+    };
+  }, []);
+
+  // Update theme when initialTheme prop changes (e.g., during SPA navigation)
+  // This is the primary way theme updates during SPA navigation when layout re-renders
+  useEffect(() => {
+    if (initialTheme) {
+      // Always update if initialTheme is provided, even if it's the same
+      // This ensures theme syncs correctly during SPA navigation
+      setTheme(initialTheme);
+    }
+  }, [initialTheme]);
+
+  // Update body class when theme changes (skip during initial hydration to avoid mismatch)
   useEffect(() => {
     if (typeof document === "undefined") return;
 
     const body = document.body;
-    const currentClasses = body.className.split(" ");
+    const currentClasses = body.className.split(" ").filter(Boolean);
     
     // Remove old theme classes (light, dark, etc.)
     const themeClasses = ["light", "dark"];
@@ -70,16 +106,29 @@ export const ThemeProvider = ({
     );
     
     // Add new theme class
-    body.className = [...filteredClasses, theme].filter(Boolean).join(" ");
+    const newClassName = [...filteredClasses, theme].filter(Boolean).join(" ");
+    
+    // Only update if different to avoid unnecessary DOM updates
+    if (body.className !== newClassName) {
+      body.className = newClassName;
+    }
 
     sendMessage(theme);
-  }, [theme]);
+  }, [theme, sendMessage]);
 
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
 
     // Set theme cookie
     document.cookie = `theme=${newTheme}; path=/; max-age=31536000`; // 1 year expiry
+
+    // Update window.__FW_DATA__.theme so getCurrentTheme() returns the correct value during navigation
+    if (typeof window !== "undefined" && (window as any).__FW_DATA__) {
+      (window as any).__FW_DATA__ = {
+        ...(window as any).__FW_DATA__,
+        theme: newTheme,
+      };
+    }
   };
 
   return (

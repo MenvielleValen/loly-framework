@@ -142,7 +142,11 @@ export function createDocumentTree(options: {
     ),
     React.createElement(
       "body",
-      { style: { margin: 0 }, className: `${initialData.className} ${theme}` },
+      { 
+        style: { margin: 0 }, 
+        className: [initialData.className, theme].filter(Boolean).join(" "),
+        suppressHydrationWarning: true // Allow theme class to differ between server and client initially
+      },
       React.createElement("div", { id: APP_CONTAINER_ID }, appTree)
     ),
     React.createElement("script", {

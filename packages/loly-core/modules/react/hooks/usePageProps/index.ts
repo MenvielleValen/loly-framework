@@ -9,21 +9,30 @@ import React, { useEffect, useState } from "react";
  * @returns Object containing params and props
  */
 export const usePageProps = () => {
-  const [props, setProps] = useState({
-    params: {},
-    props: {},
+  const [props, setProps] = useState(() => {
+    // Initialize with current data if available
+    if (typeof window !== "undefined" && (window as any)?.__FW_DATA__) {
+      const data = (window as any).__FW_DATA__;
+      return {
+        params: data.params || {},
+        props: data.props || {},
+      };
+    }
+    return {
+      params: {},
+      props: {},
+    };
   });
 
   useEffect(() => {
-    // Load initial data
-    if ((window as any)?.__FW_DATA__) {
-      setProps((window as any).__FW_DATA__);
-    }
-
-    // Listen for data refresh events (from revalidate())
+    // Listen for data refresh events (from revalidate() or navigation)
     const handleDataRefresh = () => {
       if ((window as any)?.__FW_DATA__) {
-        setProps((window as any).__FW_DATA__);
+        const data = (window as any).__FW_DATA__;
+        setProps({
+          params: data.params || {},
+          props: data.props || {},
+        });
       }
     };
 

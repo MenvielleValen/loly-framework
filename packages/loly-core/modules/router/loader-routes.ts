@@ -1,19 +1,22 @@
 import fs from "fs";
 import path from "path";
 import {
-  ApiHandler,
-  ApiMiddleware,
   ApiRoute,
-  LayoutComponent,
   LoadedRoute,
-  PageComponent,
-  RoutesManifest,
   WssRoute,
 } from "./index.types";
-import { buildRegexFromRoutePath } from "./path";
 import { loadLoaderForDir } from "./loader";
 import { BUILD_FOLDER_NAME, ERROR_PATTERN } from "@constants/globals";
-import { isArray } from "util";
+import {
+  extractApiHandlers,
+  extractApiMiddlewares,
+  extractRouteRegex,
+  extractWssHandlers,
+  loadLayouts,
+  loadModuleSafely,
+  loadPageComponent,
+  readManifest,
+} from "./helpers/routes";
 
 /**
  * Loads page and API routes from the routes manifest file.
@@ -27,57 +30,37 @@ export function loadRoutesFromManifest(projectRoot: string): {
   apiRoutes: ApiRoute[];
   wssRoutes: WssRoute[];
 } {
-  const manifestPath = path.join(
-    projectRoot,
-    BUILD_FOLDER_NAME,
-    "routes-manifest.json"
-  );
-
-  if (!fs.existsSync(manifestPath)) {
+  const manifest = readManifest(projectRoot);
+  if (!manifest) {
     return { routes: [], apiRoutes: [], wssRoutes: [] };
   }
-
-  const raw = fs.readFileSync(manifestPath, "utf-8");
-  const manifest: RoutesManifest = JSON.parse(raw);
 
   const pageRoutes: LoadedRoute[] = [];
 
   for (const entry of manifest.routes) {
-    const routePath = entry.pattern;
-    const { regex, paramNames } = buildRegexFromRoutePath(routePath);
+    const { regex, paramNames } = extractRouteRegex(
+      entry.pattern,
+      entry.paramNames
+    );
 
-    const pageFile = path.join(projectRoot, entry.pageFile);
-    const layoutFiles = entry.layoutFiles.map((f) => path.join(projectRoot, f));
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pageMod = require(pageFile);
-    const component: PageComponent = pageMod.default;
-
+    const component = loadPageComponent(entry.pageFile, projectRoot);
     if (!component) {
       continue;
     }
 
-    const layoutMods = layoutFiles.map((lf) => {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        return require(lf);
-      } catch (err) {
-        return null;
-      }
-    });
-
-    const layouts: LayoutComponent[] = layoutMods
-      .filter((m): m is { default: LayoutComponent } => !!m?.default)
-      .map((m) => m.default);
-
+    const layouts = loadLayouts(entry.layoutFiles, projectRoot);
+    const pageFile = path.join(projectRoot, entry.pageFile);
+    const layoutFiles = entry.layoutFiles.map((f) =>
+      path.join(projectRoot, f)
+    );
     const pageDir = path.dirname(pageFile);
     const { middlewares, loader, dynamic, generateStaticParams } =
       loadLoaderForDir(pageDir);
 
     pageRoutes.push({
-      pattern: routePath,
+      pattern: entry.pattern,
       regex,
-      paramNames: entry.paramNames ?? paramNames,
+      paramNames,
       component,
       layouts,
       pageFile,
@@ -93,38 +76,25 @@ export function loadRoutesFromManifest(projectRoot: string): {
   const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
 
   for (const entry of manifest.apiRoutes) {
-    const pattern = entry.pattern;
-    const { regex, paramNames } = buildRegexFromRoutePath(pattern);
+    const { regex, paramNames } = extractRouteRegex(
+      entry.pattern,
+      entry.paramNames
+    );
     const filePath = path.join(projectRoot, entry.file);
+    const mod = loadModuleSafely(filePath);
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require(filePath);
-
-    const handlers: Record<string, ApiHandler> = {};
-    const methodMiddlewares: Record<string, ApiMiddleware[]> = {};
-
-    for (const m of httpMethods) {
-      if (typeof mod[m] === "function") {
-        handlers[m] = mod[m] as ApiHandler;
-      }
+    if (!mod) {
+      continue;
     }
 
-    const globalMiddlewares: ApiMiddleware[] = Array.isArray(mod.beforeApi)
-      ? mod.beforeApi
-      : [];
-
-    for (const m of httpMethods) {
-      const key = `before${m}`;
-      const mws = (mod as any)[key];
-      if (Array.isArray(mws)) {
-        methodMiddlewares[m] = mws as ApiMiddleware[];
-      }
-    }
+    const handlers = extractApiHandlers(mod, httpMethods);
+    const { global: globalMiddlewares, methodSpecific: methodMiddlewares } =
+      extractApiMiddlewares(mod, httpMethods);
 
     apiRoutes.push({
-      pattern,
+      pattern: entry.pattern,
       regex,
-      paramNames: entry.paramNames ?? paramNames,
+      paramNames,
       handlers,
       middlewares: globalMiddlewares,
       methodMiddlewares,
@@ -135,31 +105,25 @@ export function loadRoutesFromManifest(projectRoot: string): {
   const wssRoutes: WssRoute[] = [];
 
   for (const entry of manifest.wssRoutes) {
-    const pattern = entry.pattern;
-    const { regex, paramNames } = buildRegexFromRoutePath(pattern);
+    const { regex, paramNames } = extractRouteRegex(
+      entry.pattern,
+      entry.paramNames
+    );
     const filePath = path.join(projectRoot, entry.file);
+    const mod = loadModuleSafely(filePath);
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require(filePath);
-
-    const handlers: Record<string, ApiHandler> = {};
-    const methodMiddlewares: Record<string, ApiMiddleware[]> = {};
-
-    for (const m of (entry.events || [])) {
-      if(Array.isArray(mod.events) && typeof m === "string") {
-        handlers[m] = mod.events.find((e: { name: string }) => e.name?.toLowerCase() === m.toLowerCase())?.handler as ApiHandler;
-      }
+    if (!mod) {
+      continue;
     }
 
-    const globalMiddlewares: ApiMiddleware[] = Array.isArray(mod.beforeApi)
-      ? mod.beforeApi
-      : [];
-
+    const handlers = extractWssHandlers(mod, entry.events || []);
+    const { global: globalMiddlewares, methodSpecific: methodMiddlewares } =
+      extractApiMiddlewares(mod, []);
 
     wssRoutes.push({
-      pattern,
+      pattern: entry.pattern,
       regex,
-      paramNames: entry.paramNames ?? paramNames,
+      paramNames,
       handlers,
       middlewares: globalMiddlewares,
       methodMiddlewares,
@@ -203,51 +167,26 @@ export function loadChunksFromManifest(projectRoot: string): Record<string, stri
 export function loadNotFoundFromManifest(
   projectRoot: string
 ): LoadedRoute | null {
-  const manifestPath = path.join(
-    projectRoot,
-    BUILD_FOLDER_NAME,
-    "routes-manifest.json"
-  );
-
-  if (!fs.existsSync(manifestPath)) {
+  const manifest = readManifest(projectRoot);
+  if (!manifest) {
     return null;
   }
-  const raw = fs.readFileSync(manifestPath, "utf-8");
-  const manifest: RoutesManifest = JSON.parse(raw);
 
-  const pageFile = path.join(projectRoot, manifest.notFound.pageFile);
-  const layoutFiles = manifest.notFound.layoutFiles.map((f) =>
-    path.join(projectRoot, f)
-  );
-
-  const layoutMods = layoutFiles.map((lf) => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      return require(lf);
-    } catch (err) {
-      return null;
-    }
-  });
-
-  const layouts: LayoutComponent[] = layoutMods
-    .filter((m): m is { default: LayoutComponent } => !!m?.default)
-    .map((m) => m.default);
-
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const pageMod = require(pageFile);
-  const component: PageComponent = pageMod.default;
-
+  const component = loadPageComponent(manifest.notFound.pageFile, projectRoot);
   if (!component) {
     return null;
   }
+
+  const layouts = loadLayouts(manifest.notFound.layoutFiles, projectRoot);
+  const pageFile = path.join(projectRoot, manifest.notFound.pageFile);
 
   return {
     pattern: "",
     regex: new RegExp(""),
     paramNames: [],
     component,
-    layouts: layouts,
-    pageFile: pageFile,
+    layouts,
+    pageFile,
     layoutFiles: [],
     middlewares: [],
     loader: null,
@@ -265,17 +204,10 @@ export function loadNotFoundFromManifest(
 export function loadErrorFromManifest(
   projectRoot: string
 ): LoadedRoute | null {
-  const manifestPath = path.join(
-    projectRoot,
-    BUILD_FOLDER_NAME,
-    "routes-manifest.json"
-  );
-
-  if (!fs.existsSync(manifestPath)) {
+  const manifest = readManifest(projectRoot);
+  if (!manifest) {
     return null;
   }
-  const raw = fs.readFileSync(manifestPath, "utf-8");
-  const manifest: RoutesManifest = JSON.parse(raw);
 
   // Check if error page exists in manifest
   const errorEntry = (manifest as any).error;
@@ -283,39 +215,22 @@ export function loadErrorFromManifest(
     return null;
   }
 
-  const pageFile = path.join(projectRoot, errorEntry.pageFile);
-  const layoutFiles = (errorEntry.layoutFiles || []).map((f: string) =>
-    path.join(projectRoot, f)
-  );
-
-  const layoutMods = layoutFiles.map((lf: string) => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      return require(lf);
-    } catch (err) {
-      return null;
-    }
-  });
-
-  const layouts: LayoutComponent[] = layoutMods
-    .filter((m: any): m is { default: LayoutComponent } => !!m?.default)
-    .map((m: { default: LayoutComponent }) => m.default);
-
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const pageMod = require(pageFile);
-  const component: PageComponent = pageMod.default;
-
+  const component = loadPageComponent(errorEntry.pageFile, projectRoot);
   if (!component) {
     return null;
   }
+
+  const layoutFiles = (errorEntry.layoutFiles || []) as string[];
+  const layouts = loadLayouts(layoutFiles, projectRoot);
+  const pageFile = path.join(projectRoot, errorEntry.pageFile);
 
   return {
     pattern: ERROR_PATTERN,
     regex: new RegExp(`^${ERROR_PATTERN}/?$`),
     paramNames: [],
     component,
-    layouts: layouts,
-    pageFile: pageFile,
+    layouts,
+    pageFile,
     layoutFiles: [],
     middlewares: [],
     loader: null,

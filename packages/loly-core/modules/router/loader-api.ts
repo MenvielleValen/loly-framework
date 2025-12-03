@@ -1,7 +1,12 @@
 import fs from "fs";
 import path from "path";
-import { ApiHandler, ApiMiddleware, ApiRoute } from "./index.types";
-import { buildRegexFromRoutePath } from "./path";
+import { ApiRoute } from "./index.types";
+import {
+  extractApiHandlers,
+  extractApiMiddlewares,
+  extractRouteRegex,
+  loadModuleSafely,
+} from "./helpers/routes";
 
 const ROUTE_FILE_REGEX = /route\.(ts|tsx|js|jsx)$/;
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
@@ -50,31 +55,16 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
       const withoutRoute = relToApp.replace(/\/route\.(ts|tsx|js|jsx)$/, "");
       const pattern = "/" + withoutRoute;
 
-      const { regex, paramNames } = buildRegexFromRoutePath(pattern);
+      const { regex, paramNames } = extractRouteRegex(pattern);
 
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require(fullPath);
-
-      const handlers: Record<string, ApiHandler> = {};
-      const methodMiddlewares: Record<string, ApiMiddleware[]> = {};
-
-      for (const m of HTTP_METHODS) {
-        if (typeof mod[m] === "function") {
-          handlers[m] = mod[m] as ApiHandler;
-        }
+      const mod = loadModuleSafely(fullPath);
+      if (!mod) {
+        continue;
       }
 
-      const globalMiddlewares: ApiMiddleware[] = Array.isArray(mod.beforeApi)
-        ? mod.beforeApi
-        : [];
-
-      for (const m of HTTP_METHODS) {
-        const key = `before${m}`;
-        const mws = (mod as any)[key];
-        if (Array.isArray(mws)) {
-          methodMiddlewares[m] = mws as ApiMiddleware[];
-        }
-      }
+      const handlers = extractApiHandlers(mod, HTTP_METHODS);
+      const { global: globalMiddlewares, methodSpecific: methodMiddlewares } =
+        extractApiMiddlewares(mod, HTTP_METHODS);
 
       routes.push({
         pattern,

@@ -35,13 +35,36 @@ export interface ServerContext {
   locals: Record<string, any>;
 }
 
-// En packages/loly-core/modules/router/index.types.ts
+export interface WssActions {
+  /**
+   * Emit an event to all clients in the namespace
+   */
+  emit: (event: string, ...args: any[]) => void;
+  
+  /**
+   * Emit an event to a specific socket by Socket.IO socket ID
+   */
+  emitTo: (socketId: string, event: string, ...args: any[]) => void;
+  
+  /**
+   * Emit an event to a specific client by custom clientId
+   * Requires clientId to be stored in socket.data.clientId during connection
+   */
+  emitToClient: (clientId: string, event: string, ...args: any[]) => void;
+  
+  /**
+   * Broadcast an event to all clients in the namespace except the sender
+   */
+  broadcast: (event: string, ...args: any[]) => void;
+}
+
 export interface WssContext {
-  socket: Socket;  // El socket del cliente
-  io: Server;      // Instancia del servidor Socket.IO
+  socket: Socket;
+  io: Server;
   params: Record<string, string>;
   pathname: string;
-  data?: any;      // Datos recibidos del evento
+  data?: any;
+  actions: WssActions;
 }
 
 export type RouteMiddleware = (

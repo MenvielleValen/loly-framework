@@ -1,15 +1,18 @@
 import fs from "fs";
 import path from "path";
-import { ApiHandler, ApiMiddleware, WssRoute } from "./index.types";
-import { buildRegexFromRoutePath } from "./path";
+import { WssRoute } from "./index.types";
+import {
+  extractApiMiddlewares,
+  extractRouteRegex,
+  extractWssHandlersFromModule,
+  loadModuleSafely,
+} from "./helpers/routes";
 
 const ROUTE_FILE_REGEX = /events\.(ts|tsx|js|jsx)$/;
 
 export function loadWssRoutes(appDir: string): WssRoute[] {
   const apiRoot = path.join(appDir, "wss");
   const routes: WssRoute[] = [];
-
-  console.log({apiRoot});
 
   if (!fs.existsSync(apiRoot)) return routes;
 
@@ -31,32 +34,16 @@ export function loadWssRoutes(appDir: string): WssRoute[] {
       const withoutRoute = relToApp.replace(/\/events\.(ts|tsx|js|jsx)$/, "");
       const pattern = "/" + withoutRoute;
 
-      const { regex, paramNames } = buildRegexFromRoutePath(pattern);
+      const { regex, paramNames } = extractRouteRegex(pattern);
 
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require(fullPath);
-
-      const handlers: Record<string, ApiHandler> = {};
-      const methodMiddlewares: Record<string, ApiMiddleware[]> = {};
-
-      for (const m of (mod?.events || [])) {
-        if(typeof m.handler === "function" && typeof m.name === "string") {
-          handlers[m.name.toLowerCase()] = m.handler as ApiHandler;
-        }
+      const mod = loadModuleSafely(fullPath);
+      if (!mod) {
+        continue;
       }
 
-      const globalMiddlewares: ApiMiddleware[] = Array.isArray(mod.beforeApi)
-        ? mod.beforeApi
-        : [];
-
-        /*
-      for (const m of HTTP_METHODS) {
-        const key = `before${m}`;
-        const mws = (mod as any)[key];
-        if (Array.isArray(mws)) {
-          methodMiddlewares[m] = mws as ApiMiddleware[];
-        }
-      }*/
+      const handlers = extractWssHandlersFromModule(mod);
+      const { global: globalMiddlewares, methodSpecific: methodMiddlewares } =
+        extractApiMiddlewares(mod, []);
 
       routes.push({
         pattern,

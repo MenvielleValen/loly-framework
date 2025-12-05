@@ -1,7 +1,7 @@
 import React from "react";
-import { ThemeProvider } from "@loly/core/themes";
+import { ThemeProvider } from "@lolyjs/core/themes";
 import { ThemeSwitch } from "@/components/shared/theme-switch";
-import { Link } from "@loly/core/components";
+import { Link } from "@lolyjs/core/components";
 import { Rocket, Globe, Users, Calendar } from "lucide-react";
 
 export default function RootLayout({

@@ -1,4 +1,4 @@
-import { usePageProps } from "@loly/core/hooks";
+import { usePageProps } from "@lolyjs/core/hooks";
 import {
   Card,
   CardContent,

@@ -1,4 +1,4 @@
-import { useTheme } from "@loly/core/themes";
+import { useTheme } from "@lolyjs/core/themes";
 import { Switch } from "@/components/ui/switch";
 
 export const ThemeSwitch = () => {

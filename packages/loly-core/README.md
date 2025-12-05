@@ -56,8 +56,8 @@ export default function Home() {
 
 ```tsx
 // bootstrap.tsx
-import { bootstrapClient } from "@loly/core/runtime";
-import routes from "@loly/core/runtime";
+import { bootstrapClient } from "@lolyjs/core/runtime";
+import routes from "@lolyjs/core/runtime";
 
 bootstrapClient(routes);
 ```
@@ -117,7 +117,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 
 ```tsx
 // app/blog/[slug]/page.tsx
-import { usePageProps } from "@loly/core/hooks";
+import { usePageProps } from "@lolyjs/core/hooks";
 
 export default function BlogPost() {
   const { props } = usePageProps();
@@ -137,7 +137,7 @@ export default function BlogPost() {
 Fast page transitions without full reloads:
 
 ```tsx
-import { Link } from "@loly/core/components";
+import { Link } from "@lolyjs/core/components";
 
 export default function Navigation() {
   return (
@@ -154,7 +154,7 @@ export default function Navigation() {
 Invalidate and refresh route data:
 
 ```tsx
-import { revalidatePath, revalidate } from "@loly/core/client-cache";
+import { revalidatePath, revalidate } from "@lolyjs/core/client-cache";
 
 // Revalidate a specific route
 revalidatePath('/posts');
@@ -298,7 +298,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 ### Cache Management
 
 ```tsx
-import { revalidatePath, revalidate } from "@loly/core/client-cache";
+import { revalidatePath, revalidate } from "@lolyjs/core/client-cache";
 
 // Revalidate a specific route (removes from cache)
 revalidatePath('/posts');
@@ -313,7 +313,7 @@ await revalidate();
 ### Client Hooks
 
 ```tsx
-import { usePageProps } from "@loly/core/hooks";
+import { usePageProps } from "@lolyjs/core/hooks";
 
 export default function Page() {
   const { params, props } = usePageProps();
@@ -425,7 +425,7 @@ export default function BlogLayout({ children }) {
 ### Themes
 
 ```tsx
-import { ThemeProvider } from "@loly/core/themes";
+import { ThemeProvider } from "@lolyjs/core/themes";
 
 export default function RootLayout({ children, theme }) {
   return (
@@ -575,10 +575,10 @@ import { strictRateLimiter, lenientRateLimiter } from "@loly/core";
 import { logger, createModuleLogger, getRequestLogger } from "@loly/core";
 
 // Client
-import { Link } from "@loly/core/components";
-import { usePageProps } from "@loly/core/hooks";
-import { ThemeProvider } from "@loly/core/themes";
-import { revalidatePath, revalidate } from "@loly/core/client-cache";
+import { Link } from "@lolyjs/core/components";
+import { usePageProps } from "@lolyjs/core/hooks";
+import { ThemeProvider } from "@lolyjs/core/themes";
+import { revalidatePath, revalidate } from "@lolyjs/core/client-cache";
 ```
 
 ---

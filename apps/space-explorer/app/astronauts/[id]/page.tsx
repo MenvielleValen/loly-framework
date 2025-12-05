@@ -1,5 +1,5 @@
-import { usePageProps } from "@loly/core/hooks";
-import { Link } from "@loly/core/components";
+import { usePageProps } from "@lolyjs/core/hooks";
+import { Link } from "@lolyjs/core/components";
 import { Button } from "@/components/ui/button";
 import {
   Card,

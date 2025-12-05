@@ -1,5 +1,5 @@
 import React from "react";
-import { ThemeProvider } from "@loly/core/themes";
+import { ThemeProvider } from "@lolyjs/core/themes";
 import "./styles.css";
 
 export default function RootLayout({

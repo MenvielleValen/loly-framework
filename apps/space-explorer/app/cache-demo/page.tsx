@@ -1,4 +1,4 @@
-import { usePageProps } from "@loly/core/hooks";
+import { usePageProps } from "@lolyjs/core/hooks";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { revalidate, revalidatePath } from "@loly/core/client-cache";
+import { revalidate, revalidatePath } from "@lolyjs/core/client-cache";
 import { RefreshCw, Clock, Hash, MessageSquare } from "lucide-react";
 import { useState } from "react";
 

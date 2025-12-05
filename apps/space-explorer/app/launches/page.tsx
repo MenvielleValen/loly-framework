@@ -1,5 +1,5 @@
-import { usePageProps } from "@loly/core/hooks";
-import { Link } from "@loly/core/components";
+import { usePageProps } from "@lolyjs/core/hooks";
+import { Link } from "@lolyjs/core/components";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Rocket, ArrowRight, Calendar } from "lucide-react";
 import type { SpaceXLaunch } from "@/lib/space-api";
-import { revalidate, revalidatePath } from "@loly/core/client-cache";
+import { revalidate, revalidatePath } from "@lolyjs/core/client-cache";
 
 type LaunchesPageProps = {
   launches: SpaceXLaunch[];

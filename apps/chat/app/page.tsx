@@ -1,4 +1,4 @@
-import { lolySocket } from "@loly/core/sockets";
+import { lolySocket } from "@lolyjs/core/sockets";
 import React, { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 

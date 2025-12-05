@@ -1,4 +1,4 @@
-# create-loly-app
+# create-loly-app EXPERIMENTAL
 
 Scaffold a new Loly application with a single command.
 

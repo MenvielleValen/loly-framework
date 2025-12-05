@@ -1,4 +1,4 @@
-import type { ServerLoader } from "@loly/core";
+import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
   // Simulate fetching data that changes over time

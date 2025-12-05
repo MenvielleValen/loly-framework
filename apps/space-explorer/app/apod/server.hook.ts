@@ -1,4 +1,4 @@
-import type { ServerLoader } from "@loly/core";
+import type { ServerLoader } from "@lolyjs/core";
 import { getNASAPOD } from "@/lib/space-api";
 
 // Use SSR for APOD (changes daily)

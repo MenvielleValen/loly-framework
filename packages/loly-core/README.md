@@ -4,7 +4,7 @@
 
 **A modern, production-ready React framework with file-based routing, SSR, SSG, and built-in security**
 
-[![npm version](https://img.shields.io/npm/v/@loly/core?style=flat-square)](https://www.npmjs.com/package/@loly/core)
+[![npm version](https://img.shields.io/npm/v/@lolyjs/core?style=flat-square)](https://www.npmjs.com/package/@lolyjs/core)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg?style=flat-square)](https://opensource.org/licenses/ISC)
 
 *Built with React 19, Express, Rspack, and TypeScript*
@@ -32,9 +32,9 @@ Loly is a full-stack React framework that combines the simplicity of file-based 
 ### Installation
 
 ```bash
-npm install @loly/core react react-dom
+npm install @lolyjs/core react react-dom
 # or
-pnpm add @loly/core react react-dom
+pnpm add @lolyjs/core react react-dom
 ```
 
 ### Create Your First App
@@ -99,7 +99,7 @@ Use `server.hook.ts` to fetch data on the server:
 
 ```tsx
 // app/blog/[slug]/server.hook.ts
-import type { ServerLoader } from "@loly/core";
+import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
   const { slug } = ctx.params;
@@ -194,7 +194,7 @@ Components using `usePageProps()` automatically update when you call `revalidate
 ### Server Loader
 
 ```tsx
-import type { ServerLoader } from "@loly/core";
+import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
   const { req, res, params, pathname, locals } = ctx;
@@ -227,7 +227,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 ### Static Site Generation
 
 ```tsx
-import type { ServerLoader, GenerateStaticParams } from "@loly/core";
+import type { ServerLoader, GenerateStaticParams } from "@lolyjs/core";
 
 export const dynamic = "force-static" as const;
 
@@ -246,8 +246,8 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 ### API Routes
 
 ```tsx
-import type { ApiContext } from "@loly/core";
-import { validate } from "@loly/core";
+import type { ApiContext } from "@lolyjs/core";
+import { validate } from "@lolyjs/core";
 import { z } from "zod";
 
 const schema = z.object({
@@ -270,7 +270,7 @@ export async function POST(ctx: ApiContext) {
 ### Middleware
 
 ```tsx
-import type { RouteMiddleware } from "@loly/core";
+import type { RouteMiddleware } from "@lolyjs/core";
 
 export const requireAuth: RouteMiddleware = async (ctx, next) => {
   const user = await getUser(ctx.req);
@@ -439,7 +439,7 @@ export default function RootLayout({ children, theme }) {
 ### Validation & Sanitization
 
 ```tsx
-import { validate, safeValidate, sanitizeString } from "@loly/core";
+import { validate, safeValidate, sanitizeString } from "@lolyjs/core";
 import { z } from "zod";
 
 const schema = z.object({
@@ -463,7 +463,7 @@ const clean = sanitizeString(userInput);
 ### Logging
 
 ```tsx
-import { getRequestLogger, createModuleLogger } from "@loly/core";
+import { getRequestLogger, createModuleLogger } from "@lolyjs/core";
 
 // In server hooks or API routes
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -491,7 +491,7 @@ import type {
   ApiContext,
   RouteMiddleware,
   ApiMiddleware,
-} from "@loly/core";
+} from "@lolyjs/core";
 
 // Fully typed server loader
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -552,7 +552,7 @@ loly start [--port 3000] [--appDir app]
 
 ```tsx
 // Server
-import { startDevServer, startProdServer, buildApp } from "@loly/core";
+import { startDevServer, startProdServer, buildApp } from "@lolyjs/core";
 
 // Types
 import type {
@@ -562,17 +562,17 @@ import type {
   RouteMiddleware,
   ApiMiddleware,
   GenerateStaticParams,
-} from "@loly/core";
+} from "@lolyjs/core";
 
 // Validation
-import { validate, safeValidate, ValidationError } from "@loly/core";
+import { validate, safeValidate, ValidationError } from "@lolyjs/core";
 
 // Security
-import { sanitizeString, sanitizeObject } from "@loly/core";
-import { strictRateLimiter, lenientRateLimiter } from "@loly/core";
+import { sanitizeString, sanitizeObject } from "@lolyjs/core";
+import { strictRateLimiter, lenientRateLimiter } from "@lolyjs/core";
 
 // Logging
-import { logger, createModuleLogger, getRequestLogger } from "@loly/core";
+import { logger, createModuleLogger, getRequestLogger } from "@lolyjs/core";
 
 // Client
 import { Link } from "@lolyjs/core/components";

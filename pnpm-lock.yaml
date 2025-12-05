@@ -10,7 +10,7 @@ importers:
 
   apps/chat:
     dependencies:
-      '@loly/core':
+      '@lolyjs/core':
         specifier: workspace:*
         version: link:../../packages/loly-core
       axios:
@@ -71,7 +71,7 @@ importers:
 
   apps/space-explorer:
     dependencies:
-      '@loly/core':
+      '@lolyjs/core':
         specifier: workspace:*
         version: link:../../packages/loly-core
       '@radix-ui/react-slot':

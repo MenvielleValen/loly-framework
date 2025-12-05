@@ -86,7 +86,7 @@ pnpm dev
 ```
 
 This will:
-- Build the `@loly/core` package if needed
+- Build the `@lolyjs/core` package if needed
 - Start the development server with hot-reload
 - Open the app at `http://localhost:3000` (or the configured port)
 
@@ -123,7 +123,7 @@ Use pnpm filters to run commands on specific workspaces:
 
 ```bash
 # Build only the core package
-pnpm --filter @loly/core build
+pnpm --filter @lolyjs/core build
 
 # Build only the space-explorer app
 pnpm --filter space-explorer build
@@ -149,7 +149,7 @@ pnpm --filter space-explorer add <package-name>
 pnpm --filter space-explorer add -D <package-name>
 
 # Add dependency to core package
-pnpm --filter @loly/core add <package-name>
+pnpm --filter @lolyjs/core add <package-name>
 ```
 
 #### Run scripts in a specific workspace
@@ -178,12 +178,12 @@ node init-example start space-explorer
 
 ### 1. Making Changes to Core Package
 
-If you're working on the `@loly/core` package:
+If you're working on the `@lolyjs/core` package:
 
 1. Make your changes in `packages/loly-core/`
 2. Build the package:
    ```bash
-   pnpm --filter @loly/core build
+   pnpm --filter @lolyjs/core build
    ```
 3. The changes will be reflected in apps using `workspace:*` protocol
 
@@ -204,7 +204,7 @@ If you're working on the `@loly/core` package:
 pnpm --filter space-explorer add axios
 
 # Add to core package
-pnpm --filter @loly/core add zod
+pnpm --filter @lolyjs/core add zod
 
 # Add to root (shared dev tools)
 pnpm add -D -w typescript
@@ -216,7 +216,7 @@ pnpm add -D -w typescript
 
 ### Packages
 
-#### `@loly/core`
+#### `@lolyjs/core`
 
 The core framework package containing:
 - Server runtime
@@ -227,7 +227,7 @@ The core framework package containing:
 
 **Location**: `packages/loly-core/`
 
-**Build**: `pnpm --filter @loly/core build`
+**Build**: `pnpm --filter @lolyjs/core build`
 
 #### `create-loly-app`
 
@@ -316,7 +316,7 @@ If you see build errors:
    ```bash
    # Clean core package
    rm -rf packages/loly-core/dist
-   pnpm --filter @loly/core build
+   pnpm --filter @lolyjs/core build
    ```
 
 ### Hot reload not working
@@ -341,7 +341,7 @@ If you see build errors:
 ## 📝 Notes
 
 - This project uses **pnpm workspaces** for monorepo management
-- All apps depend on `@loly/core` using the `workspace:*` protocol
+- All apps depend on `@lolyjs/core` using the `workspace:*` protocol
 - The workspace configuration is in `pnpm-workspace.yaml`
 - Package versions are managed in individual `package.json` files
 

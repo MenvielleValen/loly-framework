@@ -1,4 +1,4 @@
-import { ServerConfig } from "@loly/core";
+import { ServerConfig } from "@lolyjs/core";
 
 const DEFAULT_CONFIG: ServerConfig = {
   bodyLimit: "1mb",

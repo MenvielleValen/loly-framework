@@ -1,4 +1,4 @@
-import type { ServerLoader } from "@loly/core";
+import type { ServerLoader } from "@lolyjs/core";
 import { getNASAPOD, getSpaceXLaunches } from "@/lib/space-api";
 
 export const getServerSideProps: ServerLoader = async () => {

@@ -1,4 +1,4 @@
-import { ServerLoader } from "@loly/core";
+import { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async () => {
   return {

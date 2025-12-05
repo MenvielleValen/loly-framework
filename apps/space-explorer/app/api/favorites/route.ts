@@ -1,6 +1,6 @@
-import type { ApiContext, ApiMiddleware } from "@loly/core";
+import type { ApiContext, ApiMiddleware } from "@lolyjs/core";
 import { z } from "zod";
-import { validate } from "@loly/core";
+import { validate } from "@lolyjs/core";
 
 const favoriteSchema = z.object({
   type: z.enum(["planet", "launch", "astronaut"]),

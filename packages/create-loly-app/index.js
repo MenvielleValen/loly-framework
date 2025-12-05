@@ -194,22 +194,22 @@ async function main() {
     const packageJsonPath = path.join(projectDir, "package.json");
     updatePackageJson(packageJsonPath, validatedName);
     
-    // Check if we're in a workspace and adjust @loly/core dependency
+    // Check if we're in a workspace and adjust @lolyjs/core dependency
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
     const isInWorkspace = fs.existsSync(path.resolve(projectDir, "../..", "pnpm-workspace.yaml"));
     
-    if (packageJson.dependencies?.["@loly/core"]?.startsWith("workspace:")) {
+    if (packageJson.dependencies?.["@lolyjs/core"]?.startsWith("workspace:")) {
       if (!isInWorkspace) {
         // Replace workspace protocol with latest version for standalone projects
-        packageJson.dependencies["@loly/core"] = "^0.1.0-alpha.0";
+        packageJson.dependencies["@lolyjs/core"] = "^0.1.0-alpha.0";
         fs.writeFileSync(
           packageJsonPath,
           JSON.stringify(packageJson, null, 2) + "\n",
           "utf-8"
         );
-        console.log(chalk.gray("  Updated @loly/core to use published version"));
+        console.log(chalk.gray("  Updated @lolyjs/core to use published version"));
       } else {
-        console.log(chalk.gray("  Using workspace dependency for @loly/core"));
+        console.log(chalk.gray("  Using workspace dependency for @lolyjs/core"));
       }
     }
 

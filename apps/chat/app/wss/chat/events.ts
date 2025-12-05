@@ -1,4 +1,4 @@
-import { WssContext } from "@loly/core";
+import { WssContext } from "@lolyjs/core";
 
 /**
  * WebSocket event handlers for the chat namespace.

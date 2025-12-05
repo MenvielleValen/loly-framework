@@ -1,4 +1,4 @@
-import type { ApiContext } from "@loly/core";
+import type { ApiContext } from "@lolyjs/core";
 import { getSpaceXLaunch } from "@/lib/space-api";
 
 export async function GET(ctx: ApiContext) {

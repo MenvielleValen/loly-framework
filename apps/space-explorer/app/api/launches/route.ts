@@ -1,6 +1,6 @@
-import type { ApiContext } from "@loly/core";
+import type { ApiContext } from "@lolyjs/core";
 import { z } from "zod";
-import { validate } from "@loly/core";
+import { validate } from "@lolyjs/core";
 import { getSpaceXLaunches } from "@/lib/space-api";
 
 const launchesQuerySchema = z.object({

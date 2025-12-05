@@ -1,5 +1,5 @@
-import type { RouteMiddleware } from "@loly/core";
-import { getRequestLogger } from "@loly/core";
+import type { RouteMiddleware } from "@lolyjs/core";
+import { getRequestLogger } from "@lolyjs/core";
 
 export const requestLogger: RouteMiddleware = async (ctx, next) => {
   const logger = getRequestLogger(ctx.req);

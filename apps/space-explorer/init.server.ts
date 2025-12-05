@@ -1,5 +1,5 @@
-import { InitServerData } from "@loly/core";
-import { createModuleLogger } from "@loly/core";
+import { InitServerData } from "@lolyjs/core";
+import { createModuleLogger } from "@lolyjs/core";
 
 const logger = createModuleLogger("space-explorer-init");
 

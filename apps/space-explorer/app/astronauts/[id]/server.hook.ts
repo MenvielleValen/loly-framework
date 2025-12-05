@@ -1,4 +1,4 @@
-import type { ServerLoader, GenerateStaticParams } from "@loly/core";
+import type { ServerLoader, GenerateStaticParams } from "@lolyjs/core";
 import { getAllAstronauts, getAstronaut } from "@/lib/space-api";
 
 // Enable SSG for individual astronaut pages

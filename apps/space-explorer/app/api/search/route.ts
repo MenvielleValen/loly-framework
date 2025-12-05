@@ -1,6 +1,6 @@
-import type { ApiContext, ApiMiddleware } from "@loly/core";
+import type { ApiContext, ApiMiddleware } from "@lolyjs/core";
 import { z } from "zod";
-import { validate } from "@loly/core";
+import { validate } from "@lolyjs/core";
 import { getAllPlanets, getAllAstronauts, getSpaceXLaunches } from "@/lib/space-api";
 
 const searchSchema = z.object({

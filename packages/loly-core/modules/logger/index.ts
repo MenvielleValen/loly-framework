@@ -37,7 +37,7 @@ function createLogger(options: LoggerOptions = {}): PinoLogger {
   const baseConfig: pino.LoggerOptions = {
     level,
     base: {
-      name: "@loly/core",
+      name: "@lolyjs/core",
       env: process.env.NODE_ENV || "development",
     },
     timestamp: pino.stdTimeFunctions.isoTime,

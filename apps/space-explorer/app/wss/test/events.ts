@@ -1,4 +1,4 @@
-import { ApiContext } from "@loly/core";
+import { ApiContext } from "@lolyjs/core";
 
 export const events = [
   {

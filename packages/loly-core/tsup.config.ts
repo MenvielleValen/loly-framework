@@ -53,5 +53,12 @@ export default defineConfig({
   },
 
   // toolings that you don't want bundled
-  external: ["esbuild", "@rspack/core", "tsx"],
+  external: [
+    "esbuild",
+    "@rspack/core",
+    "tsx",
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+  ],
 });

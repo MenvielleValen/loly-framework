@@ -282,23 +282,34 @@ export function createClickHandler(
   navigate: (url: string, options?: NavigateOptions) => void
 ): (ev: MouseEvent) => void {
   return function handleClick(ev: MouseEvent) {
-    if (ev.defaultPrevented) return;
-    if (ev.button !== 0) return;
-    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    // Verificar PRIMERO si es un elemento interactivo antes de hacer cualquier otra cosa
+    // Usar composedPath para verificar todos los elementos en la cadena del evento
+    const path = ev.composedPath();
+    
+    // Verificar si algún elemento en la cadena es interactivo
+    for (const element of path) {
+      if (!(element instanceof HTMLElement)) continue;
+      
+      const tagName = element.tagName.toLowerCase();
+      if (
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "button" ||
+        tagName === "select" ||
+        element.isContentEditable ||
+        (tagName === "label" && (element as HTMLLabelElement).control)
+      ) {
+        return; // Es un elemento interactivo, no procesar
+      }
+    }
 
     const target = ev.target as HTMLElement | null;
     if (!target) return;
 
-    const tagName = target.tagName.toLowerCase();
-    const isInteractiveElement =
-      tagName === "input" ||
-      tagName === "textarea" ||
-      tagName === "button" ||
-      tagName === "select" ||
-      target.isContentEditable ||
-      target.closest("input, textarea, button, select, [contenteditable]");
-
-    if (isInteractiveElement) return;
+    // Ahora verificar las otras condiciones
+    if (ev.defaultPrevented) return;
+    if (ev.button !== 0) return;
+    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
 
     const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
     if (!anchor) return;

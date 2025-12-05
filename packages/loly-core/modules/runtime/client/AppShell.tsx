@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { RouterView } from "./RouterView";
 import {
   navigate,
@@ -25,33 +25,43 @@ export function AppShell({
   errorRoute,
 }: AppShellProps) {
   const [state, setState] = useState<RouteViewState>(initialState);
+  const handlersRef = useRef<NavigationHandlers>({
+    setState,
+    routes,
+    notFoundRoute,
+    errorRoute,
+  });
 
+  // Mantener handlersRef actualizado
   useEffect(() => {
-    const handlers: NavigationHandlers = {
+    handlersRef.current = {
       setState,
       routes,
       notFoundRoute,
       errorRoute,
     };
+  }, [routes, notFoundRoute, errorRoute]);
 
+  useEffect(() => {
     async function handleNavigate(
       nextUrl: string,
       options?: { revalidate?: boolean }
     ) {
-      await navigate(nextUrl, handlers, options);
+      await navigate(nextUrl, handlersRef.current, options);
     }
 
     const handleClick = createClickHandler(handleNavigate);
     const handlePopState = createPopStateHandler(handleNavigate);
 
-    window.addEventListener("click", handleClick);
-    window.addEventListener("popstate", handlePopState);
+    // Usar capture: false (burbujeo) para que los eventos del input se manejen primero
+    window.addEventListener("click", handleClick, { capture: false });
+    window.addEventListener("popstate", handlePopState, { capture: false });
 
     return () => {
-      window.removeEventListener("click", handleClick);
-      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("click", handleClick, { capture: false } as EventListenerOptions);
+      window.removeEventListener("popstate", handlePopState, { capture: false } as EventListenerOptions);
     };
-  }, [routes, notFoundRoute, errorRoute]);
+  }, []); // Solo ejecutar una vez al montar
 
   const isError = state.route === errorRoute;
   const isNotFound = state.route === notFoundRoute;

@@ -43,10 +43,14 @@ export function AppShell({
   }, [routes, notFoundRoute, errorRoute]);
 
   useEffect(() => {
+    // Flag para evitar múltiples listeners (por si React Strict Mode ejecuta dos veces)
+    let isMounted = true;
+
     async function handleNavigate(
       nextUrl: string,
       options?: { revalidate?: boolean }
     ) {
+      if (!isMounted) return;
       await navigate(nextUrl, handlersRef.current, options);
     }
 
@@ -54,12 +58,13 @@ export function AppShell({
     const handlePopState = createPopStateHandler(handleNavigate);
 
     // Usar capture: false (burbujeo) para que los eventos del input se manejen primero
-    window.addEventListener("click", handleClick, { capture: false });
-    window.addEventListener("popstate", handlePopState, { capture: false });
+    window.addEventListener("click", handleClick, false);
+    window.addEventListener("popstate", handlePopState, false);
 
     return () => {
-      window.removeEventListener("click", handleClick, { capture: false } as EventListenerOptions);
-      window.removeEventListener("popstate", handlePopState, { capture: false } as EventListenerOptions);
+      isMounted = false;
+      window.removeEventListener("click", handleClick, false);
+      window.removeEventListener("popstate", handlePopState, false);
     };
   }, []); // Solo ejecutar una vez al montar
 

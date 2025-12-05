@@ -282,37 +282,60 @@ export function createClickHandler(
   navigate: (url: string, options?: NavigateOptions) => void
 ): (ev: MouseEvent) => void {
   return function handleClick(ev: MouseEvent) {
-    // Verificar PRIMERO si es un elemento interactivo antes de hacer cualquier otra cosa
-    // Usar composedPath para verificar todos los elementos en la cadena del evento
-    const path = ev.composedPath();
-    
-    // Verificar si algún elemento en la cadena es interactivo
-    for (const element of path) {
-      if (!(element instanceof HTMLElement)) continue;
+    try {
+      // Salir temprano si el evento ya fue prevenido
+      if (ev.defaultPrevented) return;
       
-      const tagName = element.tagName.toLowerCase();
+      // Verificar que sea un evento de mouse real (no sintético o de teclado)
+      if (ev.type !== "click") return;
+      if (ev.button !== 0) return; // Solo botón izquierdo
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+      
+      // Verificar que el evento tenga coordenadas válidas (eventos de mouse reales las tienen)
+      if (ev.clientX === 0 && ev.clientY === 0 && ev.detail === 0) {
+        // Podría ser un evento sintético, ser más cauteloso
+        const target = ev.target as HTMLElement | null;
+        if (target) {
+          const tagName = target.tagName.toLowerCase();
+          if (tagName === "input" || tagName === "textarea" || tagName === "button" || tagName === "select") {
+            return; // Es un input, no procesar eventos sintéticos
+          }
+        }
+      }
+
+      const target = ev.target as HTMLElement | null;
+      if (!target) return;
+
+      // Verificar PRIMERO si el target es un elemento interactivo (más rápido)
+      const tagName = target.tagName.toLowerCase();
       if (
         tagName === "input" ||
         tagName === "textarea" ||
         tagName === "button" ||
         tagName === "select" ||
-        element.isContentEditable ||
-        (tagName === "label" && (element as HTMLLabelElement).control)
+        target.isContentEditable ||
+        target.getAttribute("contenteditable") === "true"
       ) {
         return; // Es un elemento interactivo, no procesar
       }
-    }
 
-    const target = ev.target as HTMLElement | null;
-    if (!target) return;
+      // Verificar si está dentro de un elemento interactivo usando closest (más eficiente que composedPath)
+      const interactiveParent = target.closest("input, textarea, button, select, [contenteditable], label");
+      if (interactiveParent) {
+        // Si el parent es un label, verificar si tiene un control asociado
+        if (interactiveParent.tagName.toLowerCase() === "label") {
+          const label = interactiveParent as HTMLLabelElement;
+          if (label.control) {
+            return; // El label tiene un control asociado (input, etc)
+          }
+        } else {
+          return; // Está dentro de un elemento interactivo
+        }
+      }
 
-    // Ahora verificar las otras condiciones
-    if (ev.defaultPrevented) return;
-    if (ev.button !== 0) return;
-    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
-
-    const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
-    if (!anchor) return;
+      // Solo buscar anchor si no es un elemento interactivo
+      const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
 
     const href = anchor.getAttribute("href");
     if (!href) return;
@@ -335,6 +358,10 @@ export function createClickHandler(
 
     window.history.pushState({}, "", nextUrl);
     navigate(nextUrl, shouldRevalidate ? { revalidate: true } : undefined);
+    } catch (error) {
+      // Silenciar errores para evitar bloquear el navegador
+      console.error("[navigation] Error in click handler:", error);
+    }
   };
 }
 

@@ -87,6 +87,9 @@ export function createClientConfig(
         filename: mode === "production" ? "client.[contenthash].css" : "client.css",
       }),
     ],
+    externals: {
+      "@lolyjs/core/runtime": "@lolyjs/core/runtime",
+    },
     infrastructureLogging: {
       level: "error",
     },

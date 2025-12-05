@@ -1,5 +1,5 @@
 {
-  "name": "@loly/core",
+  "name": "@lolyjs/core",
   "version": "0.1.0-alpha.0",
   "main": "dist/index.cjs",
   "module": "dist/index.js",

@@ -43,14 +43,21 @@ export function AppShell({
   }, [routes, notFoundRoute, errorRoute]);
 
   useEffect(() => {
+    console.log("[loly:AppShell] Setting up event listeners");
+    
     // Flag para evitar múltiples listeners (por si React Strict Mode ejecuta dos veces)
     let isMounted = true;
+    let listenerCount = 0;
 
     async function handleNavigate(
       nextUrl: string,
       options?: { revalidate?: boolean }
     ) {
-      if (!isMounted) return;
+      if (!isMounted) {
+        console.warn("[loly:AppShell] navigate called but component is unmounted");
+        return;
+      }
+      console.log("[loly:AppShell] Navigating to", nextUrl, options);
       await navigate(nextUrl, handlersRef.current, options);
     }
 
@@ -60,8 +67,19 @@ export function AppShell({
     // Usar capture: false (burbujeo) para que los eventos del input se manejen primero
     window.addEventListener("click", handleClick, false);
     window.addEventListener("popstate", handlePopState, false);
+    listenerCount = 2;
+    
+    console.log("[loly:AppShell] Event listeners added", {
+      clickListener: true,
+      popStateListener: true,
+      totalListeners: listenerCount,
+    });
 
     return () => {
+      console.log("[loly:AppShell] Cleaning up event listeners", {
+        wasMounted: isMounted,
+        listenersToRemove: listenerCount,
+      });
       isMounted = false;
       window.removeEventListener("click", handleClick, false);
       window.removeEventListener("popstate", handlePopState, false);

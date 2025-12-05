@@ -289,6 +289,17 @@ export function createClickHandler(
     const target = ev.target as HTMLElement | null;
     if (!target) return;
 
+    const tagName = target.tagName.toLowerCase();
+    const isInteractiveElement =
+      tagName === "input" ||
+      tagName === "textarea" ||
+      tagName === "button" ||
+      tagName === "select" ||
+      target.isContentEditable ||
+      target.closest("input, textarea, button, select, [contenteditable]");
+
+    if (isInteractiveElement) return;
+
     const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
     if (!anchor) return;
 

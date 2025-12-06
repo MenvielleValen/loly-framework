@@ -28,7 +28,11 @@ export const lolySocket = (
   namespace: string,
   opts?: Partial<ManagerOptions & SocketOptions>
 ): Socket => {
-  const baseUrl = process.env.PUBLIC_WS_BASE_URL || window.location.origin;
+  const baseUrl = process?.env?.PUBLIC_WS_BASE_URL || window.location.origin;
+
+  if(!process?.env?.PUBLIC_WS_BASE_URL) {
+    console.warn("[loly:socket] PUBLIC_WS_BASE_URL is not set, using window.location.origin.");
+  }
 
   // Normalize namespace to always start with '/'
   const normalizedNamespace = namespace.startsWith("/") ? namespace : `/${namespace}`;

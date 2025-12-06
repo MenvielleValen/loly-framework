@@ -1,13 +1,13 @@
-# Loly Framework EXPERIMENTAL
+# Loly Framework
 
 <div align="center">
 
-**A modern, production-ready React framework with file-based routing, SSR, SSG, and built-in security**
+**A modern, full-stack React framework with native WebSocket support, route-level middlewares, and enterprise-grade features**
 
 [![npm version](https://img.shields.io/npm/v/@lolyjs/core?style=flat-square)](https://www.npmjs.com/package/@lolyjs/core)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg?style=flat-square)](https://opensource.org/licenses/ISC)
 
-*Built with React 19, Express, Rspack, and TypeScript*
+*Built with React 19, Express, Rspack, Socket.IO, and TypeScript*
 
 </div>
 
@@ -15,15 +15,16 @@
 
 ## Overview
 
-Loly is a full-stack React framework that combines the simplicity of file-based routing with powerful server-side rendering, static site generation, and enterprise-grade security features.
+Loly is a full-stack React framework that combines the simplicity of file-based routing with powerful server-side rendering, static site generation, and unique features like native WebSocket support and route-level middlewares.
 
-### Why Loly?
+### What Makes Loly Different?
 
-- ⚡ **Fast** - Lightning-fast bundling with Rspack and optimized SSR streaming
-- 🔒 **Secure** - Built-in rate limiting, CORS, CSP, input validation, and sanitization
-- 🎯 **Developer-Friendly** - File-based routing, hot reload, and full TypeScript support
-- 🚀 **Production-Ready** - Structured logging, error handling, and optimized builds
-- 💾 **Smart Caching** - LRU cache with path indexing for optimal performance
+- 🔌 **Native WebSocket Support** - Built-in Socket.IO integration with automatic namespace routing
+- 🎯 **Route-Level Middlewares** - Define middlewares directly in your routes for pages and APIs
+- 📁 **Separation of Concerns** - Server logic in `server.hook.ts` separate from React components
+- 🚀 **Hybrid Rendering** - SSR, SSG, and CSR with streaming support
+- 🛡️ **Security First** - Built-in rate limiting, validation, sanitization, and security headers
+- ⚡ **Performance** - Fast bundling with Rspack and optimized code splitting
 
 ---
 
@@ -37,15 +38,7 @@ npm install @lolyjs/core react react-dom
 pnpm add @lolyjs/core react react-dom
 ```
 
-### Create Your First App
-
-```bash
-# Create app directory
-mkdir my-app && cd my-app
-
-# Create your first page
-mkdir -p app
-```
+### Create Your First Page
 
 ```tsx
 // app/page.tsx
@@ -54,35 +47,161 @@ export default function Home() {
 }
 ```
 
-```tsx
-// bootstrap.tsx
-import { bootstrapClient } from "@lolyjs/core/runtime";
-import routes from "@lolyjs/core/runtime";
+### Add Server-Side Data
 
-bootstrapClient(routes);
+```tsx
+// app/page/server.hook.ts
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  const data = await fetchData();
+  
+  return {
+    props: { data },
+    metadata: {
+      title: "Home Page",
+      description: "Welcome to Loly",
+    },
+  };
+};
 ```
 
-```json
-// package.json
-{
-  "scripts": {
-    "dev": "loly dev",
-    "build": "loly build",
-    "start": "loly start"
-  }
+```tsx
+// app/page.tsx
+import { usePageProps } from "@lolyjs/core/hooks";
+
+export default function Home() {
+  const { props } = usePageProps();
+  return <h1>{props.data}</h1>;
 }
 ```
 
+### Start Development Server
+
 ```bash
-npm run dev
+npx loly dev
 # Server runs on http://localhost:3000
 ```
 
 ---
 
-## Core Concepts
+## Key Features
 
-### File-Based Routing
+### 🔌 Native WebSocket Support
+
+Loly includes built-in WebSocket support with automatic namespace routing. Define WebSocket events using the same file-based routing pattern as pages and APIs:
+
+```tsx
+// app/wss/chat/events.ts
+import type { WssContext } from "@lolyjs/core";
+
+export const events = [
+  {
+    name: "connection",
+    handler: (ctx: WssContext) => {
+      console.log("Client connected:", ctx.socket.id);
+    },
+  },
+  {
+    name: "message",
+    handler: (ctx: WssContext) => {
+      const { data, actions } = ctx;
+      // Broadcast to all clients
+      actions.broadcast("message", {
+        text: data.text,
+        from: ctx.socket.id,
+      });
+    },
+  },
+];
+```
+
+**Client-side:**
+
+```tsx
+import { lolySocket } from "@lolyjs/core/sockets";
+
+const socket = lolySocket("/chat");
+
+socket.on("message", (data) => {
+  console.log("Received:", data);
+});
+
+socket.emit("message", { text: "Hello!" });
+```
+
+**Key Benefits:**
+- Automatic namespace creation from file structure
+- Same routing pattern as pages and APIs
+- Built-in broadcasting helpers (`emit`, `broadcast`, `emitTo`, `emitToClient`)
+- No manual configuration required
+
+### 🎯 Route-Level Middlewares
+
+Define middlewares directly in your routes for fine-grained control:
+
+**For Pages:**
+
+```tsx
+// app/dashboard/server.hook.ts
+import type { RouteMiddleware, ServerLoader } from "@lolyjs/core";
+
+export const beforeServerData: RouteMiddleware[] = [
+  async (ctx, next) => {
+    // Authentication
+    const token = ctx.req.headers.authorization;
+    if (!token) {
+      ctx.res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    ctx.locals.user = await verifyToken(token);
+    await next();
+  },
+];
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  const user = ctx.locals.user; // Available from middleware
+  return { props: { user } };
+};
+```
+
+**For API Routes:**
+
+```tsx
+// app/api/protected/route.ts
+import type { ApiMiddleware, ApiContext } from "@lolyjs/core";
+
+// Global middleware for all methods
+export const beforeApi: ApiMiddleware[] = [
+  async (ctx, next) => {
+    // Authentication
+    const user = await verifyUser(ctx.req);
+    ctx.locals.user = user;
+    await next();
+  },
+];
+
+// Method-specific middleware
+export const beforePOST: ApiMiddleware[] = [
+  async (ctx, next) => {
+    // Validation specific to POST
+    await next();
+  },
+];
+
+export async function GET(ctx: ApiContext) {
+  const user = ctx.locals.user;
+  return ctx.Response({ user });
+}
+```
+
+**Key Benefits:**
+- Middlewares execute before loaders/handlers
+- Share data via `ctx.locals`
+- Method-specific middlewares for APIs
+- Clean separation of concerns
+
+### 📁 File-Based Routing
 
 Routes are automatically created from your file structure:
 
@@ -93,99 +212,209 @@ Routes are automatically created from your file structure:
 | `app/blog/[slug]/page.tsx` | `/blog/:slug` |
 | `app/post/[...path]/page.tsx` | `/post/*` (catch-all) |
 
-### Server-Side Data Fetching
+**Nested Layouts:**
 
-Use `server.hook.ts` to fetch data on the server:
+**⚠️ Important**: Layouts should NOT include `<html>` or `<body>` tags. The framework automatically handles the base HTML structure. Layouts should only contain content that goes inside the body.
+
+```tsx
+// app/layout.tsx (Root layout)
+export default function RootLayout({ children }) {
+  return (
+    <div>
+      <nav>Navigation</nav>
+      {children}
+      <footer>Footer</footer>
+    </div>
+  );
+}
+```
+
+```tsx
+// app/blog/layout.tsx (Nested layout)
+export default function BlogLayout({ children }) {
+  return (
+    <div>
+      <aside>Sidebar</aside>
+      <main>{children}</main>
+    </div>
+  );
+}
+```
+
+### 🚀 Hybrid Rendering
+
+Choose the best rendering strategy for each page:
+
+**SSR (Server-Side Rendering):**
+
+```tsx
+// app/posts/server.hook.ts
+export const dynamic = "force-dynamic" as const;
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  const posts = await fetchFreshPosts();
+  return { props: { posts } };
+};
+```
+
+**SSG (Static Site Generation):**
 
 ```tsx
 // app/blog/[slug]/server.hook.ts
-import type { ServerLoader } from "@lolyjs/core";
+export const dynamic = "force-static" as const;
+
+export const generateStaticParams: GenerateStaticParams = async () => {
+  const posts = await getAllPosts();
+  return posts.map(post => ({ slug: post.slug }));
+};
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
-  const { slug } = ctx.params;
-  const post = await fetchPost(slug);
+  const post = await getPost(ctx.params.slug);
+  return { props: { post } };
+};
+```
+
+**CSR (Client-Side Rendering):**
+
+```tsx
+// app/dashboard/page.tsx (No server.hook.ts)
+import { useState, useEffect } from "react";
+
+export default function Dashboard() {
+  const [data, setData] = useState(null);
   
+  useEffect(() => {
+    fetchData().then(setData);
+  }, []);
+  
+  return <div>{data}</div>;
+}
+```
+
+### 🔌 API Routes
+
+Create RESTful APIs with flexible middleware support:
+
+```tsx
+// app/api/posts/route.ts
+import type { ApiContext } from "@lolyjs/core";
+import { validate } from "@lolyjs/core";
+import { z } from "zod";
+
+const postSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+});
+
+export async function GET(ctx: ApiContext) {
+  const posts = await getPosts();
+  return ctx.Response({ posts });
+}
+
+export async function POST(ctx: ApiContext) {
+  const data = validate(postSchema, ctx.req.body);
+  const post = await createPost(data);
+  return ctx.Response({ post }, 201);
+}
+```
+
+### 🛡️ Built-in Security
+
+**Rate Limiting:**
+
+```tsx
+// loly.config.ts
+import { ServerConfig } from "@lolyjs/core";
+
+export const config = (env: string): ServerConfig => {
   return {
-    props: { post },
-    metadata: {
-      title: post.title,
-      description: post.excerpt,
+    rateLimit: {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 1000,
+      strictMax: 5,
+      strictPatterns: ["/api/auth/**"],
     },
   };
 };
 ```
 
-```tsx
-// app/blog/[slug]/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
+**Validation with Zod:**
 
-export default function BlogPost() {
-  const { props } = usePageProps();
-  const { post } = props;
-  
-  return (
-    <article>
-      <h1>{post.title}</h1>
-      <div>{post.content}</div>
-    </article>
-  );
+```tsx
+import { validate, ValidationError } from "@lolyjs/core";
+import { z } from "zod";
+
+const schema = z.object({
+  email: z.string().email(),
+  age: z.number().int().min(0).max(150),
+});
+
+try {
+  const data = validate(schema, req.body);
+} catch (error) {
+  if (error instanceof ValidationError) {
+    return Response({ errors: error.format() }, 400);
+  }
 }
 ```
 
-### Client-Side Navigation
+**Automatic Sanitization:**
 
-Fast page transitions without full reloads:
+Route parameters and query strings are automatically sanitized to prevent XSS attacks.
 
-```tsx
-import { Link } from "@lolyjs/core/components";
+**Security Headers:**
 
-export default function Navigation() {
-  return (
-    <nav>
-      <Link href="/">Home</Link>
-      <Link href="/about">About</Link>
-    </nav>
-  );
-}
-```
+Helmet is configured by default with CSP (Content Security Policy) and nonce support.
 
-### Cache Revalidation
-
-Invalidate and refresh route data:
+### 📝 Structured Logging
 
 ```tsx
-import { revalidatePath, revalidate } from "@lolyjs/core/client-cache";
+import { getRequestLogger, createModuleLogger } from "@lolyjs/core";
 
-// Revalidate a specific route
-revalidatePath('/posts');
+// Request logger (automatic request ID)
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  const logger = getRequestLogger(ctx.req);
+  logger.info("Processing request", { userId: ctx.locals.user?.id });
+  return { props: {} };
+};
 
-// Revalidate and refresh current page (similar to Next.js router.refresh())
-await revalidate();
+// Module logger
+const logger = createModuleLogger("my-module");
+logger.info("Module initialized");
+logger.error("Error occurred", error);
 ```
-
-Components using `usePageProps()` automatically update when you call `revalidate()`.
 
 ---
 
-## Features
+## Project Structure
 
-### Core Features
-
-- ✅ **File-based Routing** - Automatic route generation
-- ✅ **Server-Side Rendering (SSR)** - React 19 streaming
-- ✅ **Static Site Generation (SSG)** - Pre-render at build time
-- ✅ **API Routes** - RESTful APIs alongside pages
-- ✅ **Nested Layouts** - Shared UI components
-- ✅ **Client-Side Navigation** - Fast page transitions
-- ✅ **Smart Caching** - LRU cache with path indexing
-
-### Security Features
-
-- 🔒 **Rate Limiting** - Configurable with strict patterns
-- 🔒 **CORS Protection** - Secure cross-origin sharing
-- 🔒 **Content Security Policy** - XSS protection with nonce
-- 🔒 **Input Validation** - Zod-based validation
-- 🔒 **Input Sanitization** - Automatic XSS protection
+```
+your-app/
+├── app/
+│   ├── layout.tsx              # Root layout
+│   ├── page.tsx                # Home page (/)
+│   ├── server.hook.ts          # Server logic for home
+│   ├── _not-found.tsx          # Custom 404
+│   ├── _error.tsx              # Custom error page
+│   ├── blog/
+│   │   ├── layout.tsx          # Blog layout
+│   │   ├── page.tsx            # /blog
+│   │   └── [slug]/
+│   │       ├── page.tsx        # /blog/:slug
+│   │       └── server.hook.ts  # Server logic
+│   ├── api/
+│   │   └── posts/
+│   │       └── route.ts        # /api/posts
+│   └── wss/
+│       └── chat/
+│           └── events.ts       # WebSocket namespace /chat
+├── components/                 # React components
+├── lib/                        # Utilities
+├── public/                     # Static files
+├── loly.config.ts              # Framework configuration
+├── init.server.ts              # Server initialization (DB, services, etc.)
+└── package.json
+```
 
 ---
 
@@ -224,101 +453,86 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 };
 ```
 
-### Static Site Generation
-
-```tsx
-import type { ServerLoader, GenerateStaticParams } from "@lolyjs/core";
-
-export const dynamic = "force-static" as const;
-
-export const generateStaticParams: GenerateStaticParams = async () => {
-  const posts = await fetchAllPosts();
-  return posts.map((post) => ({ slug: post.slug }));
-};
-
-export const getServerSideProps: ServerLoader = async (ctx) => {
-  const { slug } = ctx.params;
-  const post = await fetchPost(slug);
-  return { props: { post } };
-};
-```
-
-### API Routes
+### API Route Handler
 
 ```tsx
 import type { ApiContext } from "@lolyjs/core";
-import { validate } from "@lolyjs/core";
-import { z } from "zod";
-
-const schema = z.object({
-  title: z.string().min(1),
-  content: z.string().min(1),
-});
 
 export async function GET(ctx: ApiContext) {
-  const posts = await fetchPosts();
-  return ctx.Response({ posts });
+  return ctx.Response({ data: "value" });
 }
 
 export async function POST(ctx: ApiContext) {
-  const body = validate(schema, ctx.req.body);
-  const post = await createPost(body);
-  return ctx.Response(post, 201);
+  return ctx.Response({ created: true }, 201);
+}
+
+export async function DELETE(ctx: ApiContext) {
+  return ctx.Response({ deleted: true }, 204);
 }
 ```
 
-### Middleware
+### WebSocket Event Handler
 
 ```tsx
-import type { RouteMiddleware } from "@lolyjs/core";
+import type { WssContext } from "@lolyjs/core";
 
-export const requireAuth: RouteMiddleware = async (ctx, next) => {
-  const user = await getUser(ctx.req);
-  if (!user) {
-    ctx.res.redirect("/login");
-    return;
-  }
-  ctx.locals.user = user;
-  await next();
-};
-```
-
-```tsx
-// app/dashboard/server.hook.ts
-import { requireAuth } from "../middleware/auth";
-
-export const middlewares = [requireAuth];
-
-export const getServerSideProps: ServerLoader = async (ctx) => {
-  const user = ctx.locals.user; // Available from middleware
-  return { props: { user } };
-};
-```
-
-### Cache Management
-
-```tsx
-import { revalidatePath, revalidate } from "@lolyjs/core/client-cache";
-
-// Revalidate a specific route (removes from cache)
-revalidatePath('/posts');
-
-// Revalidate with query params
-revalidatePath('/posts?page=2');
-
-// Revalidate current page and refresh components
-await revalidate();
+export const events = [
+  {
+    name: "connection",
+    handler: (ctx: WssContext) => {
+      // Handle connection
+    },
+  },
+  {
+    name: "custom-event",
+    handler: (ctx: WssContext) => {
+      const { socket, data, actions } = ctx;
+      
+      // Emit to all clients
+      actions.emit("response", { message: "Hello" });
+      
+      // Broadcast to all except sender
+      actions.broadcast("notification", data);
+      
+      // Emit to specific socket
+      actions.emitTo(socketId, "private", data);
+    },
+  },
+];
 ```
 
 ### Client Hooks
 
 ```tsx
 import { usePageProps } from "@lolyjs/core/hooks";
+import { revalidate } from "@lolyjs/core/client-cache";
 
 export default function Page() {
   const { params, props } = usePageProps();
-  // Automatically updates when revalidate() is called
+  
+  const handleRefresh = async () => {
+    await revalidate(); // Refresh current page data
+  };
+  
   return <div>{/* Your UI */}</div>;
+}
+```
+
+### Components
+
+```tsx
+import { Link } from "@lolyjs/core/components";
+
+export default function Navigation() {
+  return (
+    <nav>
+      <Link href="/">Home</Link>
+      <Link href="/about">About</Link>
+      <Link href="/blog/[slug]" params={{ slug: "my-post" }}>
+        My Post
+      </Link>
+    </nav>
+  );
 }
 ```
 
@@ -326,156 +540,100 @@ export default function Page() {
 
 ## Configuration
 
-Create `loly.config.ts` in your project root:
+### Framework Configuration
+
+Create `loly.config.ts` in your project root to configure the framework:
 
 ```tsx
-export const config = (env: string) => {
+import { FrameworkConfig } from "@lolyjs/core";
+
+export default {
+  directories: {
+    app: "app",
+    build: ".loly",
+    static: "public",
+  },
+  server: {
+    port: 3000,
+    host: "localhost",
+  },
+  routing: {
+    trailingSlash: "ignore",
+    caseSensitive: false,
+    basePath: "",
+  },
+  rendering: {
+    framework: "react",
+    streaming: true,
+    ssr: true,
+    ssg: true,
+  },
+} satisfies FrameworkConfig;
+```
+
+### Server Configuration
+
+Configure server settings (CORS, rate limiting, etc.) in `loly.config.ts` by exporting a `config` function:
+
+```tsx
+// loly.config.ts
+import { ServerConfig } from "@lolyjs/core";
+
+export const config = (env: string): ServerConfig => {
   return {
-    // Server
-    server: {
-      port: 3000,
-      host: env === "production" ? "0.0.0.0" : "localhost",
-    },
-    
-    // Security
-    security: {
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-        },
-      },
-    },
-    
-    // Rate limiting
+    bodyLimit: "1mb",
+    corsOrigin: env === "production" 
+      ? ["https://yourdomain.com"]
+      : "*",
     rateLimit: {
       windowMs: 15 * 60 * 1000,
-      max: 100,
+      max: 1000,
       strictMax: 5,
       strictPatterns: ["/api/auth/**"],
     },
-    
-    // CORS
-    corsOrigin: env === "production" 
-      ? ["https://yourdomain.com"]
-      : true,
   };
 };
 ```
 
+### Server Initialization
+
+Create `init.server.ts` in your project root to initialize services when Express starts (database connections, external services, etc.):
+
+```tsx
+// init.server.ts
+import { InitServerData } from "@lolyjs/core";
+
+export async function init({
+  serverContext,
+}: {
+  serverContext: InitServerData;
+}) {
+  // Initialize database connection
+  await connectToDatabase();
+  
+  // Setup external services
+  await setupExternalServices();
+  
+  // Any other initialization logic
+  console.log("Server initialized successfully");
+}
+```
+
+**Note**: `init.server.ts` is for initializing your application services, not for configuring Loly Framework. Framework configuration goes in `loly.config.ts`.
+
 ---
 
-## Project Structure
+## CLI Commands
 
-```
-your-app/
-├── app/
-│   ├── layout.tsx              # Root layout
-│   ├── page.tsx                # Home page (/)
-│   ├── _not-found.tsx          # Custom 404 (optional)
-│   ├── _error.tsx              # Custom error (optional)
-│   ├── about/
-│   │   └── page.tsx            # /about
-│   ├── blog/
-│   │   ├── layout.tsx          # Blog layout
-│   │   └── [slug]/
-│   │       ├── page.tsx        # /blog/:slug
-│   │       └── server.hook.ts  # Server-side data
-│   └── api/
-│       └── posts/
-│           └── route.ts        # /api/posts
-├── bootstrap.tsx               # Client entry
-├── init.server.ts              # Server init (optional)
-├── loly.config.ts              # Config (optional)
-└── package.json
-```
+```bash
+# Development server
+npx loly dev
 
----
+# Build for production
+npx loly build
 
-## Advanced
-
-### Layouts
-
-```tsx
-// app/layout.tsx (Root)
-export default function RootLayout({ children }) {
-  return (
-    <div className="app">
-      <nav>Navigation</nav>
-      <main>{children}</main>
-      <footer>Footer</footer>
-    </div>
-  );
-}
-```
-
-```tsx
-// app/blog/layout.tsx (Nested)
-export default function BlogLayout({ children }) {
-  return (
-    <div className="blog">
-      <aside>Sidebar</aside>
-      <main>{children}</main>
-    </div>
-  );
-}
-```
-
-### Themes
-
-```tsx
-import { ThemeProvider } from "@lolyjs/core/themes";
-
-export default function RootLayout({ children, theme }) {
-  return (
-    <ThemeProvider initialTheme={theme}>
-      {children}
-    </ThemeProvider>
-  );
-}
-```
-
-### Validation & Sanitization
-
-```tsx
-import { validate, safeValidate, sanitizeString } from "@lolyjs/core";
-import { z } from "zod";
-
-const schema = z.object({
-  name: z.string().min(1).max(100),
-  email: z.string().email(),
-});
-
-// Throw on error
-const data = validate(schema, req.body);
-
-// Return result object
-const result = safeValidate(schema, req.body);
-if (!result.success) {
-  return Response({ errors: result.error }, 400);
-}
-
-// Sanitize strings
-const clean = sanitizeString(userInput);
-```
-
-### Logging
-
-```tsx
-import { getRequestLogger, createModuleLogger } from "@lolyjs/core";
-
-// In server hooks or API routes
-export const getServerSideProps: ServerLoader = async (ctx) => {
-  const logger = getRequestLogger(ctx.req);
-  logger.info("Processing request", { userId: ctx.locals.user?.id });
-  return { props: {} };
-};
-
-// Module logger
-const logger = createModuleLogger("my-module");
-logger.debug("Debug message");
-logger.error("Error", error);
+# Start production server
+npx loly start
 ```
 
 ---
@@ -489,16 +647,11 @@ import type {
   ServerContext,
   ServerLoader,
   ApiContext,
+  WssContext,
   RouteMiddleware,
   ApiMiddleware,
+  GenerateStaticParams,
 } from "@lolyjs/core";
-
-// Fully typed server loader
-export const getServerSideProps: ServerLoader = async (ctx) => {
-  // ctx is fully typed
-  const { params, req, res, locals } = ctx;
-  // ...
-};
 ```
 
 ---
@@ -514,41 +667,20 @@ npm run build
 This generates:
 - Client bundle (`.loly/client`)
 - Static pages if using SSG (`.loly/ssg`)
-- Server code
-
-### Start
-
-```bash
-npm run start
-```
+- Server code (`.loly/server`)
 
 ### Environment Variables
 
 ```bash
 PORT=3000
 HOST=0.0.0.0
-LOG_LEVEL=info
-LOG_REQUESTS=false
+NODE_ENV=production
+PUBLIC_WS_BASE_URL=http://localhost:3000
 ```
 
 ---
 
-## CLI Commands
-
-```bash
-# Development
-loly dev [--port 3000] [--appDir app]
-
-# Build
-loly build [--appDir app]
-
-# Start production server
-loly start [--port 3000] [--appDir app]
-```
-
----
-
-## All Exports
+## Exports
 
 ```tsx
 // Server
@@ -559,6 +691,7 @@ import type {
   ServerContext,
   ServerLoader,
   ApiContext,
+  WssContext,
   RouteMiddleware,
   ApiMiddleware,
   GenerateStaticParams,
@@ -569,16 +702,24 @@ import { validate, safeValidate, ValidationError } from "@lolyjs/core";
 
 // Security
 import { sanitizeString, sanitizeObject } from "@lolyjs/core";
-import { strictRateLimiter, lenientRateLimiter } from "@lolyjs/core";
+import { 
+  createRateLimiter,
+  defaultRateLimiter,
+  strictRateLimiter 
+} from "@lolyjs/core";
 
 // Logging
-import { logger, createModuleLogger, getRequestLogger } from "@lolyjs/core";
+import { 
+  logger, 
+  createModuleLogger, 
+  getRequestLogger 
+} from "@lolyjs/core";
 
 // Client
 import { Link } from "@lolyjs/core/components";
 import { usePageProps } from "@lolyjs/core/hooks";
-import { ThemeProvider } from "@lolyjs/core/themes";
-import { revalidatePath, revalidate } from "@lolyjs/core/client-cache";
+import { lolySocket } from "@lolyjs/core/sockets";
+import { revalidate, revalidatePath } from "@lolyjs/core/client-cache";
 ```
 
 ---
@@ -594,6 +735,7 @@ ISC
 - [React](https://react.dev/) - UI library
 - [Express](https://expressjs.com/) - Web framework
 - [Rspack](https://rspack.dev/) - Fast bundler
+- [Socket.IO](https://socket.io/) - WebSocket library
 - [Pino](https://getpino.io/) - Fast logger
 - [Zod](https://zod.dev/) - Schema validation
 - [Helmet](https://helmetjs.github.io/) - Security headers

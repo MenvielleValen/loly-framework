@@ -13,6 +13,18 @@
 
 ---
 
+## Getting Started
+
+Create a new Loly application in seconds:
+
+```bash
+npx create-loly-app mi-app
+```
+
+This will create a new project with all the necessary files and dependencies. For more information about the CLI, visit the [@lolyjs/cli package](https://www.npmjs.com/package/@lolyjs/cli).
+
+---
+
 ## Overview
 
 Loly is a full-stack React framework that combines the simplicity of file-based routing with powerful server-side rendering, static site generation, and unique features like native WebSocket support and route-level middlewares.

@@ -54,16 +54,48 @@ export function setupServer(
     : new ManifestRouteLoader(projectRoot);
 
   if (isDev) {
-    setupHotReload({ app, appDir });
+    const { outDir, waitForBuild } = startClientBundler(projectRoot, "development");
+    
+    // Callback to reload routes manifest and clear cache when files change
+    const onFileChange = async (filePath: string) => {
+      const rel = path.relative(appDir, filePath);
+      const isPageFile = filePath.includes("page.tsx") || filePath.includes("page.ts") || 
+                         filePath.includes("layout.tsx") || filePath.includes("layout.ts") ||
+                         filePath.includes("_not-found") || filePath.includes("_error");
+      const isTsFile = filePath.endsWith(".ts") || filePath.endsWith(".tsx");
+      
+      // Clear require cache for ANY TypeScript/TSX file change
+      // This ensures components, utilities, hooks, etc. are reloaded correctly
+      if (isTsFile) {
+        clearAppRequireCache(appDir);
+        console.log(`[hot-reload] Cleared require cache for: ${rel}`);
+      }
+      
+      // Reload client routes manifest for page files (affects client-side routing)
+      // This is needed when routes are added/removed/changed
+      if (isPageFile) {
+        const loader = new FilesystemRouteLoader(appDir);
+        const newRoutes = loader.loadRoutes();
+        writeClientRoutesManifest(newRoutes, projectRoot);
+        console.log("[hot-reload] Client routes manifest reloaded");
+      }
+      
+      // Note: 
+      // - API routes are already reloaded on each request via getRoutes().apiRoutes
+      // - WSS routes require server restart to take effect (Socket.IO setup is one-time)
+      // - Components and other files are handled by the bundler (Rspack watch mode)
+      //   and the require cache is cleared above to ensure server-side code reloads
+    };
+    
+    setupHotReload({ app, appDir, waitForBuild, onFileChange });
+    
+    app.use("/static", express.static(outDir));
 
     const routes = routeLoader.loadRoutes();
     const wssRoutes = routeLoader.loadWssRoutes();
     const notFoundPage = routeLoader.loadNotFoundRoute();
     const errorPage = routeLoader.loadErrorRoute();
     writeClientRoutesManifest(routes, projectRoot);
-
-    const { outDir } = startClientBundler(projectRoot);
-    app.use("/static", express.static(outDir));
 
     function getRoutes() {
       clearAppRequireCache(appDir);

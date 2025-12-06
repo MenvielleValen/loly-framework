@@ -60,6 +60,69 @@ export async function loadInitialRoute(
 }
 
 /**
+ * Sets up hot reload via Server-Sent Events (SSE) in development mode.
+ * Listens for file changes and reloads the page when needed.
+ */
+function setupHotReload(): void {
+  // Always try to connect - if the endpoint doesn't exist (production), it will fail silently
+  // The server only sets up the endpoint in development mode
+  try {
+    console.log("[hot-reload] Attempting to connect to /__fw/hot...");
+    const eventSource = new EventSource("/__fw/hot");
+    let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    eventSource.addEventListener("message", (event) => {
+      const data = event.data;
+      if (data && data.startsWith("reload:")) {
+        const filePath = data.slice(7);
+        console.log(`[hot-reload] File changed: ${filePath}`);
+
+        // Clear any pending reload
+        if (reloadTimeout) {
+          clearTimeout(reloadTimeout);
+        }
+
+        // Wait a bit for the bundler to finish compiling and files to be written
+        // Increased timeout to ensure everything is ready
+        reloadTimeout = setTimeout(() => {
+          console.log("[hot-reload] Reloading page...");
+          // Force reload without cache to ensure we get the latest files
+          window.location.reload();
+        }, 500);
+      }
+    });
+
+    eventSource.addEventListener("ping", () => {
+      console.log("[hot-reload] ✓ Connected to hot reload server");
+    });
+
+    eventSource.onopen = () => {
+      console.log("[hot-reload] ✓ SSE connection opened");
+    };
+
+    eventSource.onerror = (error) => {
+      // Log connection state for debugging
+      const states = ["CONNECTING", "OPEN", "CLOSED"];
+      const state = states[eventSource.readyState] || "UNKNOWN";
+      
+      if (eventSource.readyState === EventSource.CONNECTING) {
+        // Still connecting, might be normal
+        console.log("[hot-reload] Connecting...");
+      } else if (eventSource.readyState === EventSource.OPEN) {
+        console.warn("[hot-reload] Connection error (but connection is open):", error);
+      } else {
+        // Connection closed - might be production mode or server not running
+        console.log("[hot-reload] Connection closed (readyState:", state, ")");
+      }
+      // EventSource automatically reconnects, so we don't need to do anything
+    };
+  } catch (error) {
+    // Fail silently if EventSource is not supported
+    console.log("[hot-reload] EventSource not supported or error:", error);
+  }
+}
+
+/**
  * Bootstraps the client-side application.
  *
  * @param routes - Array of client routes
@@ -71,6 +134,10 @@ export function bootstrapClient(
   notFoundRoute: ClientRouteLoaded | null,
   errorRoute: ClientRouteLoaded | null = null
 ): void {
+  // Set up hot reload in development mode
+  console.log("[client] Bootstrap starting, setting up hot reload...");
+  setupHotReload();
+
   (async function bootstrap() {
     const container = document.getElementById(APP_CONTAINER_ID);
     const initialData = getWindowData();

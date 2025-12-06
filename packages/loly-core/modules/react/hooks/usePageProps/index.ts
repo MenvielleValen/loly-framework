@@ -6,21 +6,31 @@ import React, { useEffect, useState } from "react";
  * Reads initial data from window.__FW_DATA__ set during SSR.
  * Automatically updates when `revalidate()` is called.
  *
+ * @template P - Type for page props (default: any)
+ * @template T - Type for route params (default: any)
  * @returns Object containing params and props
+ *
+ * @example
+ * // With props type only
+ * const { props } = usePageProps<{ title: string }>();
+ *
+ * @example
+ * // With both props and params types
+ * const { props, params } = usePageProps<{ title: string }, { id: string }>();
  */
-export const usePageProps = () => {
-  const [props, setProps] = useState(() => {
+export function usePageProps<P = any, T = any>(): { params: T, props: P } {
+  const [state, setState] = useState<{ params: T, props: P }>(() => {
     // Initialize with current data if available
     if (typeof window !== "undefined" && (window as any)?.__FW_DATA__) {
       const data = (window as any).__FW_DATA__;
       return {
-        params: data.params || {},
-        props: data.props || {},
+        params: data.params || {} as T,
+        props: data.props || {} as P,
       };
     }
     return {
-      params: {},
-      props: {},
+      params: {} as T,
+      props: {} as P,
     };
   });
 
@@ -29,9 +39,9 @@ export const usePageProps = () => {
     const handleDataRefresh = () => {
       if ((window as any)?.__FW_DATA__) {
         const data = (window as any).__FW_DATA__;
-        setProps({
-          params: data.params || {},
-          props: data.props || {},
+        setState({
+          params: data.params || {} as T,
+          props: data.props || {} as P,
         });
       }
     };
@@ -43,5 +53,5 @@ export const usePageProps = () => {
     };
   }, []);
 
-  return props;
+  return { params: state.params as T, props: state.props as P };
 };

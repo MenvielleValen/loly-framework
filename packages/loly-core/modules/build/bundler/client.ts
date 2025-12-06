@@ -7,6 +7,7 @@ import { BUILD_FOLDER_NAME } from "@constants/globals";
 
 export interface ClientBundlerResult {
   outDir: string;
+  waitForBuild?: () => Promise<void>;
 }
 
 /**
@@ -15,37 +16,102 @@ export interface ClientBundlerResult {
  * Automatically rebuilds when files change and copies static assets.
  * 
  * @param projectRoot - Root directory of the project
+ * @param mode - Build mode ('development' or 'production'), defaults to 'development'
  * @returns Output directory path
  * 
  * @example
- * const { outDir } = startClientBundler('/path/to/project');
+ * const { outDir } = startClientBundler('/path/to/project', 'development');
  * // Bundler is now watching for changes
  */
 export function startClientBundler(
-  projectRoot: string
+  projectRoot: string,
+  mode: "development" | "production" = "development"
 ): ClientBundlerResult {
-  const { config, outDir } = createClientConfig(projectRoot, "production");
+  const { config, outDir } = createClientConfig(projectRoot, mode);
 
   copyStaticAssets(projectRoot, outDir);
 
   const compiler = rspack(config);
+  
+  // Track build state
+  let isBuilding = false;
+  let buildResolve: (() => void) | null = null;
+  let buildPromise: Promise<void> | null = null;
+  let lastBuildTime = Date.now();
+
+  // Mark as building when compilation starts
+  compiler.hooks.compile.tap("HotReload", () => {
+    isBuilding = true;
+    // Create new promise for this build
+    buildPromise = new Promise<void>((resolve) => {
+      buildResolve = resolve;
+    });
+  });
 
   compiler.watch({}, (err, stats) => {
       if (err) {
         console.error("[framework][client] Rspack error:", err);
+        isBuilding = false;
+        lastBuildTime = Date.now();
+        // Resolve any waiting promises even on error
+        if (buildResolve) {
+          buildResolve();
+          buildResolve = null;
+          buildPromise = null;
+        }
         return;
       }
-      if (!stats) return;
+      if (!stats) {
+        isBuilding = false;
+        lastBuildTime = Date.now();
+        return;
+      }
 
       if (stats.hasErrors()) {
         console.error(
           "[framework][client] Build with errors:\n",
           stats.toString("errors-only")
         );
+      } else {
+        console.log("[framework][client] ✓ Client bundle rebuilt successfully");
+      }
+      
+      isBuilding = false;
+      lastBuildTime = Date.now();
+      
+      // Resolve waiting promise
+      if (buildResolve) {
+        buildResolve();
+        buildResolve = null;
+        buildPromise = null;
       }
   });
 
-  return { outDir };
+  return {
+    outDir,
+    waitForBuild: async () => {
+      // If currently building, wait for it to finish
+      if (isBuilding && buildPromise) {
+        await buildPromise;
+        // Give it a small delay to ensure files are written to disk
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return;
+      }
+      
+      // If not building, check if a build just finished recently
+      // (within last 500ms) - this handles the case where the build
+      // finished just before we checked
+      const timeSinceLastBuild = Date.now() - lastBuildTime;
+      if (timeSinceLastBuild < 500) {
+        // Build just finished, wait a bit for files to be written
+        await new Promise(resolve => setTimeout(resolve, 200));
+        return;
+      }
+      
+      // No build in progress and none recently finished, return immediately
+      return Promise.resolve();
+    },
+  };
 }
 
 /**

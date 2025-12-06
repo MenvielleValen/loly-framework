@@ -63,7 +63,7 @@ export async function handlePageRequest(
     const reqLogger = getRequestLogger(req);
     
     if (errorPage) {
-      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme, projectRoot);
+      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme, projectRoot, options.env);
     } else {
       reqLogger.error("Unhandled error in page request", error, {
         urlPath: options.urlPath,
@@ -95,10 +95,14 @@ async function handlePageRequestInternal(
     projectRoot,
   } = options;
 
-  // Get asset paths with hashes (if in production and manifest exists)
-  const clientJsPath = projectRoot ? getClientJsPath(projectRoot) : "/static/client.js";
-  const clientCssPath = projectRoot ? getClientCssPath(projectRoot) : "/static/client.css";
-  const assetManifest = projectRoot ? loadAssetManifest(projectRoot) : null;
+  // Get asset paths - in dev, always use non-hashed names; in prod, use manifest if available
+  const clientJsPath = env === "dev" 
+    ? "/static/client.js" 
+    : (projectRoot ? getClientJsPath(projectRoot) : "/static/client.js");
+  const clientCssPath = env === "dev"
+    ? "/static/client.css"
+    : (projectRoot ? getClientCssPath(projectRoot) : "/static/client.css");
+  const assetManifest = env === "prod" && projectRoot ? loadAssetManifest(projectRoot) : null;
 
   const isDataReq = isDataRequest(req);
 
@@ -167,7 +171,7 @@ async function handlePageRequestInternal(
           const reqLogger = getRequestLogger(req);
           reqLogger.error("SSR shell error", err, { route: "not-found" });
           if (!res.headersSent && errorPage) {
-            renderErrorPageWithStream(errorPage, req, res, err, routeChunks);
+            renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot, env);
           } else if (!res.headersSent) {
             res.statusCode = 500;
             res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -226,7 +230,7 @@ async function handlePageRequestInternal(
     } else {
       // For HTML requests, render error page
       if (errorPage) {
-        await renderErrorPageWithStream(errorPage, req, res, error, routeChunks, theme, projectRoot);
+        await renderErrorPageWithStream(errorPage, req, res, error, routeChunks, theme, projectRoot, env);
         return;
       } else {
         throw error; // Re-throw to be caught by outer try-catch
@@ -304,7 +308,7 @@ async function handlePageRequestInternal(
       reqLogger.error("SSR shell error", err, { route: matched?.route?.pattern || "unknown" });
 
       if (!res.headersSent && errorPage) {
-        renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot);
+        renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot, env);
       } else if (!res.headersSent) {
         res.statusCode = 500;
         res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -343,6 +347,7 @@ async function renderErrorPageWithStream(
   routeChunks: Record<string, string>,
   theme?: string,
   projectRoot?: string,
+  env: "dev" | "prod" = "dev",
 ): Promise<void> {
   try {
     const isDataReq = isDataRequest(req);
@@ -380,9 +385,14 @@ async function renderErrorPageWithStream(
     const appTree = buildAppTree(errorPage, { error: String(error) }, initialData.props);
 
     // Get asset paths with hashes (if in production and manifest exists)
-    const clientJsPath = projectRoot ? getClientJsPath(projectRoot) : "/static/client.js";
-    const clientCssPath = projectRoot ? getClientCssPath(projectRoot) : "/static/client.css";
-    const assetManifest = projectRoot ? loadAssetManifest(projectRoot) : null;
+    // In dev, always use non-hashed names; in prod, use manifest if available
+    const clientJsPath = env === "dev"
+      ? "/static/client.js"
+      : (projectRoot ? getClientJsPath(projectRoot) : "/static/client.js");
+    const clientCssPath = env === "dev"
+      ? "/static/client.css"
+      : (projectRoot ? getClientCssPath(projectRoot) : "/static/client.css");
+    const assetManifest = env === "prod" && projectRoot ? loadAssetManifest(projectRoot) : null;
 
     const chunkName = routeChunks[ERROR_CHUNK_KEY];
     let chunkHref: string | null = null;

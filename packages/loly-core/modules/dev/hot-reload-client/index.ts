@@ -7,6 +7,8 @@ export interface HotReloadOptions {
   app: Application;
   appDir: string; // carpeta de la app (ej: apps/example/app)
   route?: string; // endpoint SSE, default: "/__fw/hot"
+  waitForBuild?: () => Promise<void>; // Function to wait for client bundle to finish building
+  onFileChange?: (filePath: string) => void | Promise<void>; // Callback when file changes
 }
 
 /**
@@ -19,6 +21,8 @@ export function setupHotReload({
   app,
   appDir,
   route = "/__fw/hot",
+  waitForBuild,
+  onFileChange,
 }: HotReloadOptions) {
   const clients = new Set<Response>();
 
@@ -41,9 +45,30 @@ export function setupHotReload({
     ignored: ["**/node_modules/**", `**/${BUILD_FOLDER_NAME}/**`, "**/.git/**"],
   });
 
-  function broadcastReload(reason: string, filePath: string) {
+  async function broadcastReload(reason: string, filePath: string) {
     const rel = path.relative(appDir, filePath);
     console.log(`[hot-reload] ${reason}: ${rel}`);
+
+    // Call onFileChange callback if provided (e.g., to reload routes manifest)
+    if (onFileChange) {
+      try {
+        await onFileChange(filePath);
+      } catch (error) {
+        console.warn("[hot-reload] Error in onFileChange callback:", error);
+      }
+    }
+
+    // Wait for client bundle to finish building before sending reload event
+    if (waitForBuild) {
+      try {
+        console.log("[hot-reload] Waiting for client bundle to finish...");
+        await waitForBuild();
+        console.log("[hot-reload] Client bundle ready, sending reload event");
+      } catch (error) {
+        console.warn("[hot-reload] Error waiting for build:", error);
+        // Continue anyway, don't block reload
+      }
+    }
 
     for (const res of clients) {
       res.write(`event: message\ndata: reload:${rel}\n\n`);

@@ -7,6 +7,7 @@ import { execSync } from "child_process";
 import fsExtra from "fs-extra";
 import chalk from "chalk";
 import prompts from "prompts";
+import os from "os";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -137,6 +138,125 @@ function detectPackageManager() {
   return "npm";
 }
 
+// Check if git is available
+function isGitAvailable() {
+  try {
+    execSync("git --version", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Download template from git repository
+async function downloadTemplateFromGit() {
+  const repoUrl = process.env.LOLY_TEMPLATE_REPO || "https://github.com/MenvielleValen/template-loly.git";
+  const branch = process.env.LOLY_TEMPLATE_BRANCH || "master";
+  const templatePath = "";
+  
+  console.log(chalk.blue(`📥 Downloading template from ${repoUrl} (${branch})...`));
+  
+  if (!isGitAvailable()) {
+    throw new Error(
+      "Git is not available. Please install git to download the template.\n" +
+      "You can download it from: https://git-scm.com/downloads"
+    );
+  }
+  
+  // Create temporary directory
+  const tempDir = path.join(os.tmpdir(), `loly-template-${Date.now()}`);
+  
+  try {
+    // Clone repository (shallow clone for faster download)
+    console.log(chalk.gray("  Cloning repository..."));
+    execSync(
+      `git clone --depth 1 --branch ${branch} ${repoUrl} "${tempDir}"`,
+      { stdio: "pipe" }
+    );
+    
+    const templateDir = path.join(tempDir, templatePath);
+    
+    if (!fs.existsSync(templateDir)) {
+      // Try master branch if main doesn't exist
+      if (branch === "main") {
+        console.log(chalk.gray("  Trying master branch..."));
+        fsExtra.removeSync(tempDir);
+        execSync(
+          `git clone --depth 1 --branch master ${repoUrl} "${tempDir}"`,
+          { stdio: "pipe" }
+        );
+        
+        if (!fs.existsSync(templateDir)) {
+          throw new Error(
+            `Template directory not found in repository.\n` +
+            `Expected path: ${templatePath}\n` +
+            `Repository: ${repoUrl}`
+          );
+        }
+      } else {
+        throw new Error(
+          `Template directory not found in repository.\n` +
+          `Expected path: ${templatePath}\n` +
+          `Repository: ${repoUrl}`
+        );
+      }
+    }
+    
+    // Create a temporary directory for the extracted template
+    const extractedTemplateDir = path.join(os.tmpdir(), `loly-template-extracted-${Date.now()}`);
+    fsExtra.copySync(templateDir, extractedTemplateDir);
+    
+    // Clean up cloned repository
+    fsExtra.removeSync(tempDir);
+    
+    console.log(chalk.green("  ✓ Template downloaded successfully"));
+    
+    return extractedTemplateDir;
+  } catch (error) {
+    // Clean up on error
+    if (fs.existsSync(tempDir)) {
+      fsExtra.removeSync(tempDir);
+    }
+    
+    if (error.message.includes("not found") || error.message.includes("fatal:")) {
+      throw new Error(
+        `Failed to download template from ${repoUrl}.\n` +
+        `Error: ${error.message}\n\n` +
+        `You can set a custom repository URL using:\n` +
+        `  LOLY_TEMPLATE_REPO=<url> create-loly-app <project-name>\n` +
+        `Or set a custom branch:\n` +
+        `  LOLY_TEMPLATE_BRANCH=<branch> create-loly-app <project-name>`
+      );
+    }
+    
+    throw error;
+  }
+}
+
+// Get template directory (download from git or use local fallback)
+async function getTemplateDirectory() {
+  // Check if we should use local template (for development)
+  const useLocalTemplate = process.env.LOLY_USE_LOCAL_TEMPLATE === "true";
+  
+  if (useLocalTemplate) {
+    // Try local template first (for development)
+    let templateDir = path.join(__dirname, "template");
+    
+    if (!fs.existsSync(templateDir)) {
+      const workspaceRoot = path.resolve(__dirname, "../..");
+      templateDir = path.join(workspaceRoot, "packages", "create-loly-app", "template");
+    }
+    
+    if (fs.existsSync(templateDir)) {
+      console.log(chalk.gray("  Using local template (development mode)"));
+      return templateDir;
+    }
+  }
+  
+  // Download from git
+  return await downloadTemplateFromGit();
+}
+
 // Main function
 async function main() {
   try {
@@ -165,23 +285,8 @@ async function main() {
       fsExtra.removeSync(projectDir);
     }
 
-    // Find template directory
-    // First try to find it in the package directory (for published version)
-    let templateDir = path.join(__dirname, "template");
-    
-    // If not found, try to find it relative to the workspace root (for development)
-    if (!fs.existsSync(templateDir)) {
-      const workspaceRoot = path.resolve(__dirname, "../..");
-      templateDir = path.join(workspaceRoot, "apps", "template");
-    }
-
-    if (!fs.existsSync(templateDir)) {
-      throw new Error(
-        `Template directory not found. Please ensure the template exists.\n` +
-        `Tried: ${path.join(__dirname, "template")}\n` +
-        `Tried: ${path.join(path.resolve(__dirname, "../.."), "apps", "template")}`
-      );
-    }
+    // Get template directory (download from git or use local)
+    const templateDir = await getTemplateDirectory();
 
     // Create project directory
     console.log(chalk.blue(`\n📁 Creating project "${validatedName}"...`));
@@ -189,6 +294,11 @@ async function main() {
 
     // Copy template files
     copyTemplateFiles(templateDir, projectDir);
+    
+    // Clean up downloaded template if it was downloaded
+    if (templateDir.startsWith(os.tmpdir())) {
+      fsExtra.removeSync(templateDir);
+    }
 
     // Update package.json
     const packageJsonPath = path.join(projectDir, "package.json");

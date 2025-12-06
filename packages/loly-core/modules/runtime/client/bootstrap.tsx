@@ -64,8 +64,16 @@ export async function loadInitialRoute(
  * Listens for file changes and reloads the page when needed.
  */
 function setupHotReload(): void {
-  // Always try to connect - if the endpoint doesn't exist (production), it will fail silently
-  // The server only sets up the endpoint in development mode
+  // Only enable hot reload in development mode
+  // In production, process.env.NODE_ENV is replaced by DefinePlugin with "production"
+  // @ts-ignore - process.env.NODE_ENV is replaced by DefinePlugin at build time
+  const nodeEnv: string = (typeof process !== "undefined" && process?.env?.NODE_ENV) || "production";
+  const isDev = nodeEnv !== "production";
+  
+  if (!isDev) {
+    return; // Skip hot reload in production
+  }
+
   try {
     console.log("[hot-reload] Attempting to connect to /__fw/hot...");
     const eventSource = new EventSource("/__fw/hot");

@@ -28,9 +28,13 @@ export const lolySocket = (
   namespace: string,
   opts?: Partial<ManagerOptions & SocketOptions>
 ): Socket => {
-  const baseUrl = process?.env?.PUBLIC_WS_BASE_URL || window.location.origin;
+  // @ts-ignore - process.env.PUBLIC_WS_BASE_URL is replaced by DefinePlugin at build time with literal value
+  // DefinePlugin replaces process.env.PUBLIC_WS_BASE_URL with the actual value (or empty string if not set)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wsBaseUrl: string | undefined = (process as any).env.PUBLIC_WS_BASE_URL;
+  const baseUrl = (wsBaseUrl && wsBaseUrl.trim() !== "") ? wsBaseUrl : window.location.origin;
 
-  if(!process?.env?.PUBLIC_WS_BASE_URL) {
+  if (!wsBaseUrl || wsBaseUrl.trim() === "") {
     console.warn("[loly:socket] PUBLIC_WS_BASE_URL is not set, using window.location.origin.");
   }
 

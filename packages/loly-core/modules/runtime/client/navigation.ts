@@ -228,8 +228,6 @@ export async function navigate(
     });
 
     if (json && json.error) {
-      console.log("[client] Error detected in response:", json);
-
       if (errorRoute) {
         const handled = await handleErrorRoute(
           nextUrl,
@@ -282,56 +280,28 @@ export function createClickHandler(
   navigate: (url: string, options?: NavigateOptions) => void
 ): (ev: MouseEvent) => void {
   return function handleClick(ev: MouseEvent) {
-    const target = ev.target as HTMLElement | null;
-    const tagName = target?.tagName.toLowerCase() || "unknown";
-    
-    console.log("[loly:click] Click event received", {
-      type: ev.type,
-      tagName,
-      target: target?.tagName,
-      defaultPrevented: ev.defaultPrevented,
-      button: ev.button,
-      clientX: ev.clientX,
-      clientY: ev.clientY,
-    });
-
     try {
       // Salir temprano si el evento ya fue prevenido
-      if (ev.defaultPrevented) {
-        console.log("[loly:click] Event already prevented, skipping");
-        return;
-      }
+      if (ev.defaultPrevented) return;
       
       // Verificar que sea un evento de mouse real (no sintético o de teclado)
-      if (ev.type !== "click") {
-        console.log("[loly:click] Not a click event, skipping", { type: ev.type });
-        return;
-      }
-      if (ev.button !== 0) {
-        console.log("[loly:click] Not left button, skipping", { button: ev.button });
-        return;
-      }
-      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) {
-        console.log("[loly:click] Modifier keys pressed, skipping");
-        return;
-      }
+      if (ev.type !== "click") return;
+      if (ev.button !== 0) return;
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
       
       // Verificar que el evento tenga coordenadas válidas (eventos de mouse reales las tienen)
+      const target = ev.target as HTMLElement | null;
       if (ev.clientX === 0 && ev.clientY === 0 && ev.detail === 0) {
         // Podría ser un evento sintético, ser más cauteloso
         if (target) {
           const tagName = target.tagName.toLowerCase();
           if (tagName === "input" || tagName === "textarea" || tagName === "button" || tagName === "select") {
-            console.log("[loly:click] Synthetic event on interactive element, skipping", { tagName });
             return; // Es un input, no procesar eventos sintéticos
           }
         }
       }
 
-      if (!target) {
-        console.log("[loly:click] No target, skipping");
-        return;
-      }
+      if (!target) return;
 
       // Verificar PRIMERO si el target es un elemento interactivo (más rápido)
       const tagName = target.tagName.toLowerCase();
@@ -343,7 +313,6 @@ export function createClickHandler(
         target.isContentEditable ||
         target.getAttribute("contenteditable") === "true"
       ) {
-        console.log("[loly:click] Target is interactive element, skipping", { tagName });
         return; // Es un elemento interactivo, no procesar
       }
 
@@ -354,74 +323,41 @@ export function createClickHandler(
         if (interactiveParent.tagName.toLowerCase() === "label") {
           const label = interactiveParent as HTMLLabelElement;
           if (label.control) {
-            console.log("[loly:click] Inside label with control, skipping");
             return; // El label tiene un control asociado (input, etc)
           }
         } else {
-          console.log("[loly:click] Inside interactive parent, skipping", {
-            parentTag: interactiveParent.tagName.toLowerCase(),
-          });
           return; // Está dentro de un elemento interactivo
         }
       }
 
       // Solo buscar anchor si no es un elemento interactivo
       const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
-      if (!anchor) {
-        console.log("[loly:click] No anchor found, skipping");
-        return;
-      }
-      
-      console.log("[loly:click] Anchor found, processing navigation", {
-        href: anchor.getAttribute("href"),
-      });
+      if (!anchor) return;
 
     const href = anchor.getAttribute("href");
-    if (!href) {
-      console.log("[loly:click] No href attribute, skipping");
-      return;
-    }
-    if (href.startsWith("#")) {
-      console.log("[loly:click] Hash link, skipping");
-      return;
-    }
+    if (!href) return;
+    if (href.startsWith("#")) return;
 
     const url = new URL(href, window.location.href);
-    if (url.origin !== window.location.origin) {
-      console.log("[loly:click] External link, skipping", { origin: url.origin });
-      return;
-    }
-    if (anchor.target && anchor.target !== "_self") {
-      console.log("[loly:click] Link has target, skipping", { target: anchor.target });
-      return;
-    }
+    if (url.origin !== window.location.origin) return;
+    if (anchor.target && anchor.target !== "_self") return;
 
     ev.preventDefault();
-    console.log("[loly:click] Prevented default, navigating");
 
     const nextUrl = url.pathname + url.search;
     const currentUrl = window.location.pathname + window.location.search;
-    if (nextUrl === currentUrl) {
-      console.log("[loly:click] Same URL, skipping", { nextUrl });
-      return;
-    }
+    if (nextUrl === currentUrl) return;
 
     // Detectar si el link tiene data-revalidate para forzar revalidación
     const shouldRevalidate =
       anchor.hasAttribute("data-revalidate") &&
       anchor.getAttribute("data-revalidate") !== "false";
 
-    console.log("[loly:click] Pushing state and navigating", {
-      nextUrl,
-      currentUrl,
-      shouldRevalidate,
-    });
-
     window.history.pushState({}, "", nextUrl);
     navigate(nextUrl, shouldRevalidate ? { revalidate: true } : undefined);
     } catch (error) {
       // Silenciar errores para evitar bloquear el navegador
-      console.error("[loly:click] Error in click handler:", error);
+      console.error("[navigation] Error in click handler:", error);
     }
   };
 }

@@ -71,29 +71,16 @@ export function bootstrapClient(
   notFoundRoute: ClientRouteLoaded | null,
   errorRoute: ClientRouteLoaded | null = null
 ): void {
-  console.log("[loly:runtime] bootstrapClient called", {
-    routesCount: routes.length,
-    hasNotFound: !!notFoundRoute,
-    hasError: !!errorRoute,
-  });
-
   (async function bootstrap() {
     const container = document.getElementById(APP_CONTAINER_ID);
     const initialData = getWindowData();
 
-    console.log("[loly:runtime] bootstrap starting", {
-      hasContainer: !!container,
-      containerId: APP_CONTAINER_ID,
-      hasInitialData: !!initialData,
-    });
-
     if (!container) {
-      console.error(`[loly:runtime] Container #${APP_CONTAINER_ID} not found for hydration`);
+      console.error(`Container #${APP_CONTAINER_ID} not found for hydration`);
       return;
     }
 
     const initialUrl = window.location.pathname + window.location.search;
-    console.log("[loly:runtime] Loading initial route", { initialUrl });
 
     try {
       const initialState = await loadInitialRoute(
@@ -104,17 +91,10 @@ export function bootstrapClient(
         errorRoute
       );
 
-      console.log("[loly:runtime] Initial route loaded", {
-        url: initialState.url,
-        hasRoute: !!initialState.route,
-        hasComponents: !!initialState.components,
-      });
-
       if (initialData?.metadata) {
         applyMetadata(initialData.metadata);
       }
 
-      console.log("[loly:runtime] Hydrating React app");
       hydrateRoot(
         container,
         <AppShell
@@ -124,10 +104,9 @@ export function bootstrapClient(
           errorRoute={errorRoute}
         />
       );
-      console.log("[loly:runtime] React app hydrated successfully");
     } catch (error) {
       console.error(
-        "[loly:runtime] Error loading initial route components for",
+        "[client] Error loading initial route components for",
         initialUrl,
         error
       );

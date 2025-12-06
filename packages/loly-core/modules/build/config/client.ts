@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs";
 import { rspack, type Configuration } from "@rspack/core";
 import { loadAliasesFromTsconfig } from "../utils";
 import dotenv from 'dotenv';

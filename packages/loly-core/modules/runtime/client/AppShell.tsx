@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { RouterView } from "./RouterView";
 import {
   navigate,
@@ -6,6 +6,7 @@ import {
   createPopStateHandler,
   type NavigationHandlers,
 } from "./navigation";
+import { RouterContext } from "./RouterContext";
 import type {
   RouteViewState,
   ClientRouteLoaded,
@@ -42,11 +43,24 @@ export function AppShell({
     };
   }, [routes, notFoundRoute, errorRoute]);
 
+  // Create navigate function for router context
+  const handleNavigate = useCallback(
+    async (
+      nextUrl: string,
+      options?: { revalidate?: boolean; replace?: boolean }
+    ) => {
+      await navigate(nextUrl, handlersRef.current, {
+        revalidate: options?.revalidate,
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     // Flag para evitar múltiples listeners (por si React Strict Mode ejecuta dos veces)
     let isMounted = true;
 
-    async function handleNavigate(
+    async function handleNavigateInternal(
       nextUrl: string,
       options?: { revalidate?: boolean }
     ) {
@@ -54,8 +68,8 @@ export function AppShell({
       await navigate(nextUrl, handlersRef.current, options);
     }
 
-    const handleClick = createClickHandler(handleNavigate);
-    const handlePopState = createPopStateHandler(handleNavigate);
+    const handleClick = createClickHandler(handleNavigateInternal);
+    const handlePopState = createPopStateHandler(handleNavigateInternal);
 
     // Usar capture: false (burbujeo) para que los eventos del input se manejen primero
     window.addEventListener("click", handleClick, false);
@@ -73,6 +87,10 @@ export function AppShell({
   const routeType = isError ? "error" : isNotFound ? "notfound" : "normal";
   const routeKey = `${state.url}:${routeType}`;
 
-  return <RouterView key={routeKey} state={state} />;
+  return (
+    <RouterContext.Provider value={{ navigate: handleNavigate }}>
+      <RouterView key={routeKey} state={state} />
+    </RouterContext.Provider>
+  );
 }
 

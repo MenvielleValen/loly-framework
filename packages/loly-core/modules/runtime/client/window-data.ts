@@ -2,6 +2,9 @@ import { WINDOW_DATA_KEY } from "./constants";
 import type { InitialData } from "./types";
 
 export function getWindowData(): InitialData | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
   return ((window as any)[WINDOW_DATA_KEY] as InitialData | undefined) ?? null;
 }
 

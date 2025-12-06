@@ -1,9 +1,11 @@
+import { useRouter } from "@lolyjs/core/hooks";
 import { useState } from "react";
 
 export default function FocusTest() {
   const [value, setValue] = useState("");
+  const router = useRouter();
 
-  console.log("🔁 render FocusTest");
+  console.log(router.pathname);
 
   return (
     <div style={{ padding: 40 }}>

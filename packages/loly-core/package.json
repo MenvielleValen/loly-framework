@@ -1,6 +1,7 @@
 {
   "name": "@lolyjs/core",
-  "version": "0.2.0-alpha.2",
+  "author": "LolyJS",
+  "version": "0.2.0-alpha.3",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -98,5 +99,6 @@
   "publishConfig": {
     "access": "public",
     "tag": "alpha"
-  }
+  },
+  "license": "MIT"
 }

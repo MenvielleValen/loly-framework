@@ -6,6 +6,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@lolyjs/core?style=flat-square)](https://www.npmjs.com/package/@lolyjs/core)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg?style=flat-square)](https://opensource.org/licenses/ISC)
+![Downloads](https://img.shields.io/npm/dm/@lolyjs/core)
 
 *Built with React 19, Express, Rspack, Socket.IO, and TypeScript*
 

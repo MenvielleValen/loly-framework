@@ -7,8 +7,11 @@
 [![npm version](https://img.shields.io/npm/v/@lolyjs/core?style=flat-square)](https://www.npmjs.com/package/@lolyjs/core)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg?style=flat-square)](https://opensource.org/licenses/ISC)
 ![Downloads](https://img.shields.io/npm/dm/@lolyjs/core)
+<br>
+[![Alpha](https://img.shields.io/badge/status-alpha-red.svg)](https://github.com/MenvielleValen/loly-framework)
+[![Expermiental](https://img.shields.io/badge/phase-experimental-black.svg)](https://github.com/MenvielleValen/loly-framework)
 
-*Built with React 19, Express, Rspack, Socket.IO, and TypeScript*
+_Built with React 19, Express, Rspack, Socket.IO, and TypeScript_
 
 </div>
 
@@ -68,7 +71,7 @@ import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
   const data = await fetchData();
-  
+
   return {
     props: { data },
     metadata: {
@@ -144,6 +147,7 @@ socket.emit("message", { text: "Hello!" });
 ```
 
 **Key Benefits:**
+
 - Automatic namespace creation from file structure
 - Same routing pattern as pages and APIs
 - Built-in broadcasting helpers (`emit`, `broadcast`, `emitTo`, `emitToClient`)
@@ -209,6 +213,7 @@ export async function GET(ctx: ApiContext) {
 ```
 
 **Key Benefits:**
+
 - Middlewares execute before loaders/handlers
 - Share data via `ctx.locals`
 - Method-specific middlewares for APIs
@@ -218,11 +223,11 @@ export async function GET(ctx: ApiContext) {
 
 Routes are automatically created from your file structure:
 
-| File Path | Route |
-|-----------|-------|
-| `app/page.tsx` | `/` |
-| `app/about/page.tsx` | `/about` |
-| `app/blog/[slug]/page.tsx` | `/blog/:slug` |
+| File Path                     | Route                 |
+| ----------------------------- | --------------------- |
+| `app/page.tsx`                | `/`                   |
+| `app/about/page.tsx`          | `/about`              |
+| `app/blog/[slug]/page.tsx`    | `/blog/:slug`         |
 | `app/post/[...path]/page.tsx` | `/post/*` (catch-all) |
 
 **Nested Layouts:**
@@ -278,7 +283,7 @@ export const dynamic = "force-static" as const;
 
 export const generateStaticParams: GenerateStaticParams = async () => {
   const posts = await getAllPosts();
-  return posts.map(post => ({ slug: post.slug }));
+  return posts.map((post) => ({ slug: post.slug }));
 };
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -295,11 +300,11 @@ import { useState, useEffect } from "react";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
-  
+
   useEffect(() => {
     fetchData().then(setData);
   }, []);
-  
+
   return <div>{data}</div>;
 }
 ```
@@ -440,10 +445,10 @@ import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
   const { req, res, params, pathname, locals } = ctx;
-  
+
   // Fetch data
   const data = await fetchData();
-  
+
   // Redirect
   return {
     redirect: {
@@ -451,10 +456,10 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
       permanent: true,
     },
   };
-  
+
   // Not found
   return { notFound: true };
-  
+
   // Return props
   return {
     props: { data },
@@ -500,13 +505,13 @@ export const events = [
     name: "custom-event",
     handler: (ctx: WssContext) => {
       const { socket, data, actions } = ctx;
-      
+
       // Emit to all clients
       actions.emit("response", { message: "Hello" });
-      
+
       // Broadcast to all except sender
       actions.broadcast("notification", data);
-      
+
       // Emit to specific socket
       actions.emitTo(socketId, "private", data);
     },
@@ -522,11 +527,11 @@ import { revalidate } from "@lolyjs/core/client-cache";
 
 export default function Page() {
   const { params, props } = usePageProps();
-  
+
   const handleRefresh = async () => {
     await revalidate(); // Refresh current page data
   };
-  
+
   return <div>{/* Your UI */}</div>;
 }
 ```
@@ -595,9 +600,7 @@ import { ServerConfig } from "@lolyjs/core";
 export const config = (env: string): ServerConfig => {
   return {
     bodyLimit: "1mb",
-    corsOrigin: env === "production" 
-      ? ["https://yourdomain.com"]
-      : "*",
+    corsOrigin: env === "production" ? ["https://yourdomain.com"] : "*",
     rateLimit: {
       windowMs: 15 * 60 * 1000,
       max: 1000,
@@ -623,10 +626,10 @@ export async function init({
 }) {
   // Initialize database connection
   await connectToDatabase();
-  
+
   // Setup external services
   await setupExternalServices();
-  
+
   // Any other initialization logic
   console.log("Server initialized successfully");
 }
@@ -678,6 +681,7 @@ npm run build
 ```
 
 This generates:
+
 - Client bundle (`.loly/client`)
 - Static pages if using SSG (`.loly/ssg`)
 - Server code (`.loly/server`)
@@ -715,18 +719,14 @@ import { validate, safeValidate, ValidationError } from "@lolyjs/core";
 
 // Security
 import { sanitizeString, sanitizeObject } from "@lolyjs/core";
-import { 
+import {
   createRateLimiter,
   defaultRateLimiter,
-  strictRateLimiter 
+  strictRateLimiter,
 } from "@lolyjs/core";
 
 // Logging
-import { 
-  logger, 
-  createModuleLogger, 
-  getRequestLogger 
-} from "@lolyjs/core";
+import { logger, createModuleLogger, getRequestLogger } from "@lolyjs/core";
 
 // Client
 import { Link } from "@lolyjs/core/components";

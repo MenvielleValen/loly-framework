@@ -8,6 +8,7 @@ import {
 } from "./navigation";
 import { RouterContext } from "./RouterContext";
 import { ROUTER_NAVIGATE_KEY } from "./constants";
+import { applyMetadata } from "./metadata";
 import type {
   RouteViewState,
   ClientRouteLoaded,
@@ -34,7 +35,6 @@ export function AppShell({
     errorRoute,
   });
 
-  // Mantener handlersRef actualizado
   useEffect(() => {
     handlersRef.current = {
       setState,
@@ -77,7 +77,6 @@ export function AppShell({
   }, [handleNavigate]);
 
   useEffect(() => {
-    // Flag para evitar múltiples listeners (por si React Strict Mode ejecuta dos veces)
     let isMounted = true;
 
     async function handleNavigateInternal(
@@ -91,7 +90,6 @@ export function AppShell({
     const handleClick = createClickHandler(handleNavigateInternal);
     const handlePopState = createPopStateHandler(handleNavigateInternal);
 
-    // Usar capture: false (burbujeo) para que los eventos del input se manejen primero
     window.addEventListener("click", handleClick, false);
     window.addEventListener("popstate", handlePopState, false);
 
@@ -100,7 +98,37 @@ export function AppShell({
       window.removeEventListener("click", handleClick, false);
       window.removeEventListener("popstate", handlePopState, false);
     };
-  }, []); // Solo ejecutar una vez al montar
+  }, []);
+
+  // Listen for data refresh events and update state when current route is revalidated
+  useEffect(() => {
+    const handleDataRefresh = () => {
+      const freshData = (window as any)?.__FW_DATA__;
+      
+      if (!freshData) return;
+      
+      const currentPathname = window.location.pathname;
+      const freshPathname = freshData.pathname;
+      
+      if (freshPathname === currentPathname) {
+        if (freshData.metadata !== undefined) {
+          applyMetadata(freshData.metadata);
+        }
+        
+        setState((prevState) => ({
+          ...prevState,
+          props: freshData.props ?? prevState.props,
+          params: freshData.params ?? prevState.params,
+        }));
+      }
+    };
+
+    window.addEventListener("fw-data-refresh", handleDataRefresh);
+
+    return () => {
+      window.removeEventListener("fw-data-refresh", handleDataRefresh);
+    };
+  }, [state.url]);
 
   const isError = state.route === errorRoute;
   const isNotFound = state.route === notFoundRoute;

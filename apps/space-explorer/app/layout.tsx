@@ -4,6 +4,8 @@ import { ThemeSwitch } from "@/components/shared/theme-switch";
 import { Link } from "@lolyjs/core/components";
 import { Rocket, Globe, Users, Calendar } from "lucide-react";
 import { TestRouter } from "@/components/shared/test-router";
+import { revalidatePath } from "@lolyjs/core/client-cache";
+import { Button } from "@/components/ui/button";
 
 export default function RootLayout({
   children,
@@ -29,6 +31,12 @@ export default function RootLayout({
               </span>
             </Link>
             <TestRouter />
+            <Button
+              className="my-4"
+              onClick={() => revalidatePath("/launches")}
+            >
+              Revalidar datos de /launches
+            </Button>
             <div className="hidden items-center gap-6 md:flex">
               <Link
                 href="/planets"
@@ -180,12 +188,10 @@ export default function RootLayout({
           </div>
 
           <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Space Explorer. Hecho con 💙 usando
-            Loly Framework.
+            © 2025 Space Explorer. Hecho con 💙 usando Loly Framework.
           </div>
         </div>
       </footer>
     </ThemeProvider>
   );
 }
-

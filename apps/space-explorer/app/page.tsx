@@ -17,9 +17,23 @@ type HomePageProps = {
   recentLaunches: SpaceXLaunch[];
 };
 
-export default function HomePage() {
-  const { props } = usePageProps<HomePageProps>();
-  const { apod, recentLaunches = [] } = props || {};
+// Format date consistently for SSR/client hydration
+// Using manual formatting instead of toLocaleDateString to avoid hydration mismatches
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const months = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+  ];
+  const day = date.getUTCDate();
+  const month = months[date.getUTCMonth()];
+  const year = date.getUTCFullYear();
+  return `${day} de ${month} de ${year}`;
+}
+
+export default function HomePage(props: any) {  // Ensure consistent default values to avoid hydration mismatches
+  const apod = props?.apod ?? null;
+  const recentLaunches = props?.recentLaunches ?? [];
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -165,7 +179,7 @@ export default function HomePage() {
       )}
 
       {/* Recent Launches */}
-      {recentLaunches?.length > 0 && (
+      {recentLaunches.length > 0 && (
         <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <div className="mb-12">
             <h2 className="text-3xl font-bold tracking-tight">
@@ -176,7 +190,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {recentLaunches.map((launch) => (
+            {recentLaunches.map((launch: SpaceXLaunch) => (
               <Card
                 key={launch.id}
                 className="border-border/70 bg-card/70 transition hover:border-primary/40"
@@ -184,11 +198,7 @@ export default function HomePage() {
                 <CardHeader>
                   <CardTitle>{launch.name}</CardTitle>
                   <CardDescription>
-                    {new Date(launch.date_utc).toLocaleDateString("es-ES", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    {formatDate(launch.date_utc)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

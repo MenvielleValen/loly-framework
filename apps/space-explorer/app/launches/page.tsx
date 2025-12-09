@@ -15,33 +15,23 @@ import { revalidate, revalidatePath } from "@lolyjs/core/client-cache";
 
 type LaunchesPageProps = {
   launches: SpaceXLaunch[];
+  randomNumber: number;
 };
 
-export default function LaunchesPage() {
-  const { props } = usePageProps();
+export default function LaunchesPage(props: any) {
   const { launches = [] } = (props as LaunchesPageProps) || {};
-
-  console.log("launches", launches);
 
   return (
     <main className="min-h-screen bg-background py-12">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mb-12">
           <h1 className="text-4xl font-bold tracking-tight">
-            Lanzamientos de SpaceX
+            Lanzamientos de SpaceX {props.randomNumber}
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
             Explora los lanzamientos más recientes de SpaceX
           </p>
         </div>
-
-        <Button className="my-4" onClick={() => revalidatePath("/astronauts")}>
-          Revalidar datos de /astronauts
-        </Button>
-
-        <Button className="my-4" onClick={() => revalidate()}>
-          Revalidar datos de /launches
-        </Button>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {launches.map((launch: SpaceXLaunch) => (

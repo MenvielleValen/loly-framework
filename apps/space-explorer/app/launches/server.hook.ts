@@ -9,7 +9,8 @@ export const getServerSideProps: ServerLoader = async () => {
 
   return {
     props: {
-      launches,
+        launches,
+        randomNumber: Math.floor(Math.random() * 100),
     },
     metadata: {
       title: "Lanzamientos | Space Explorer",

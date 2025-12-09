@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
  *
  * Reads initial data from window.__FW_DATA__ set during SSR.
  * Automatically updates when `revalidate()` is called.
- *
+ * @deprecated Use server side props instead
  * @template P - Type for page props (default: any)
  * @template T - Type for route params (default: any)
  * @returns Object containing params and props

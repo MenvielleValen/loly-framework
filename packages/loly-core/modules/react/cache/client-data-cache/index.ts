@@ -243,6 +243,40 @@ export function revalidatePath(path: string): void {
   keysToDelete.forEach((key) => {
     deleteCacheEntry(key);
   });
+  
+  // If the revalidated path matches the current route, automatically refresh data
+  if (typeof window !== "undefined") {
+    const currentPathname = window.location.pathname;
+    const currentSearch = window.location.search;
+    const matchesCurrentPath = normalizedPath === currentPathname;
+    
+    if (matchesCurrentPath) {
+      if (hasQueryParams && specificQueryParams) {
+        const currentQueryParams = currentSearch
+          .replace("?", "")
+          .split("&")
+          .filter((p) => !p.startsWith("__fw_data="))
+          .sort()
+          .join("&");
+        
+        if (currentQueryParams === specificQueryParams) {
+          revalidate().catch((err) => {
+            console.error(
+              "[client][cache] Error revalidating current route:",
+              err
+            );
+          });
+        }
+      } else {
+        revalidate().catch((err) => {
+          console.error(
+            "[client][cache] Error revalidating current route:",
+            err
+          );
+        });
+      }
+    }
+  }
 }
 
 /**

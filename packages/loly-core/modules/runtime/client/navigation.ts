@@ -1,11 +1,12 @@
 import { getRouteData } from "../../react/cache/index";
 import { matchRouteClient } from "./route-matcher";
 import { applyMetadata } from "./metadata";
-import { setWindowData, getCurrentTheme } from "./window-data";
+import { setWindowData, getCurrentTheme, setRouterData } from "./window-data";
 import type {
   ClientRouteLoaded,
   RouteViewState,
   InitialData,
+  RouterData,
 } from "./types";
 
 export type NavigationHandlers = {
@@ -58,6 +59,15 @@ async function handleErrorRoute(
     };
 
     setWindowData(windowData);
+
+    // Update routerData
+    const url = new URL(nextUrl, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+    const routerData: RouterData = {
+      pathname: url.pathname,
+      params: json.params || {},
+      searchParams: Object.fromEntries(url.searchParams.entries()),
+    };
+    setRouterData(routerData);
 
     setState({
       url: nextUrl,
@@ -115,6 +125,15 @@ async function handleNotFoundRoute(
   };
 
   setWindowData(windowData);
+
+  // Update routerData
+  const url = new URL(nextUrl, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+  const routerData: RouterData = {
+    pathname: url.pathname,
+    params: {},
+    searchParams: Object.fromEntries(url.searchParams.entries()),
+  };
+  setRouterData(routerData);
 
   if (notFoundRoute) {
     const components = await notFoundRoute.load();
@@ -187,6 +206,15 @@ async function handleNormalRoute(
   };
 
   setWindowData(windowData);
+
+  // Update routerData
+  const url = new URL(nextUrl, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+  const routerData: RouterData = {
+    pathname: url.pathname,
+    params: matched.params,
+    searchParams: Object.fromEntries(url.searchParams.entries()),
+  };
+  setRouterData(routerData);
 
   const components = await matched.route.load();
 

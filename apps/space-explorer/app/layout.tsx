@@ -3,6 +3,7 @@ import { ThemeProvider } from "@lolyjs/core/themes";
 import { ThemeSwitch } from "@/components/shared/theme-switch";
 import { Link } from "@lolyjs/core/components";
 import { Rocket, Globe, Users, Calendar } from "lucide-react";
+import { TestRouter } from "@/components/shared/test-router";
 
 export default function RootLayout({
   children,
@@ -27,7 +28,7 @@ export default function RootLayout({
                 {appName}
               </span>
             </Link>
-
+            <TestRouter />
             <div className="hidden items-center gap-6 md:flex">
               <Link
                 href="/planets"

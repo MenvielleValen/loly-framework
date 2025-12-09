@@ -1,10 +1,11 @@
 import React, { ReactElement } from "react";
 import type { LoaderResult, PageComponent, LoadedRoute } from "@router/index";
-import { InitialData } from "../index.types";
+import { InitialData, RouterData } from "../index.types";
 import {
   WINDOW_DATA_KEY,
   APP_CONTAINER_ID,
   FAVICON_PATH,
+  ROUTER_DATA_KEY,
 } from "@constants/globals";
 
 /**
@@ -49,6 +50,7 @@ export function buildAppTree(
 export function createDocumentTree(options: {
   appTree: ReactElement;
   initialData: InitialData;
+  routerData: RouterData;
   meta: LoaderResult["metadata"];
   titleFallback?: string;
   descriptionFallback?: string;
@@ -61,6 +63,7 @@ export function createDocumentTree(options: {
   const {
     appTree,
     initialData,
+    routerData,
     meta,
     titleFallback,
     descriptionFallback,
@@ -105,6 +108,10 @@ export function createDocumentTree(options: {
   const serialized = JSON.stringify({
     ...initialData,
     theme,
+  });
+
+  const routerSerialized = JSON.stringify({
+    ...routerData,
   });
 
   const documentTree = React.createElement(
@@ -153,6 +160,12 @@ export function createDocumentTree(options: {
       nonce: nonce,
       dangerouslySetInnerHTML: {
         __html: `window.${WINDOW_DATA_KEY} = ${serialized};`,
+      },
+    }),
+    React.createElement("script", {
+      nonce: nonce,
+      dangerouslySetInnerHTML: {
+        __html: `window.${ROUTER_DATA_KEY} = ${routerSerialized};`,
       },
     })
   );

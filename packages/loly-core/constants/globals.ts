@@ -3,6 +3,7 @@ export const STYLE_FILE_NAME = 'styles.css';
 
 // Framework runtime constants
 export const WINDOW_DATA_KEY = '__FW_DATA__';
+export const ROUTER_DATA_KEY = '__LOLY_ROUTER_DATA__';
 export const APP_CONTAINER_ID = '__app';
 export const STATIC_PATH = '/static';
 export const NOT_FOUND_PATTERN = '/not-found';

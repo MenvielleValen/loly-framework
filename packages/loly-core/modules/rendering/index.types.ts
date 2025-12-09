@@ -7,3 +7,9 @@ export interface InitialData {
   notFound?: boolean;
   error?: boolean;
 }
+
+export interface RouterData {
+  pathname: string;
+  params: Record<string, string>;
+  searchParams: Record<string, unknown>;
+}

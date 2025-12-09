@@ -1,4 +1,4 @@
-import { WINDOW_DATA_KEY } from "./constants";
+import { WINDOW_DATA_KEY, ROUTER_DATA_KEY } from "./constants";
 
 export type InitialData = {
   pathname: string;
@@ -10,9 +10,16 @@ export type InitialData = {
   theme?: string;
 };
 
+export type RouterData = {
+  pathname: string;
+  params: Record<string, string>;
+  searchParams: Record<string, unknown>;
+};
+
 declare global {
   interface Window {
     [WINDOW_DATA_KEY]?: InitialData;
+    [ROUTER_DATA_KEY]?: RouterData;
   }
 }
 

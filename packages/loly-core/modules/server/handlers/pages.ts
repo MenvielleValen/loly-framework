@@ -10,6 +10,7 @@ import {
   buildAppTree,
   buildInitialData,
   createDocumentTree,
+  buildRouterData,
 } from "@rendering/index";
 import { runRouteMiddlewares } from "./middleware";
 import { runRouteLoader } from "./loader";
@@ -18,7 +19,7 @@ import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
 import { getClientJsPath, getClientCssPath, loadAssetManifest } from "@build/utils";
 import { sanitizeParams } from "@security/sanitize";
-import { getRequestLogger, createModuleLogger } from "@logger/index";
+import { getRequestLogger } from "@logger/index";
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
@@ -120,6 +121,8 @@ async function handlePageRequestInternal(
 
   const matched = matchRoute(routes, urlPath);
 
+  const routerData = buildRouterData(req);
+
   if (!matched) {
     if (notFoundPage) {
       const ctx: ServerContext & { theme?: string } = {
@@ -146,6 +149,7 @@ async function handlePageRequestInternal(
       const documentTree = createDocumentTree({
         appTree,
         initialData,
+        routerData,
         meta: loaderResult.metadata ?? null,
         titleFallback: "Not found",
         descriptionFallback: "Loly demo",
@@ -279,6 +283,7 @@ async function handlePageRequestInternal(
   const documentTree = createDocumentTree({
     appTree,
     initialData,
+    routerData,
     meta: loaderResult.metadata,
     titleFallback: "Loly framework",
     descriptionFallback: "Loly demo",
@@ -367,6 +372,7 @@ async function renderErrorPageWithStream(
     }
 
     const initialData = buildInitialData(req.path, { error: String(error) }, loaderResult);
+    const routerData = buildRouterData(req);
     initialData.error = true;
     
     // If this is a data request, return JSON instead of HTML
@@ -410,6 +416,7 @@ async function renderErrorPageWithStream(
     const documentTree = createDocumentTree({
       appTree,
       initialData,
+      routerData,
       meta: loaderResult.metadata ?? null,
       titleFallback: "Error",
       descriptionFallback: "An error occurred",

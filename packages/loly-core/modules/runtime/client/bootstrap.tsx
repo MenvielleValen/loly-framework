@@ -1,6 +1,6 @@
 import { hydrateRoot } from "react-dom/client";
 import { APP_CONTAINER_ID } from "./constants";
-import { getWindowData } from "./window-data";
+import { getWindowData, getRouterData, setRouterData } from "./window-data";
 import { matchRouteClient } from "./route-matcher";
 import { applyMetadata } from "./metadata";
 import { AppShell } from "./AppShell";
@@ -156,6 +156,18 @@ export function bootstrapClient(
     }
 
     const initialUrl = window.location.pathname + window.location.search;
+
+    // Initialize routerData from server if available, otherwise build from URL
+    let routerData = getRouterData();
+    if (!routerData) {
+      const url = new URL(initialUrl, window.location.origin);
+      routerData = {
+        pathname: url.pathname,
+        params: initialData?.params || {},
+        searchParams: Object.fromEntries(url.searchParams.entries()),
+      };
+      setRouterData(routerData);
+    }
 
     try {
       const initialState = await loadInitialRoute(

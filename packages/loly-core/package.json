@@ -1,10 +1,41 @@
 {
   "name": "@lolyjs/core",
   "author": "LolyJS",
-  "version": "0.2.0-alpha.5",
+  "description": "Loly Core is an experimental React framework with file-based routing, SSR/SSG features, native WebSocket support, and an Express-powered backend. It’s currently in alpha and intended for learning, prototyping, and early experimentation.",
+  "version": "0.2.0-alpha.6",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "keywords": [
+    "react",
+    "react-framework",
+    "ssr",
+    "ssg",
+    "isg",
+    "react-19",
+    "websockets",
+    "socket.io",
+    "express",
+    "rspack",
+    "file-based-routing",
+    "fullstack",
+    "framework",
+    "meta-framework",
+    "server-components",
+    "react-server-components",
+    "server-side-rendering",
+    "static-site-generation",
+    "incremental-static-generation",
+    "react-hooks",
+    "client-cache",
+    "theme-management",
+    "isomorphic",
+    "universal",
+    "nodejs",
+    "typescript",
+    "performance",
+    "developer-experience"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -100,5 +131,9 @@
     "tag": "latest"
   },
   "license": "MIT",
-  "readme": "README.md"
+  "readme": "README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MenvielleValen/loly-framework"
+  }
 }

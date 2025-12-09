@@ -1,240 +1,408 @@
 # Space Explorer 🚀
 
-Una aplicación completa que explora el universo utilizando datos reales de APIs públicas de NASA y SpaceX. Esta app está diseñada para llevar al límite todas las capacidades del framework Loly.
+A comprehensive example application that explores the universe using real data from public NASA and SpaceX APIs. This app is designed to showcase all the capabilities of the **Loly Framework**, demonstrating best practices for building modern web applications.
 
-## Características
+## Overview
 
-### 🎯 Funcionalidades Principales
+Space Explorer is a full-featured web application that serves as a reference implementation for the Loly Framework. It demonstrates various rendering strategies, API patterns, security features, and developer experience improvements that Loly provides out of the box.
 
-- **Planetas del Sistema Solar** - Explora los 8 planetas con información detallada (SSG)
-- **Lanzamientos de SpaceX** - Últimos lanzamientos en tiempo real (SSR)
-- **Astronautas** - Perfiles de los héroes del espacio (SSG)
-- **APOD (Astronomy Picture of the Day)** - Imagen del día de NASA (SSR)
-- **Búsqueda** - API de búsqueda con validación Zod
-- **Favoritos** - Sistema de favoritos con rate limiting
+## Features
 
-### 🛠️ Tecnologías del Framework Utilizadas
+### 🎯 Core Functionality
 
-#### Routing
-- ✅ File-based routing
-- ✅ Rutas dinámicas (`[id]`, `[slug]`)
-- ✅ Nested layouts
-- ✅ Client-side navigation
+- **Solar System Planets** - Explore all 8 planets with detailed information (SSG)
+- **SpaceX Launches** - Real-time latest launches (SSR)
+- **Astronauts** - Profiles of space heroes (SSG)
+- **APOD (Astronomy Picture of the Day)** - NASA's daily space image (SSR)
+- **Search API** - Full-text search with Zod validation
+- **Favorites System** - User favorites with rate limiting
 
-#### Rendering
-- ✅ **SSG (Static Site Generation)** - Planetas y astronautas
-- ✅ **SSR (Server-Side Rendering)** - Lanzamientos y APOD
-- ✅ Server hooks (`server.hook.ts`)
-- ✅ Metadata dinámica para SEO
+### 🛠️ Framework Capabilities Demonstrated
+
+#### Routing System
+- ✅ **File-based routing** - Intuitive route organization
+- ✅ **Dynamic routes** - Parameterized routes (`[id]`, `[slug]`)
+- ✅ **Nested layouts** - Hierarchical layout composition
+- ✅ **Client-side navigation** - Fast, seamless page transitions
+
+#### Rendering Strategies
+- ✅ **SSG (Static Site Generation)** - Pre-rendered pages for planets and astronauts
+- ✅ **SSR (Server-Side Rendering)** - Dynamic rendering for launches and APOD
+- ✅ **Server hooks** - `server.hook.ts` for data fetching
+- ✅ **Dynamic metadata** - SEO-optimized meta tags per page
+- ✅ **Static params generation** - Automatic static page generation
 
 #### API Routes
-- ✅ RESTful API endpoints
-- ✅ Validación con Zod
-- ✅ Rate limiting (strict y normal)
-- ✅ Middleware personalizado
+- ✅ **RESTful endpoints** - Standard HTTP methods (GET, POST, DELETE)
+- ✅ **Zod validation** - Type-safe request validation
+- ✅ **Rate limiting** - Configurable strict and normal rate limits
+- ✅ **Custom middleware** - Request logging and processing
+- ✅ **Error handling** - Structured error responses
 
-#### Seguridad
-- ✅ Rate limiting configurado
-- ✅ Validación de inputs
-- ✅ Sanitización automática
-- ✅ CORS configurado
+#### Security Features
+- ✅ **Rate limiting** - Per-route and global rate limiting
+- ✅ **Input validation** - Automatic request validation
+- ✅ **Input sanitization** - Built-in XSS protection
+- ✅ **CORS configuration** - Environment-based CORS settings
 
 #### Developer Experience
-- ✅ TypeScript completo
-- ✅ Logging estructurado
-- ✅ Error handling personalizado
-- ✅ Páginas 404 y error customizadas
-- ✅ Theme support (dark/light mode)
+- ✅ **Full TypeScript** - End-to-end type safety
+- ✅ **Structured logging** - Request/response logging
+- ✅ **Custom error pages** - `_error.tsx` and `_not-found.tsx`
+- ✅ **Theme support** - Dark/light mode with persistence
+- ✅ **Hot reload** - Fast development iteration
 
-## Estructura del Proyecto
+## Project Structure
 
 ```
 space-explorer/
-├── app/
-│   ├── layout.tsx              # Layout principal
-│   ├── page.tsx                 # Página de inicio (SSR)
-│   ├── server.hook.ts          # Server hook para home
-│   ├── _error.tsx              # Página de error
-│   ├── _not-found.tsx          # Página 404
-│   ├── planets/
-│   │   ├── page.tsx            # Lista de planetas (SSG)
-│   │   ├── server.hook.ts      # Server hook con generateStaticParams
-│   │   └── [id]/
-│   │       ├── page.tsx        # Detalle de planeta (SSG)
-│   │       └── server.hook.ts  # Server hook con SSG
-│   ├── launches/
-│   │   ├── page.tsx            # Lista de lanzamientos (SSR)
-│   │   ├── server.hook.ts      # Server hook con SSR
-│   │   └── [id]/
-│   │       ├── page.tsx        # Detalle de lanzamiento (SSR)
-│   │       └── server.hook.ts  # Server hook con SSR
-│   ├── astronauts/
-│   │   ├── page.tsx            # Lista de astronautas (SSG)
-│   │   ├── server.hook.ts      # Server hook con SSG
-│   │   └── [id]/
-│   │       ├── page.tsx        # Perfil de astronauta (SSG)
-│   │       └── server.hook.ts  # Server hook con SSG
-│   ├── apod/
-│   │   ├── page.tsx            # Astronomy Picture of the Day (SSR)
-│   │   └── server.hook.ts      # Server hook con SSR
-│   └── api/
+├── app/                          # Application routes
+│   ├── layout.tsx                # Root layout component
+│   ├── page.tsx                  # Home page (SSR)
+│   ├── server.hook.ts            # Server hook for home page
+│   ├── _error.tsx                # Custom error page
+│   ├── _not-found.tsx            # Custom 404 page
+│   ├── planets/                  # Planets section
+│   │   ├── page.tsx              # Planets list (SSG)
+│   │   ├── server.hook.ts        # SSG with generateStaticParams
+│   │   └── [id]/                 # Dynamic planet route
+│   │       ├── page.tsx          # Planet detail (SSG)
+│   │       └── server.hook.ts    # SSG configuration
+│   ├── launches/                 # Launches section
+│   │   ├── page.tsx              # Launches list (SSR)
+│   │   ├── server.hook.ts        # SSR configuration
+│   │   └── [id]/                 # Dynamic launch route
+│   │       ├── page.tsx          # Launch detail (SSR)
+│   │       └── server.hook.ts    # SSR configuration
+│   ├── astronauts/               # Astronauts section
+│   │   ├── page.tsx              # Astronauts list (SSG)
+│   │   ├── server.hook.ts        # SSG configuration
+│   │   └── [id]/                 # Dynamic astronaut route
+│   │       ├── page.tsx          # Astronaut profile (SSG)
+│   │       └── server.hook.ts    # SSG configuration
+│   ├── apod/                     # APOD section
+│   │   ├── page.tsx              # Astronomy Picture of the Day (SSR)
+│   │   └── server.hook.ts        # SSR configuration
+│   └── api/                      # API routes
 │       ├── search/
-│       │   └── route.ts        # API de búsqueda con validación
+│       │   └── route.ts          # Search API with validation
 │       ├── favorites/
-│       │   └── route.ts         # API de favoritos con rate limiting
+│       │   └── route.ts          # Favorites API with rate limiting
 │       └── launches/
-│           ├── route.ts        # API de lanzamientos
+│           ├── route.ts          # Launches API endpoint
 │           └── [id]/
-│               └── route.ts    # API de lanzamiento individual
-├── components/
-│   ├── ui/                      # Componentes UI reutilizables
-│   └── shared/                  # Componentes compartidos
-├── lib/
-│   ├── space-api.ts            # Cliente de APIs (NASA, SpaceX)
-│   └── utils.ts                 # Utilidades
-├── middlewares/
-│   └── logger.ts                # Middleware de logging
-├── loly.config.ts               # Configuración del framework
-└── package.json
+│               └── route.ts     # Individual launch API
+├── components/                   # React components
+│   ├── ui/                       # Reusable UI components
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   └── switch.tsx
+│   └── shared/                   # Shared components
+│       ├── theme-switch.tsx
+│       └── test-router.tsx
+├── lib/                          # Utility libraries
+│   ├── space-api.ts              # NASA & SpaceX API clients
+│   └── utils.ts                  # Helper functions
+├── middlewares/                  # Custom middlewares
+│   └── logger.ts                 # Request logging middleware
+├── loly.config.ts                # Framework configuration
+├── package.json
+└── tsconfig.json
 ```
 
-## APIs Utilizadas
+## APIs Used
 
 ### NASA API
 - **APOD (Astronomy Picture of the Day)**: `https://api.nasa.gov/planetary/apod`
-- API Key: `DEMO_KEY` (pública para desarrollo)
+- **API Key**: `DEMO_KEY` (public key for development)
+- **Documentation**: https://api.nasa.gov/
 
 ### SpaceX API
 - **Launches**: `https://api.spacexdata.com/v4/launches`
-- API pública sin autenticación
+- **Public API** - No authentication required
+- **Documentation**: https://docs.spacexdata.com/
 
-## Instalación
+## Installation
 
 ```bash
-# Instalar dependencias
+# Install dependencies
 npm install
 
-# Desarrollo
+# Development mode
 npm run dev
 
-# Build para producción
+# Production build
 npm run build
 
-# Iniciar servidor de producción
+# Start production server
 npm start
 ```
 
-## Ejemplos de Uso
+## Usage Examples
 
 ### SSG (Static Site Generation)
 
-Los planetas y astronautas usan SSG para máximo rendimiento:
+Planets and astronauts use SSG for maximum performance and SEO:
 
 ```typescript
 // app/planets/server.hook.ts
+import type { ServerLoader, GenerateStaticParams } from "@lolyjs/core";
+import { getAllPlanets } from "@/lib/space-api";
+
+// Enable static generation
 export const dynamic = "force-static" as const;
 
+// Generate static params for all planets at build time
 export const generateStaticParams: GenerateStaticParams = async () => {
   const planets = getAllPlanets();
   return planets.map((planet) => ({ id: planet.id }));
+};
+
+export const getServerSideProps: ServerLoader = async () => {
+  const planets = getAllPlanets();
+  
+  return {
+    props: { planets },
+    metadata: {
+      title: "Planets | Space Explorer",
+      description: "Explore the 8 planets of the solar system with detailed information.",
+    },
+  };
 };
 ```
 
 ### SSR (Server-Side Rendering)
 
-Los lanzamientos y APOD usan SSR para datos dinámicos:
+Launches and APOD use SSR for dynamic, real-time data:
 
 ```typescript
 // app/launches/server.hook.ts
+import type { ServerLoader } from "@lolyjs/core";
+import { getSpaceXLaunches } from "@/lib/space-api";
+
+// Enable server-side rendering
 export const dynamic = "force-dynamic" as const;
 
 export const getServerSideProps: ServerLoader = async () => {
   const launches = await getSpaceXLaunches(20);
-  return { props: { launches } };
+  
+  return {
+    props: { launches },
+    metadata: {
+      title: "Launches | Space Explorer",
+      description: "Explore the most recent SpaceX launches with real-time data.",
+    },
+  };
 };
 ```
 
-### API Routes con Validación
+### API Routes with Validation
 
 ```typescript
 // app/api/search/route.ts
+import type { ApiContext } from "@lolyjs/core";
+import { z } from "zod";
+import { validate } from "@lolyjs/core";
+
 const searchSchema = z.object({
   query: z.string().min(1).max(100),
   type: z.enum(["all", "planets", "astronauts", "launches"]).optional(),
 });
 
 export async function POST(ctx: ApiContext) {
-  const body = validate(searchSchema, ctx.req.body);
-  // ...
+  try {
+    const body = validate(searchSchema, ctx.req.body);
+    const { query, type = "all" } = body;
+    
+    // Search logic...
+    
+    return ctx.Response({
+      query,
+      type,
+      results: { /* ... */ },
+      total: 0,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "ValidationError") {
+      return ctx.Response(
+        { error: "Validation failed", message: error.message },
+        400
+      );
+    }
+    throw error;
+  }
 }
 ```
 
-### Rate Limiting
+### Rate Limiting Configuration
 
 ```typescript
-// app/api/favorites/route.ts
-export const beforeApi: ApiMiddleware[] = [strictRateLimiter];
+// loly.config.ts
+import { ServerConfig } from "@lolyjs/core";
+
+const DEFAULT_CONFIG: ServerConfig = {
+  bodyLimit: "1mb",
+  corsOrigin: "*",
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    max: 1000,                   // Normal limit: 1000 requests
+    strictMax: 5,                // Strict limit: 5 requests
+    strictPatterns: [
+      "/api/search/**",
+      "/api/favorites/**",
+    ],
+  },
+};
 ```
 
-## Rutas Disponibles
+### Custom Middleware
 
-### Páginas
-- `/` - Página de inicio con APOD y lanzamientos recientes
-- `/planets` - Lista de planetas (SSG)
-- `/planets/[id]` - Detalle de planeta (SSG)
-- `/launches` - Lista de lanzamientos (SSR)
-- `/launches/[id]` - Detalle de lanzamiento (SSR)
-- `/astronauts` - Lista de astronautas (SSG)
-- `/astronauts/[id]` - Perfil de astronauta (SSG)
+```typescript
+// middlewares/logger.ts
+import type { RouteMiddleware } from "@lolyjs/core";
+import { getRequestLogger } from "@lolyjs/core";
+
+export const requestLogger: RouteMiddleware = async (ctx, next) => {
+  const logger = getRequestLogger(ctx.req);
+  const startTime = Date.now();
+
+  logger.info("Request started", {
+    method: ctx.req.method,
+    path: ctx.pathname,
+    userAgent: ctx.req.headers["user-agent"],
+  });
+
+  await next();
+
+  const duration = Date.now() - startTime;
+  logger.info("Request completed", {
+    method: ctx.req.method,
+    path: ctx.pathname,
+    status: ctx.res.statusCode,
+    duration: `${duration}ms`,
+  });
+};
+```
+
+## Available Routes
+
+### Pages
+- `/` - Home page with APOD and recent launches
+- `/planets` - Planets list (SSG)
+- `/planets/[id]` - Planet detail page (SSG)
+- `/launches` - Launches list (SSR)
+- `/launches/[id]` - Launch detail page (SSR)
+- `/astronauts` - Astronauts list (SSG)
+- `/astronauts/[id]` - Astronaut profile (SSG)
 - `/apod` - Astronomy Picture of the Day (SSR)
 
 ### API Endpoints
-- `GET/POST /api/search` - Búsqueda con validación
-- `GET/POST/DELETE /api/favorites` - Sistema de favoritos
-- `GET /api/launches` - Lista de lanzamientos
-- `GET /api/launches/[id]` - Lanzamiento individual
+- `GET/POST /api/search` - Search across planets, astronauts, and launches
+- `GET/POST/DELETE /api/favorites` - Favorites management system
+- `GET /api/launches` - Get all launches
+- `GET /api/launches/[id]` - Get individual launch
 
-## Características Avanzadas
+## Advanced Features
 
-### Metadata Dinámica
-Cada página incluye metadata personalizada para SEO:
+### Dynamic Metadata
+
+Each page includes custom metadata for SEO optimization:
 
 ```typescript
 metadata: {
-  title: "Planetas | Space Explorer",
-  description: "Explora los 8 planetas del sistema solar",
+  title: "Planets | Space Explorer",
+  description: "Explore the 8 planets of the solar system with detailed information.",
   metaTags: [
-    { property: "og:title", content: "..." },
-    { property: "og:description", content: "..." },
+    {
+      property: "og:title",
+      content: "Planets | Space Explorer",
+    },
+    {
+      property: "og:description",
+      content: "Explore the 8 planets of the solar system with detailed information.",
+    },
+    {
+      property: "og:type",
+      content: "website",
+    },
   ],
 }
 ```
 
 ### Error Handling
-- Página de error personalizada (`_error.tsx`)
-- Página 404 personalizada (`_not-found.tsx`)
-- Manejo de errores en API routes
+
+- **Custom error page** (`_error.tsx`) - Handles server errors gracefully
+- **Custom 404 page** (`_not-found.tsx`) - User-friendly not found page
+- **API error handling** - Structured error responses in API routes
 
 ### Theme Support
-- Dark/Light mode con `ThemeProvider`
-- Persistencia en localStorage
-- Switch de tema en el header
 
-## Próximas Mejoras
+- **Dark/Light mode** - Implemented with `ThemeProvider` from `@lolyjs/core/themes`
+- **LocalStorage persistence** - Theme preference saved across sessions
+- **Theme switch** - Toggle in header navigation
 
-- [ ] Agregar más APIs espaciales (ISS, Mars Rover, etc.)
-- [ ] Implementar autenticación real
-- [ ] Base de datos para favoritos
-- [ ] Caché de respuestas API
-- [ ] Tests unitarios y E2E
+### Type Safety
+
+Full TypeScript support throughout the application:
+- Type-safe API clients
+- Validated request/response types
+- Type-safe routing with dynamic params
+- Server hook type inference
+
+## Framework Features Showcased
+
+This example application demonstrates:
+
+1. **Hybrid Rendering** - Strategic use of SSG and SSR based on data requirements
+2. **API Design** - RESTful endpoints with validation and error handling
+3. **Security** - Rate limiting, input validation, and CORS configuration
+4. **Developer Experience** - TypeScript, logging, and error pages
+5. **Performance** - Static generation for content that doesn't change frequently
+6. **Real-time Data** - Server-side rendering for dynamic content
+7. **SEO Optimization** - Dynamic metadata and static generation
+8. **Modern UI** - Theme support and responsive design
+
+## Configuration
+
+The app uses `loly.config.ts` for framework configuration:
+
+```typescript
+export const config = (env: string): ServerConfig => {
+  const isDev = env === "development";
+  
+  return {
+    bodyLimit: "1mb",
+    corsOrigin: isDev ? "*" : ["https://space-explorer.example.com"],
+    rateLimit: {
+      windowMs: 15 * 60 * 1000,
+      max: 1000,
+      strictMax: 5,
+      strictPatterns: ["/api/search/**", "/api/favorites/**"],
+    },
+  };
+};
+```
+
+## Future Enhancements
+
+- [ ] Add more space APIs (ISS, Mars Rover, etc.)
+- [ ] Implement real authentication
+- [ ] Database integration for favorites
+- [ ] API response caching
+- [ ] Unit and E2E tests
 - [ ] PWA support
-- [ ] Internacionalización (i18n)
+- [ ] Internationalization (i18n)
+- [ ] Image optimization
+- [ ] Analytics integration
 
-## Contribuir
+## Contributing
 
-Este proyecto es un ejemplo completo de las capacidades del framework Loly. Siéntete libre de usarlo como base para tus propios proyectos.
+This project serves as a comprehensive example of the Loly Framework's capabilities. Feel free to use it as a foundation for your own projects or contribute improvements.
 
-## Licencia
+## License
 
 ISC
 
+---
+
+**Built with [Loly Framework](https://github.com/MenvielleValen/loly-framework)** - A modern, full-stack framework for building web applications.

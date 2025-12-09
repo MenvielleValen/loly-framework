@@ -13,9 +13,9 @@ export const getServerSideProps: ServerLoader = async () => {
         randomNumber: Math.floor(Math.random() * 100),
     },
     metadata: {
-      title: "Lanzamientos | Space Explorer",
+      title: "Launches | Space Explorer",
       description:
-        "Explora los lanzamientos más recientes de SpaceX con datos en tiempo real.",
+        "Explore the most recent SpaceX launches with real-time data.",
     },
   };
 };

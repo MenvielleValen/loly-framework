@@ -18,9 +18,9 @@ export const getServerSideProps: ServerLoader = async (ctx: any) => {
       planets,
     },
     metadata: {
-      title: "Planetas | Space Explorer",
+      title: "Planets | Space Explorer",
       description:
-        "Explora los 8 planetas del sistema solar con información detallada.",
+        "Explore the 8 planets of the solar system with detailed information.",
     },
   };
 };

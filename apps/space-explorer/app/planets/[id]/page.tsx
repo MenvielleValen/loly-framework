@@ -1,4 +1,3 @@
-import { usePageProps } from "@lolyjs/core/hooks";
 import { Link } from "@lolyjs/core/components";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +14,7 @@ type PlanetPageProps = {
   planet: Planet;
 };
 
-export default function PlanetPage() {
-  const { props } = usePageProps<PlanetPageProps>();
+export default function PlanetPage(props: PlanetPageProps) {
   const { planet } = props || {};
 
   if (!planet) {
@@ -29,7 +27,7 @@ export default function PlanetPage() {
         <Button variant="ghost" size="sm" asChild className="mb-6">
           <Link href="/planets">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver a planetas
+            Back to planets
           </Link>
         </Button>
 
@@ -49,37 +47,37 @@ export default function PlanetPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-                  Distancia del Sol
+                  Distance from Sun
                 </h3>
                 <p className="text-2xl font-bold">{planet.distanceFromSun}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-                  Diámetro
+                  Diameter
                 </h3>
                 <p className="text-2xl font-bold">{planet.diameter}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-                  Masa
+                  Mass
                 </h3>
                 <p className="text-2xl font-bold">{planet.mass}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-                  Período Orbital
+                  Orbital Period
                 </h3>
                 <p className="text-2xl font-bold">{planet.orbitalPeriod}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-                  Duración del Día
+                  Day Length
                 </h3>
                 <p className="text-2xl font-bold">{planet.dayLength}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-                  Número de Lunas
+                  Number of Moons
                 </h3>
                 <p className="text-2xl font-bold">{planet.moons}</p>
               </div>

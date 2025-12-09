@@ -26,7 +26,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     },
     metadata: {
       title: `${astronaut.name} | Space Explorer`,
-      description: astronaut.bio || `Perfil de ${astronaut.name}`,
+      description: astronaut.bio || `Profile of ${astronaut.name}`,
       metaTags: [
         {
           property: "og:title",
@@ -34,7 +34,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
         },
         {
           property: "og:description",
-          content: astronaut.bio || `Perfil de ${astronaut.name}`,
+          content: astronaut.bio || `Profile of ${astronaut.name}`,
         },
       ],
     },

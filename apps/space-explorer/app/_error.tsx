@@ -17,24 +17,23 @@ export default function ErrorPage() {
           <div className="mb-4 flex items-center gap-3">
             <AlertCircle className="h-10 w-10 text-destructive" />
             <div>
-              <CardTitle className="text-2xl">Error del Servidor</CardTitle>
+              <CardTitle className="text-2xl">Server Error</CardTitle>
               <CardDescription>
-                Algo salió mal al procesar tu solicitud
+                Something went wrong processing your request
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Lo sentimos, ocurrió un error inesperado. Por favor, intenta
-            nuevamente más tarde.
+            Sorry, an unexpected error occurred. Please try again later.
           </p>
         </CardContent>
         <div className="px-6 pb-6">
           <Button asChild className="w-full">
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />
-              Volver al inicio
+              Return to home
             </Link>
           </Button>
         </div>

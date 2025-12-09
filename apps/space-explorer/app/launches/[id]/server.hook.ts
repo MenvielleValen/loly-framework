@@ -20,7 +20,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     },
     metadata: {
       title: `${launch.name} | Space Explorer`,
-      description: launch.details || `Detalles del lanzamiento ${launch.name}`,
+      description: launch.details || `Launch details for ${launch.name}`,
       metaTags: [
         {
           property: "og:title",
@@ -28,7 +28,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
         },
         {
           property: "og:description",
-          content: launch.details || `Detalles del lanzamiento ${launch.name}`,
+          content: launch.details || `Launch details for ${launch.name}`,
         },
       ],
     },

@@ -1,4 +1,3 @@
-import { usePageProps } from "@lolyjs/core/hooks";
 import { Link } from "@lolyjs/core/components";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,10 +25,10 @@ export default function LaunchesPage(props: any) {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mb-12">
           <h1 className="text-4xl font-bold tracking-tight">
-            Lanzamientos de SpaceX {props.randomNumber}
+            SpaceX Launches {props.randomNumber}
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            Explora los lanzamientos más recientes de SpaceX
+            Explore the most recent SpaceX launches
           </p>
         </div>
 
@@ -46,7 +45,7 @@ export default function LaunchesPage(props: any) {
                 </div>
                 <CardDescription className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  {new Date(launch.date_utc).toLocaleDateString("es-ES", {
+                  {new Date(launch.date_utc).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
@@ -66,13 +65,13 @@ export default function LaunchesPage(props: any) {
                       }`}
                     >
                       {launch.upcoming
-                        ? "Próximo"
+                        ? "Upcoming"
                         : launch.success
-                        ? "Exitoso"
-                        : "Fallido"}
+                        ? "Successful"
+                        : "Failed"}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      Vuelo #{launch.flight_number}
+                      Flight #{launch.flight_number}
                     </span>
                   </div>
                   {launch.details && (
@@ -85,7 +84,7 @@ export default function LaunchesPage(props: any) {
               <CardFooter>
                 <Button variant="ghost" size="sm" asChild className="w-full">
                   <Link href={`/launches/${launch.id}`}>
-                    Ver detalles <ArrowRight className="ml-2 h-4 w-4" />
+                    View details <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </CardFooter>

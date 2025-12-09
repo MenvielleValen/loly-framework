@@ -2,10 +2,7 @@ import React from "react";
 import { ThemeProvider } from "@lolyjs/core/themes";
 import { ThemeSwitch } from "@/components/shared/theme-switch";
 import { Link } from "@lolyjs/core/components";
-import { Rocket, Globe, Users, Calendar } from "lucide-react";
-import { TestRouter } from "@/components/shared/test-router";
-import { revalidatePath } from "@lolyjs/core/client-cache";
-import { Button } from "@/components/ui/button";
+import { Rocket } from "lucide-react";
 
 export default function RootLayout({
   children,
@@ -30,13 +27,6 @@ export default function RootLayout({
                 {appName}
               </span>
             </Link>
-            <TestRouter />
-            <Button
-              className="my-4"
-              onClick={() => revalidatePath("/launches")}
-            >
-              Revalidar datos de /launches
-            </Button>
             <div className="hidden items-center gap-6 md:flex">
               <Link
                 href="/planets"
@@ -68,7 +58,7 @@ export default function RootLayout({
           <div className="flex items-center gap-4">
             <ThemeSwitch />
             <Link
-              href="https://github.com"
+              href="https://github.com/MenvielleValen/loly-framework"
               className="text-muted-foreground transition-colors hover:text-foreground"
               aria-label="GitHub"
             >
@@ -100,33 +90,33 @@ export default function RootLayout({
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Explorando el universo con datos reales de NASA y SpaceX.
+                Exploring the universe with real data from NASA and SpaceX.
               </p>
             </div>
 
             <div>
               <h3 className="mb-3 text-sm font-semibold text-foreground">
-                Explorar
+                Explore
               </h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="/planets" className="hover:text-foreground">
-                    Planetas
+                    Planets
                   </Link>
                 </li>
                 <li>
                   <Link href="/launches" className="hover:text-foreground">
-                    Lanzamientos
+                    Launches
                   </Link>
                 </li>
                 <li>
                   <Link href="/astronauts" className="hover:text-foreground">
-                    Astronautas
+                    Astronauts
                   </Link>
                 </li>
                 <li>
                   <Link href="/apod" className="hover:text-foreground">
-                    Foto del Día
+                    Picture of the Day
                   </Link>
                 </li>
               </ul>
@@ -188,7 +178,7 @@ export default function RootLayout({
           </div>
 
           <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-            © 2025 Space Explorer. Hecho con 💙 usando Loly Framework.
+            © 2025 Space Explorer. Made with 💙 using Loly Framework.
           </div>
         </div>
       </footer>

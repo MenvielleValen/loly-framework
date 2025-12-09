@@ -12,9 +12,9 @@ export const getServerSideProps: ServerLoader = async () => {
       astronauts,
     },
     metadata: {
-      title: "Astronautas | Space Explorer",
+      title: "Astronauts | Space Explorer",
       description:
-        "Conoce a los héroes que han explorado el espacio exterior.",
+        "Meet the heroes who have explored outer space.",
     },
   };
 };

@@ -5,7 +5,7 @@ import { getNASAPOD } from "@/lib/space-api";
 export const dynamic = "force-dynamic" as const;
 
 export const getServerSideProps: ServerLoader = async (ctx: any) => {
-  const apod = await getNASAPOD('2025-11-29');
+  const apod = await getNASAPOD();
 
   return {
     props: {

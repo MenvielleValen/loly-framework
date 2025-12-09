@@ -17,30 +17,30 @@ export default function NotFoundPage() {
           <div className="mb-4 flex items-center gap-3">
             <Search className="h-10 w-10 text-primary" />
             <div>
-              <CardTitle className="text-2xl">404 - Página no encontrada</CardTitle>
+              <CardTitle className="text-2xl">404 - Page not found</CardTitle>
               <CardDescription>
-                La página que buscas no existe en este universo
+                The page you're looking for doesn't exist in this universe
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            La ruta que intentaste acceder no existe. Puede que haya sido
-            eliminada o que la URL sea incorrecta.
+            The route you tried to access doesn't exist. It may have been
+            removed or the URL is incorrect.
           </p>
         </CardContent>
         <div className="px-6 pb-6 space-y-2">
           <Button asChild className="w-full">
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />
-              Volver al inicio
+              Return to home
             </Link>
           </Button>
           <Button variant="outline" asChild className="w-full">
             <Link href="/planets">
               <Rocket className="mr-2 h-4 w-4" />
-              Explorar planetas
+              Explore planets
             </Link>
           </Button>
         </div>

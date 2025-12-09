@@ -1,5 +1,4 @@
-import { usePageProps } from "@lolyjs/core/hooks";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -22,18 +21,17 @@ type HomePageProps = {
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const months = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
   ];
   const day = date.getUTCDate();
   const month = months[date.getUTCMonth()];
   const year = date.getUTCFullYear();
-  return `${day} de ${month} de ${year}`;
+  return `${month} ${day}, ${year}`;
 }
 
-export default function HomePage(props: any) {  // Ensure consistent default values to avoid hydration mismatches
-  const apod = props?.apod ?? null;
-  const recentLaunches = props?.recentLaunches ?? [];
+export default function HomePage(props: HomePageProps) {
+  const { apod = null, recentLaunches = [] } = props || {};
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -44,25 +42,25 @@ export default function HomePage(props: any) {  // Ensure consistent default val
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-primary">
               <Sparkles className="size-4 animate-pulse" />
-              Explorando el universo con datos reales
+              Exploring the universe with real data
             </div>
             <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-              Bienvenido a{" "}
+              Welcome to{" "}
               <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Space Explorer
               </span>
             </h1>
             <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-              Descubre planetas, lanzamientos espaciales, astronautas y las
-              imágenes más increíbles del cosmos. Todo con datos en tiempo real
-              de NASA y SpaceX.
+              Discover planets, space launches, astronauts and the most
+              incredible images of the cosmos. All with real-time data
+              from NASA and SpaceX.
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               <a href="/planets" className={cn(buttonVariants({ size: "lg" }))}>
-                Explorar Planetas
+                Explore Planets
               </a>
               <a href="/launches" className={cn(buttonVariants({ size: "lg", variant: "outline" }))}>
-                Ver Lanzamientos
+                View Launches
               </a>
             </div>
           </div>
@@ -75,14 +73,14 @@ export default function HomePage(props: any) {  // Ensure consistent default val
           <Card className="border-border/70 bg-card/60">
             <CardHeader>
               <Globe className="mb-2 h-8 w-8 text-primary" />
-              <CardTitle>8 Planetas</CardTitle>
+              <CardTitle>8 Planets</CardTitle>
               <CardDescription>
-                Explora todos los planetas del sistema solar
+                Explore all planets in the solar system
               </CardDescription>
             </CardHeader>
             <CardFooter>
               <a href="/planets" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-                Ver todos <ArrowRight className="ml-2 h-4 w-4" />
+                View all <ArrowRight className="ml-2 h-4 w-4" />
               </a>
             </CardFooter>
           </Card>
@@ -90,14 +88,14 @@ export default function HomePage(props: any) {  // Ensure consistent default val
           <Card className="border-border/70 bg-card/60">
             <CardHeader>
               <Rocket className="mb-2 h-8 w-8 text-primary" />
-              <CardTitle>Lanzamientos</CardTitle>
+              <CardTitle>Launches</CardTitle>
               <CardDescription>
-                Últimos lanzamientos de SpaceX en tiempo real
+                Latest SpaceX launches in real time
               </CardDescription>
             </CardHeader>
             <CardFooter>
               <a href="/launches" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-                Ver lanzamientos <ArrowRight className="ml-2 h-4 w-4" />
+                View launches <ArrowRight className="ml-2 h-4 w-4" />
               </a>
             </CardFooter>
           </Card>
@@ -120,12 +118,12 @@ export default function HomePage(props: any) {  // Ensure consistent default val
           <Card className="border-border/70 bg-card/60">
             <CardHeader>
               <Sparkles className="mb-2 h-8 w-8 text-primary" />
-              <CardTitle>Astronautas</CardTitle>
-              <CardDescription>Conoce a los héroes del espacio</CardDescription>
+              <CardTitle>Astronauts</CardTitle>
+              <CardDescription>Meet the heroes of space</CardDescription>
             </CardHeader>
             <CardFooter>
               <a href="/astronauts" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-                Ver astronautas <ArrowRight className="ml-2 h-4 w-4" />
+                View astronauts <ArrowRight className="ml-2 h-4 w-4" />
               </a>
             </CardFooter>
           </Card>
@@ -138,7 +136,7 @@ export default function HomePage(props: any) {  // Ensure consistent default val
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mb-12 text-center">
               <p className="text-xs font-semibold uppercase text-primary">
-                Imagen del Día
+                Image of the Day
               </p>
               <h2 className="mt-3 text-3xl font-bold tracking-tight text-balance sm:text-4xl">
                 {apod.title}
@@ -161,7 +159,7 @@ export default function HomePage(props: any) {  // Ensure consistent default val
                   />
                 ) : (
                   <div className="aspect-video w-full rounded-lg bg-muted flex items-center justify-center">
-                    <p className="text-muted-foreground">Video no disponible</p>
+                    <p className="text-muted-foreground">Video not available</p>
                   </div>
                 )}
                 <p className="mt-4 text-sm text-muted-foreground">
@@ -170,7 +168,7 @@ export default function HomePage(props: any) {  // Ensure consistent default val
               </CardContent>
               <CardFooter>
                 <a href="/apod" className={cn(buttonVariants())}>
-                  Ver más APOD
+                  View more APOD
                 </a>
               </CardFooter>
             </Card>
@@ -183,10 +181,10 @@ export default function HomePage(props: any) {  // Ensure consistent default val
         <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <div className="mb-12">
             <h2 className="text-3xl font-bold tracking-tight">
-              Últimos Lanzamientos
+              Latest Launches
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Los lanzamientos más recientes de SpaceX
+              The most recent SpaceX launches
             </p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -214,13 +212,13 @@ export default function HomePage(props: any) {  // Ensure consistent default val
                         }`}
                       >
                         {launch.upcoming
-                          ? "Próximo"
+                          ? "Upcoming"
                           : launch.success
-                          ? "Exitoso"
-                          : "Fallido"}
+                          ? "Successful"
+                          : "Failed"}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        Vuelo #{launch.flight_number}
+                        Flight #{launch.flight_number}
                       </span>
                     </div>
                     {launch.details && (
@@ -232,7 +230,7 @@ export default function HomePage(props: any) {  // Ensure consistent default val
                 </CardContent>
                 <CardFooter>
                   <a href={`/launches/${launch.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-                    Ver detalles <ArrowRight className="ml-2 h-4 w-4" />
+                    View details <ArrowRight className="ml-2 h-4 w-4" />
                   </a>
                 </CardFooter>
               </Card>

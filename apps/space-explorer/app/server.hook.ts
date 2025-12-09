@@ -13,18 +13,18 @@ export const getServerSideProps: ServerLoader = async () => {
       recentLaunches: launches,
     },
     metadata: {
-      title: "Space Explorer | Explorando el Universo",
+      title: "Space Explorer | Exploring the Universe",
       description:
-        "Descubre el universo con datos reales de NASA y SpaceX. Planetas, lanzamientos, astronautas y más.",
+        "Discover the universe with real data from NASA and SpaceX. Planets, launches, astronauts and more.",
       metaTags: [
         {
           property: "og:title",
-          content: "Space Explorer | Explorando el Universo",
+          content: "Space Explorer | Exploring the Universe",
         },
         {
           property: "og:description",
           content:
-            "Descubre el universo con datos reales de NASA y SpaceX.",
+            "Discover the universe with real data from NASA and SpaceX.",
         },
         {
           property: "og:type",

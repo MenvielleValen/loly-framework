@@ -1,4 +1,3 @@
-import { usePageProps } from "@lolyjs/core/hooks";
 import {
   Card,
   CardContent,
@@ -13,14 +12,13 @@ type APODPageProps = {
   apod: NASAPOD;
 };
 
-export default function APODPage() {
-  const { props } = usePageProps<APODPageProps>();
+export default function APODPage(props: APODPageProps) {
   const { apod } = props || {};
 
   if (!apod) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground">Cargando imagen del día...</p>
+        <p className="text-muted-foreground">Loading image of the day...</p>
       </main>
     );
   }
@@ -33,9 +31,9 @@ export default function APODPage() {
             <Sparkles className="h-4 w-4" />
             Astronomy Picture of the Day
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">Imagen del Día</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Image of the Day</h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            Descubre las imágenes más increíbles del cosmos, cortesía de NASA
+            Discover the most incredible images of the cosmos, courtesy of NASA
           </p>
         </div>
 
@@ -56,7 +54,7 @@ export default function APODPage() {
               />
             ) : (
               <div className="aspect-video w-full rounded-lg bg-muted flex items-center justify-center">
-                <p className="text-muted-foreground">Video no disponible</p>
+                <p className="text-muted-foreground">Video not available</p>
               </div>
             )}
             <div className="rounded-lg border border-border bg-muted/30 p-4">
@@ -72,7 +70,7 @@ export default function APODPage() {
                   rel="noreferrer"
                   className="text-sm text-primary hover:underline"
                 >
-                  Ver imagen en alta resolución
+                  View image in high resolution
                 </a>
               </div>
             )}

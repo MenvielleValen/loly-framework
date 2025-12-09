@@ -1,4 +1,3 @@
-import { usePageProps } from "@lolyjs/core/hooks";
 import { Link } from "@lolyjs/core/components";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +14,7 @@ type AstronautsPageProps = {
   astronauts: Astronaut[];
 };
 
-export default function AstronautsPage() {
-  const { props } = usePageProps<AstronautsPageProps>();
+export default function AstronautsPage(props: AstronautsPageProps) {
   const { astronauts = [] } = props || {};
 
   return (
@@ -25,7 +23,7 @@ export default function AstronautsPage() {
         <div className="mb-12">
           <h1 className="text-4xl font-bold tracking-tight">Astronautas</h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            Conoce a los héroes que han explorado el espacio
+            Meet the heroes who have explored space
           </p>
         </div>
 
@@ -54,7 +52,7 @@ export default function AstronautsPage() {
                 {astronaut.missions && astronaut.missions.length > 0 && (
                   <div className="mt-4">
                     <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-                      Misiones
+                      Missions
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {astronaut.missions.map((mission) => (
@@ -72,7 +70,7 @@ export default function AstronautsPage() {
               <div className="px-6 pb-6">
                 <Button variant="ghost" size="sm" asChild className="w-full">
                   <Link href={`/astronauts/${astronaut.id}`}>
-                    Ver perfil <ArrowRight className="ml-2 h-4 w-4" />
+                    View profile <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </div>

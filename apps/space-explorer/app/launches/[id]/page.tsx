@@ -1,4 +1,3 @@
-import { usePageProps } from "@lolyjs/core/hooks";
 import { Link } from "@lolyjs/core/components";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +14,7 @@ type LaunchPageProps = {
   launch: SpaceXLaunch;
 };
 
-export default function LaunchPage() {
-  const { props } = usePageProps<LaunchPageProps>();
+export default function LaunchPage(props: LaunchPageProps) {
   const { launch } = props || {};
 
   if (!launch) {
@@ -29,7 +27,7 @@ export default function LaunchPage() {
         <Button variant="ghost" size="sm" asChild className="mb-6">
           <Link href="/launches">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver a lanzamientos
+            Back to launches
           </Link>
         </Button>
 
@@ -41,7 +39,7 @@ export default function LaunchPage() {
                 <CardTitle className="text-3xl">{launch.name}</CardTitle>
                 <CardDescription className="flex items-center gap-2 text-base">
                   <Calendar className="h-4 w-4" />
-                  {new Date(launch.date_utc).toLocaleDateString("es-ES", {
+                  {new Date(launch.date_utc).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
@@ -64,20 +62,20 @@ export default function LaunchPage() {
                 }`}
               >
                 {launch.upcoming
-                  ? "Próximo"
+                  ? "Upcoming"
                   : launch.success
-                  ? "Exitoso"
-                  : "Fallido"}
+                  ? "Successful"
+                  : "Failed"}
               </span>
               <span className="text-sm text-muted-foreground">
-                Vuelo #{launch.flight_number}
+                Flight #{launch.flight_number}
               </span>
             </div>
 
             {launch.details && (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-                  Detalles
+                  Details
                 </h3>
                 <p className="text-sm leading-relaxed">{launch.details}</p>
               </div>
@@ -86,7 +84,7 @@ export default function LaunchPage() {
             {launch.links && (
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-                  Enlaces
+                  Links
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {launch.links.webcast && (
@@ -96,7 +94,7 @@ export default function LaunchPage() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Ver webcast <ExternalLink className="ml-2 h-4 w-4" />
+                        View webcast <ExternalLink className="ml-2 h-4 w-4" />
                       </a>
                     </Button>
                   )}
@@ -107,7 +105,7 @@ export default function LaunchPage() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Artículo <ExternalLink className="ml-2 h-4 w-4" />
+                        Article <ExternalLink className="ml-2 h-4 w-4" />
                       </a>
                     </Button>
                   )}

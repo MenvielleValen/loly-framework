@@ -6,22 +6,20 @@ export const Button = ({
   children,
   slug,
 }: PropsWithChildren<{ slug: string }>) => {
-
   const { props } = usePageProps() as any;
-
-  console.log("Page props", props);
-
 
   const handleClick = async () => {
     try {
-      const { data } = await axios.post(
-        `http://localhost:3000/api/blog/${slug}`,
-        {
-          test: "prueba",
-        }
-      );
+      // Use relative URL (works in both dev and production)
+      const apiUrl = typeof window !== "undefined" 
+        ? `${window.location.origin}/api/blog/${slug}`
+        : `/api/blog/${slug}`;
+      
+      const { data } = await axios.post(apiUrl, {
+        test: "prueba",
+      });
     } catch (error) {
-      console.log(error);
+      console.error("Error in Button click handler:", error);
     }
   };
 

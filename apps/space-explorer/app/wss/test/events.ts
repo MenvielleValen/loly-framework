@@ -4,19 +4,19 @@ export const events = [
   {
     name: "onMessage",
     handler: (ctx: ApiContext) => {
-      console.log("onMessage", ctx);
+      // Handle message event
     }
   },
   {
     name: "onOpen",
     handler: (ctx: ApiContext) => {
-      console.log("onOpen", ctx);
+      // Handle open event
     }
   },
   {
     name: "onClose",
     handler: (ctx: ApiContext) => {
-      console.log("onClose", ctx);
+      // Handle close event
     }
   }
 ];

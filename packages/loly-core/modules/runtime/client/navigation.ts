@@ -284,19 +284,19 @@ export async function navigate(
       return;
     }
 
-    // Redirección vía JSON
+    // Redirect via JSON
     if (json.redirect) {
       window.location.href = json.redirect.destination;
       return;
     }
 
-    // Manejo de notFound
+    // Handle notFound
     if (json.notFound) {
       await handleNotFoundRoute(nextUrl, json, notFoundRoute, setState);
       return;
     }
 
-    // Ruta normal
+    // Normal route
     await handleNormalRoute(nextUrl, json, routes, setState);
   } catch (err) {
     console.error("[client] Error fetching FW data:", err);
@@ -309,29 +309,29 @@ export function createClickHandler(
 ): (ev: MouseEvent) => void {
   return function handleClick(ev: MouseEvent) {
     try {
-      // Salir temprano si el evento ya fue prevenido
+      // Exit early if event was already prevented
       if (ev.defaultPrevented) return;
       
-      // Verificar que sea un evento de mouse real (no sintético o de teclado)
+      // Verify it's a real mouse event (not synthetic or keyboard)
       if (ev.type !== "click") return;
       if (ev.button !== 0) return;
       if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
       
-      // Verificar que el evento tenga coordenadas válidas (eventos de mouse reales las tienen)
+      // Verify event has valid coordinates (real mouse events have them)
       const target = ev.target as HTMLElement | null;
       if (ev.clientX === 0 && ev.clientY === 0 && ev.detail === 0) {
-        // Podría ser un evento sintético, ser más cauteloso
+        // Could be a synthetic event, be more cautious
         if (target) {
           const tagName = target.tagName.toLowerCase();
           if (tagName === "input" || tagName === "textarea" || tagName === "button" || tagName === "select") {
-            return; // Es un input, no procesar eventos sintéticos
+            return; // It's an input, don't process synthetic events
           }
         }
       }
 
       if (!target) return;
 
-      // Verificar PRIMERO si el target es un elemento interactivo (más rápido)
+      // Check FIRST if target is an interactive element (faster)
       const tagName = target.tagName.toLowerCase();
       if (
         tagName === "input" ||
@@ -341,24 +341,24 @@ export function createClickHandler(
         target.isContentEditable ||
         target.getAttribute("contenteditable") === "true"
       ) {
-        return; // Es un elemento interactivo, no procesar
+        return; // It's an interactive element, don't process
       }
 
-      // Verificar si está dentro de un elemento interactivo usando closest (más eficiente que composedPath)
+      // Check if it's inside an interactive element using closest (more efficient than composedPath)
       const interactiveParent = target.closest("input, textarea, button, select, [contenteditable], label");
       if (interactiveParent) {
-        // Si el parent es un label, verificar si tiene un control asociado
+        // If parent is a label, check if it has an associated control
         if (interactiveParent.tagName.toLowerCase() === "label") {
           const label = interactiveParent as HTMLLabelElement;
           if (label.control) {
-            return; // El label tiene un control asociado (input, etc)
+            return; // Label has an associated control (input, etc)
           }
         } else {
-          return; // Está dentro de un elemento interactivo
+          return; // It's inside an interactive element
         }
       }
 
-      // Solo buscar anchor si no es un elemento interactivo
+      // Only search for anchor if it's not an interactive element
       const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
       if (!anchor) return;
 
@@ -376,7 +376,7 @@ export function createClickHandler(
     const currentUrl = window.location.pathname + window.location.search;
     if (nextUrl === currentUrl) return;
 
-    // Detectar si el link tiene data-revalidate para forzar revalidación
+    // Detect if link has data-revalidate to force revalidation
     const shouldRevalidate =
       anchor.hasAttribute("data-revalidate") &&
       anchor.getAttribute("data-revalidate") !== "false";

@@ -2,7 +2,7 @@ import axios from "axios";
 
 // NASA APIs
 const NASA_BASE = "https://api.nasa.gov";
-const NASA_API_KEY = "tjtU2iP1xcUlQce0mxwups84V7EeRZAB9Go3vcC8"; // Public demo key
+const NASA_API_KEY = process.env.NASA_API_KEY || "DEMO_KEY"; // Use DEMO_KEY as fallback for public demos
 
 // SpaceX API
 const SPACEX_BASE = "https://api.spacexdata.com/v4";

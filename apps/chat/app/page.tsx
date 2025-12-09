@@ -26,8 +26,8 @@ export default function HomePage() {
   const [clientId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
-    // El namespace debe coincidir con lo que el servidor crea
-    // El servidor crea el namespace quitando '/wss/' del pattern
+    // The namespace must match what the server creates
+    // The server creates the namespace by removing '/wss/' from the pattern
     // Pattern: /wss/chat -> Namespace: /chat
     const namespace = "/chat";
 
@@ -38,7 +38,7 @@ export default function HomePage() {
     const addMessage = (msg: ChatMessage) =>
       setMessages((prev) => [...prev, msg]);
 
-    // Evento: conexión establecida
+    // Event: connection established
     socketInstance.on("connect", () => {
       setIsConnected(true);
       addMessage({
@@ -49,7 +49,7 @@ export default function HomePage() {
       });
     });
 
-    // Evento: desconexión
+    // Event: disconnection
     socketInstance.on("disconnect", () => {
       setIsConnected(false);
       addMessage({
@@ -60,7 +60,7 @@ export default function HomePage() {
       });
     });
 
-    // Evento: error de conexión
+    // Event: connection error
     socketInstance.on("connect_error", (error) => {
       console.error("Socket.IO connection error:", error);
       addMessage({
@@ -88,7 +88,7 @@ export default function HomePage() {
     };
   }, [clientId]);
 
-  // ⬇️ Auto scroll al último mensaje
+  // Auto scroll to last message
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -107,7 +107,7 @@ export default function HomePage() {
       at: Date.now(),
     };
 
-    // Enviar evento 'chat' al servidor
+    // Send 'chat' event to server
     socket.emit("chat", payload);
     setInput("");
   }

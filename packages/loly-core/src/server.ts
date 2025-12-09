@@ -69,7 +69,7 @@ export async function startServer(options: StartServerOptions = {}) {
     projectRoot,
   });
 
-  // @TODO: Remove or validate if send the server is needed
+  // Run init.server.ts if it exists (allows user to set up server hooks, middleware, etc.)
   await runInitIfExists(projectRoot, { server: httpServer });
 
   const { routes, apiRoutes, wssRoutes, notFoundPage, errorPage, getRoutes } =

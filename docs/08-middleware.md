@@ -39,10 +39,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 
 ```tsx
 // app/admin/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function AdminPage() {
-  const { props } = usePageProps();
+export default function AdminPage({ props }) {
   return <div>Admin: {props.user.name}</div>;
 }
 ```

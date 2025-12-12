@@ -16,10 +16,7 @@ Los server loaders se definen en un archivo separado `server.hook.ts` en el mism
 
 ```tsx
 // app/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function HomePage() {
-  const { props } = usePageProps();
+export default function HomePage({ props }) {
   return <div>{props.data}</div>;
 }
 ```
@@ -224,10 +221,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 
 ```tsx
 // app/launches/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function LaunchesPage() {
-  const { props } = usePageProps();
+export default function LaunchesPage({ props }) {
   const { launches } = props;
   
   return (
@@ -351,14 +345,10 @@ export const getServerSideProps = withCache(
 
 ## Acceso a Datos en el Componente
 
-Usa el hook `usePageProps`:
+Los datos del loader se pasan directamente como props al componente:
 
 ```tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function MyPage() {
-  const { props, params } = usePageProps();
-  
+export default function MyPage({ props, params }) {
   // props contiene los datos del loader
   // params contiene los parámetros de ruta
   
@@ -440,8 +430,6 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 
 ```tsx
 // app/post/[id]/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
 type PageProps = {
   post: {
     id: string;
@@ -450,8 +438,7 @@ type PageProps = {
   };
 };
 
-export default function PostPage() {
-  const { props } = usePageProps<PageProps>();
+export default function PostPage({ props }: { props: PageProps }) {
   return <h1>{props.post.title}</h1>;
 }
 ```

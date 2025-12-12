@@ -46,10 +46,7 @@ app/blog/[slug]/page.tsx  → /blog/:slug
 
 ```tsx
 // app/blog/[slug]/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function BlogPost() {
-  const { params } = usePageProps();
+export default function BlogPost({ params }) {
   return <h1>Post: {params.slug}</h1>;
 }
 ```
@@ -70,8 +67,7 @@ app/docs/[...slug]/page.tsx  → /docs/* (ej: /docs/getting-started/installation
 
 ```tsx
 // app/docs/[...slug]/page.tsx
-export default function DocsPage() {
-  const { params } = usePageProps();
+export default function DocsPage({ params }) {
   // params.slug es un array: ["getting-started", "installation"]
   return <div>{params.slug.join("/")}</div>;
 }
@@ -87,14 +83,10 @@ app/shop/[[...slug]]/page.tsx  → /shop y /shop/*
 ## Acceso a Parámetros
 
 ### En el Componente
-Usa el hook `usePageProps`:
+Los parámetros y props se pasan directamente al componente:
 
 ```tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function ProductPage() {
-  const { params, props } = usePageProps();
-  
+export default function ProductPage({ params, props }) {
   return (
     <div>
       <h1>Producto: {params.id}</h1>
@@ -194,10 +186,7 @@ Crea `_error.tsx` para manejar errores:
 
 ```tsx
 // app/_error.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function ErrorPage() {
-  const { params, locals } = usePageProps();
+export default function ErrorPage({ locals }) {
   const error = locals.error;
   
   return (
@@ -272,10 +261,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 
 ```tsx
 // app/admin/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function AdminPage() {
-  const { props } = usePageProps();
+export default function AdminPage({ props }) {
   return <h1>Admin: {props.user.name}</h1>;
 }
 ```

@@ -86,7 +86,6 @@ Bienvenido a la documentación técnica completa de Loly Framework. Esta documen
 ### React y Componentes
 
 12. **[Hooks](./13-hooks.md)**
-    - usePageProps
     - useBroadcastChannel
     - Hooks personalizados
 

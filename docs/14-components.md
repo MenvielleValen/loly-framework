@@ -90,10 +90,8 @@ export default function Navigation() {
 
 ```tsx
 import { Link } from "@lolyjs/core/components";
-import { usePageProps } from "@lolyjs/core/hooks";
 
-export default function Breadcrumbs() {
-  const { pathname } = usePageProps();
+export default function Breadcrumbs({ pathname }) {
   const segments = pathname.split("/").filter(Boolean);
   
   return (

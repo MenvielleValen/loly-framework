@@ -125,8 +125,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
   };
 };
 
-export default function HomePage() {
-  const { props } = usePageProps();
+export default function HomePage({ props }) {
   return <h1>{props.message}</h1>;
 }
 ```

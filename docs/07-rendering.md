@@ -266,10 +266,7 @@ Los estilos críticos se pueden inyectar inline (futuro).
 
 ```tsx
 // app/about/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function AboutPage() {
-  const { props } = usePageProps();
+export default function AboutPage({ props }) {
   return (
     <div>
       <h1>About Us</h1>
@@ -310,10 +307,7 @@ export const getServerSideProps: ServerLoader = async () => {
 
 ```tsx
 // app/posts/[slug]/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function PostPage() {
-  const { props } = usePageProps();
+export default function PostPage({ props }) {
   const { post } = props;
   
   // El contenido se streama progresivamente

@@ -84,10 +84,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 
 ```tsx
 // app/page.tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function Home() {
-  const { props } = usePageProps();
+export default function Home({ props }) {
   return <h1>{props.data}</h1>;
 }
 ```
@@ -519,15 +516,12 @@ export const events = [
 ];
 ```
 
-### Client Hooks
+### Client Cache
 
 ```tsx
-import { usePageProps } from "@lolyjs/core/hooks";
 import { revalidate } from "@lolyjs/core/client-cache";
 
-export default function Page() {
-  const { params, props } = usePageProps();
-
+export default function Page({ props }) {
   const handleRefresh = async () => {
     await revalidate(); // Refresh current page data
   };
@@ -730,7 +724,6 @@ import { logger, createModuleLogger, getRequestLogger } from "@lolyjs/core";
 
 // Client
 import { Link } from "@lolyjs/core/components";
-import { usePageProps } from "@lolyjs/core/hooks";
 import { lolySocket } from "@lolyjs/core/sockets";
 import { revalidate, revalidatePath } from "@lolyjs/core/client-cache";
 ```

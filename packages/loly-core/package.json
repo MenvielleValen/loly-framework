@@ -1,6 +1,6 @@
 {
   "name": "@lolyjs/core",
-  "version": "0.2.0-alpha.11",
+  "version": "0.2.0-alpha.12",
   "author": {
     "name": "Valentin Menvielle Candia",
     "url": "https://github.com/MenvielleValen"
@@ -9,7 +9,6 @@
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  
   "keywords": [
     "react",
     "react-framework",

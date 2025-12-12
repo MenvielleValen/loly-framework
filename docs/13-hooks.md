@@ -2,57 +2,6 @@
 
 Loly Framework proporciona hooks React personalizados para facilitar el desarrollo.
 
-## usePageProps
-
-Hook para acceder a props y parámetros de la página.
-
-### Uso Básico
-
-```tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
-export default function MyPage() {
-  const { props, params } = usePageProps();
-  
-  return (
-    <div>
-      <h1>{props.title}</h1>
-      <p>ID: {params.id}</p>
-    </div>
-  );
-}
-```
-
-### Con TypeScript
-
-```tsx
-type PageProps = {
-  post: {
-    id: string;
-    title: string;
-    content: string;
-  };
-};
-
-export default function PostPage() {
-  const { props } = usePageProps<PageProps>();
-  
-  return (
-    <article>
-      <h1>{props.post.title}</h1>
-      <div>{props.post.content}</div>
-    </article>
-  );
-}
-```
-
-### Actualización Automática
-
-El hook se actualiza automáticamente cuando:
-- Se llama `revalidate()`
-- Se navega a otra página
-- Se actualiza `window.__FW_DATA__`
-
 ## useBroadcastChannel
 
 Hook para comunicación entre pestañas usando BroadcastChannel API.
@@ -99,19 +48,17 @@ export default function Component() {
 
 ```tsx
 // hooks/useAuth.ts
-import { usePageProps } from "@lolyjs/core/hooks";
 import { useState, useEffect } from "react";
 
-export function useAuth() {
-  const { props } = usePageProps();
-  const [user, setUser] = useState(props.user);
+export function useAuth({ user: initialUser }) {
+  const [user, setUser] = useState(initialUser);
   
   useEffect(() => {
     // Actualizar cuando cambien los props
-    if (props.user) {
-      setUser(props.user);
+    if (initialUser) {
+      setUser(initialUser);
     }
-  }, [props.user]);
+  }, [initialUser]);
   
   return {
     user,
@@ -125,8 +72,8 @@ export function useAuth() {
 ```tsx
 import { useAuth } from "@/hooks/useAuth";
 
-export default function ProtectedPage() {
-  const { user, isAuthenticated } = useAuth();
+export default function ProtectedPage({ props }) {
+  const { user, isAuthenticated } = useAuth(props);
   
   if (!isAuthenticated) {
     return <div>Please login</div>;
@@ -141,8 +88,6 @@ export default function ProtectedPage() {
 ### Página con Datos
 
 ```tsx
-import { usePageProps } from "@lolyjs/core/hooks";
-
 type PageProps = {
   launches: Array<{
     id: string;
@@ -151,8 +96,7 @@ type PageProps = {
   }>;
 };
 
-export default function LaunchesPage() {
-  const { props } = usePageProps<PageProps>();
+export default function LaunchesPage({ props }: { props: PageProps }) {
   const { launches = [] } = props;
   
   return (
@@ -172,12 +116,9 @@ export default function LaunchesPage() {
 ### Componente con Revalidación
 
 ```tsx
-import { usePageProps } from "@lolyjs/core/hooks";
 import { revalidate } from "@lolyjs/core/client-cache";
 
-export default function DataPage() {
-  const { props } = usePageProps();
-  
+export default function DataPage({ props }) {
   const handleRefresh = async () => {
     await revalidate();
   };
@@ -197,6 +138,7 @@ export default function DataPage() {
 2. **Default Values**: Proporciona valores por defecto
 3. **Revalidación**: Usa `revalidate()` cuando sea necesario
 4. **Hooks Personalizados**: Crea hooks reutilizables para lógica común
+5. **Props como Parámetros**: Los componentes reciben props directamente como parámetros
 
 ## Próximos Pasos
 

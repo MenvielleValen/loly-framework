@@ -79,7 +79,7 @@ Cliente React para navegación y hydratación:
 ### 6. React Module (`modules/react/`)
 Utilidades React:
 - Componentes (`Link`, `Image`)
-- Hooks (`usePageProps`, `useBroadcastChannel`)
+- Hooks (`useBroadcastChannel`)
 - Sockets client (`lolySocket`)
 - Temas
 - Client cache

@@ -79,9 +79,7 @@ function handleRefreshOther() {
 ```tsx
 import { revalidate } from "@lolyjs/core/client-cache";
 
-export default function DataPage() {
-  const { props } = usePageProps();
-  
+export default function DataPage({ props }) {
   const handleRefresh = async () => {
     await revalidate();
     // Los datos se actualizarán automáticamente

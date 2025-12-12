@@ -30,14 +30,18 @@ export const setupApplication = async ({
 
   // Security: Helmet with configurable CSP
   const helmetConfig: any = {};
-  
+
   if (security?.contentSecurityPolicy !== false) {
     // In development, allow unsafe-inline and unsafe-eval for hot reload
     if (process.env.NODE_ENV === "development") {
       helmetConfig.contentSecurityPolicy = {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+          ],
           scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
           imgSrc: ["'self'", "data:", "https:"],
           // Allow fetch/XHR to any HTTPS endpoint - users can restrict in their config if needed
@@ -54,11 +58,15 @@ export const setupApplication = async ({
         const nonce = (res as any).locals?.nonce || "";
         return nonce ? `'nonce-${nonce}'` : "'self'";
       };
-      
+
       const defaultCSP = {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+          ],
           scriptSrc: ["'self'", nonceFunction],
           imgSrc: ["'self'", "data:", "https:"],
           // Allow fetch/XHR to any HTTPS endpoint - users can restrict in their config if needed
@@ -77,51 +85,54 @@ export const setupApplication = async ({
           ...defaultCSP.directives,
           ...userDirectives,
         };
-        
+
         // Ensure scriptSrc includes nonce support even if user provided custom scriptSrc
         const userScriptSrc = userDirectives.scriptSrc;
         if (userScriptSrc && Array.isArray(userScriptSrc)) {
           // Check if nonce function is already included
-          const hasNonceSupport = userScriptSrc.some((src) => 
-            typeof src === "function"
+          const hasNonceSupport = userScriptSrc.some(
+            (src) => typeof src === "function"
           );
-          
+
           if (!hasNonceSupport) {
             // Add nonce function to user's scriptSrc
-            mergedDirectives.scriptSrc = [
-              ...userScriptSrc,
-              nonceFunction,
-            ];
+            mergedDirectives.scriptSrc = [...userScriptSrc, nonceFunction];
           } else {
             mergedDirectives.scriptSrc = userScriptSrc;
           }
         }
-        
+
         // Ensure connectSrc includes https: for flexibility - merge arrays instead of replacing
         const userConnectSrc = userDirectives.connectSrc;
         if (userConnectSrc && Array.isArray(userConnectSrc)) {
           // If user provided connectSrc, merge with defaults to ensure https: is included
           const defaultConnectSrc = defaultCSP.directives.connectSrc || [];
-          const mergedConnectSrc = [...new Set([...defaultConnectSrc, ...userConnectSrc])];
+          const mergedConnectSrc = [
+            ...new Set([...defaultConnectSrc, ...userConnectSrc]),
+          ];
           mergedDirectives.connectSrc = mergedConnectSrc;
         }
-        
+
         // Ensure styleSrc includes Google Fonts
         const userStyleSrc = userDirectives.styleSrc;
         if (userStyleSrc && Array.isArray(userStyleSrc)) {
           const defaultStyleSrc = defaultCSP.directives.styleSrc || [];
-          const mergedStyleSrc = [...new Set([...defaultStyleSrc, ...userStyleSrc])];
+          const mergedStyleSrc = [
+            ...new Set([...defaultStyleSrc, ...userStyleSrc]),
+          ];
           mergedDirectives.styleSrc = mergedStyleSrc;
         }
-        
+
         // Ensure fontSrc includes Google Fonts
         const userFontSrc = userDirectives.fontSrc;
         if (userFontSrc && Array.isArray(userFontSrc)) {
           const defaultFontSrc = defaultCSP.directives.fontSrc || [];
-          const mergedFontSrc = [...new Set([...defaultFontSrc, ...userFontSrc])];
+          const mergedFontSrc = [
+            ...new Set([...defaultFontSrc, ...userFontSrc]),
+          ];
           mergedDirectives.fontSrc = mergedFontSrc;
         }
-        
+
         helmetConfig.contentSecurityPolicy = {
           ...userCSP,
           directives: mergedDirectives,
@@ -136,9 +147,10 @@ export const setupApplication = async ({
 
   // HSTS configuration
   if (security?.hsts !== false) {
-    helmetConfig.hsts = security?.hsts === true 
-      ? { maxAge: 31536000, includeSubDomains: true }
-      : security?.hsts;
+    helmetConfig.hsts =
+      security?.hsts === true
+        ? { maxAge: 31536000, includeSubDomains: true }
+        : security?.hsts;
   } else {
     helmetConfig.hsts = false;
   }
@@ -146,13 +158,22 @@ export const setupApplication = async ({
   // Generate nonce for CSP inline scripts (only in production)
   // In development, unsafe-inline is allowed
   // IMPORTANT: This must run BEFORE helmet so the nonce is available when CSP is evaluated
-  if (process.env.NODE_ENV !== "development" && security?.contentSecurityPolicy !== false) {
-    app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-      // Generate a unique nonce for this request
-      const nonce = crypto.randomBytes(16).toString("base64");
-      (res.locals as any).nonce = nonce;
-      next();
-    });
+  if (
+    process.env.NODE_ENV !== "development" &&
+    security?.contentSecurityPolicy !== false
+  ) {
+    app.use(
+      (
+        req: express.Request,
+        res: express.Response,
+        next: express.NextFunction
+      ) => {
+        // Generate a unique nonce for this request
+        const nonce = crypto.randomBytes(16).toString("base64");
+        (res.locals as any).nonce = nonce;
+        next();
+      }
+    );
   }
 
   app.use(helmet(helmetConfig));
@@ -161,12 +182,14 @@ export const setupApplication = async ({
   // Must be early in the middleware chain to capture all requests
   // Filters out static assets and other noisy paths by default
   const appLogger = createModuleLogger("framework");
-  app.use(requestLoggerMiddleware({ 
-    logger: appLogger.child({ component: "server" }),
-    logRequests: process.env.LOG_REQUESTS === "true", // Default to false (only errors/warnings)
-    logResponses: process.env.LOG_RESPONSES !== "false", // Default to true (but filtered)
-    logStaticAssets: process.env.LOG_STATIC_ASSETS === "true", // Default to false
-  }));
+  app.use(
+    requestLoggerMiddleware({
+      logger: appLogger.child({ component: "server" }),
+      logRequests: process.env.LOG_REQUESTS === "true", // Default to false (only errors/warnings)
+      logResponses: process.env.LOG_RESPONSES !== "false", // Default to true (but filtered)
+      logStaticAssets: process.env.LOG_STATIC_ASSETS === "true", // Default to false
+    })
+  );
 
   // Security: CORS with proper origin validation
   const corsOptions: cors.CorsOptions = {
@@ -181,9 +204,12 @@ export const setupApplication = async ({
     // Allow all origins (development only)
     corsOptions.origin = true;
   } else if (typeof corsOrigin === "string") {
-    corsOptions.origin = corsOrigin === "*" 
-      ? (process.env.NODE_ENV === "development" ? true : false)
-      : [corsOrigin];
+    corsOptions.origin =
+      corsOrigin === "*"
+        ? process.env.NODE_ENV === "development"
+          ? true
+          : false
+        : [corsOrigin];
   } else {
     // Default: no CORS in production, allow all in development
     corsOptions.origin = process.env.NODE_ENV === "development";
@@ -192,12 +218,12 @@ export const setupApplication = async ({
   app.use(cors(corsOptions));
 
   // Security: Rate limiting
-  if (rateLimit) {
+  if (rateLimit && process.env.NODE_ENV !== "development") {
     const generalLimiter = createRateLimiter({
       windowMs: rateLimit.windowMs,
       max: rateLimit.max,
     });
-    
+
     // Apply general rate limiting to all routes
     app.use(generalLimiter);
   }

@@ -13,7 +13,14 @@ import {
 import { createModuleLogger } from "@logger/index";
 import dotenv from "dotenv";
 
-dotenv.config();
+// Load .env file if it exists (optional)
+const envPath = path.join(process.cwd(), ".env");
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  // Try default dotenv.config() which looks for .env in current directory
+  dotenv.config();
+}
 
 const logger = createModuleLogger("server");
 

@@ -67,7 +67,8 @@ function setupHotReload(): void {
   // Only enable hot reload in development mode
   // In production, process.env.NODE_ENV is replaced by DefinePlugin with "production"
   // @ts-ignore - process.env.NODE_ENV is replaced by DefinePlugin at build time
-  const nodeEnv: string = (typeof process !== "undefined" && process?.env?.NODE_ENV) || "production";
+  // DefinePlugin always defines process.env.NODE_ENV, so this should always be replaced
+  const nodeEnv: string = (typeof process !== "undefined" && (process as any).env?.NODE_ENV) || "production";
   const isDev = nodeEnv !== "production";
   
   if (!isDev) {

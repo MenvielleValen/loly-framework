@@ -23,16 +23,27 @@ export function createClientConfig(
   const clientEntry = path.join(buildDir, "boostrap.ts");
   const outDir = path.join(buildDir, "client");
 
-  dotenv.config({
-    path: projectRoot,
-  });
+  // Load .env file if it exists (optional)
+  const envPath = path.join(projectRoot, ".env");
+  if (fs.existsSync(envPath)) {
+    dotenv.config({
+      path: envPath,
+    });
+  }
 
   const publicEnv: Record<string, string> = {};
 
+  // Collect all PUBLIC_* variables from process.env
   for (const [key, value] of Object.entries(process.env)) {
     if (key.startsWith("PUBLIC_")) {
       publicEnv[`process.env.${key}`] = JSON.stringify(value ?? "");
     }
+  }
+
+  // Always define PUBLIC_WS_BASE_URL even if not set (prevents "process.env is not defined" errors)
+  // This ensures DefinePlugin replaces it with undefined or the actual value
+  if (!publicEnv["process.env.PUBLIC_WS_BASE_URL"]) {
+    publicEnv["process.env.PUBLIC_WS_BASE_URL"] = JSON.stringify(undefined);
   }
 
   const config: Configuration = {
@@ -81,7 +92,8 @@ export function createClientConfig(
     },
     plugins: [
       new rspack.DefinePlugin({
-        "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
+        // Always define NODE_ENV, using mode as fallback if not set
+        "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || mode),
         ...publicEnv,
       }),
       new rspack.CssExtractRspackPlugin({

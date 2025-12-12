@@ -29,13 +29,25 @@ export const lolySocket = (
   opts?: Partial<ManagerOptions & SocketOptions>
 ): Socket => {
   // @ts-ignore - process.env.PUBLIC_WS_BASE_URL is replaced by DefinePlugin at build time with literal value
-  // DefinePlugin replaces process.env.PUBLIC_WS_BASE_URL with the actual value (or empty string if not set)
+  // DefinePlugin replaces process.env.PUBLIC_WS_BASE_URL with the actual value (or undefined if not set)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const wsBaseUrl: string | undefined = (process as any).env.PUBLIC_WS_BASE_URL;
-  const baseUrl = (wsBaseUrl && wsBaseUrl.trim() !== "") ? wsBaseUrl : window.location.origin;
-
-  if (!wsBaseUrl || wsBaseUrl.trim() === "") {
-    console.warn("[loly:socket] PUBLIC_WS_BASE_URL is not set, using window.location.origin.");
+  const wsBaseUrl: string | undefined = (process as any).env?.PUBLIC_WS_BASE_URL;
+  
+  // Get base URL: use PUBLIC_WS_BASE_URL if set, otherwise use window.location.origin (client-side only)
+  // For SSR, if window is not available, we'll need to handle it differently
+  let baseUrl: string;
+  if (wsBaseUrl && wsBaseUrl.trim() !== "") {
+    baseUrl = wsBaseUrl;
+  } else if (typeof window !== "undefined") {
+    // Client-side: use current origin
+    baseUrl = window.location.origin;
+  } else {
+    // Server-side rendering: throw error or use a default
+    // This should rarely happen as sockets are typically client-only
+    throw new Error(
+      "[loly:socket] Cannot determine base URL in server-side context. " +
+      "Either set PUBLIC_WS_BASE_URL in your .env file or ensure lolySocket is only called on the client."
+    );
   }
 
   // Normalize namespace to always start with '/'

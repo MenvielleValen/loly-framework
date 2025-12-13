@@ -3,22 +3,43 @@ import React from "react";
 import type { Request, Response } from "express";
 import { Server, Socket } from "socket.io";
 
-export type PageComponent = React.ComponentType<any>;
-export type LayoutComponent = React.ComponentType<any>;
+/**
+ * Page component type. Accepts props that extend a base object with params.
+ * @template TProps - Type of props passed to the component (defaults to Record<string, any>)
+ */
+export type PageComponent<TProps extends Record<string, any> = Record<string, any>> = React.ComponentType<
+  TProps & { params: Record<string, string> }
+>;
 
-export interface LoadedRoute {
+/**
+ * Layout component type. Accepts props that extend a base object with params and children.
+ * @template TProps - Type of props passed to the layout (defaults to Record<string, any>)
+ */
+export type LayoutComponent<TProps extends Record<string, any> = Record<string, any>> = React.ComponentType<
+  TProps & { params: Record<string, string>; children: React.ReactNode }
+>;
+
+/**
+ * Route definition loaded from the filesystem or manifest.
+ * @template TPageProps - Type of props for the page component (defaults to Record<string, any>)
+ * @template TLayoutProps - Type of props for layout components (defaults to Record<string, any>)
+ */
+export interface LoadedRoute<
+  TPageProps extends Record<string, any> = Record<string, any>,
+  TLayoutProps extends Record<string, any> = Record<string, any>
+> {
   pattern: string;
   regex: RegExp;
   paramNames: string[];
-  component: PageComponent;
-  layouts: PageComponent[];
+  component: PageComponent<TPageProps>;
+  layouts: LayoutComponent<TLayoutProps>[];
   pageFile: string;
   layoutFiles: string[];
   middlewares: RouteMiddleware[];
   /** Server hook (getServerSideProps) from the page's server.hook.ts file */
-  loader: ServerLoader | null;
+  loader: ServerLoader<TPageProps> | null;
   /** Server hooks (getServerSideProps) from each layout's server.hook.ts file, in same order as layouts array */
-  layoutServerHooks?: (ServerLoader | null)[];
+  layoutServerHooks?: (ServerLoader<TLayoutProps> | null)[];
   dynamic: DynamicMode;
   generateStaticParams: GenerateStaticParams | null;
 }
@@ -70,13 +91,46 @@ export interface WssContext {
   actions: WssActions;
 }
 
+/**
+ * Route middleware function type.
+ * Middlewares run before getServerSideProps and can modify ctx.locals, set headers, redirect, etc.
+ * 
+ * @param ctx - Server context with optional theme
+ * @param next - Function to call the next middleware in the chain (must be awaited if used)
+ * @returns Promise<void> | void
+ * 
+ * @example
+ * // Simple middleware that adds data to ctx.locals
+ * export const beforeServerData: RouteMiddleware[] = [
+ *   async (ctx, next) => {
+ *     ctx.locals.user = await getUser(ctx.req);
+ *     await next();
+ *   }
+ * ];
+ * 
+ * @example
+ * // Middleware that redirects
+ * export const beforeServerData: RouteMiddleware[] = [
+ *   async (ctx, next) => {
+ *     if (!ctx.locals.user) {
+ *       ctx.res.redirect('/login');
+ *       return; // Don't call next() if redirecting
+ *     }
+ *     await next();
+ *   }
+ * ];
+ */
 export type RouteMiddleware = (
   ctx: ServerContext & { theme?: string },
   next: () => Promise<void>
 ) => Promise<void> | void;
 
-export interface LoaderResult {
-  props?: Record<string, any>;
+/**
+ * Result returned by a server loader (getServerSideProps).
+ * @template TProps - Type of props that will be passed to the component (defaults to Record<string, any>)
+ */
+export interface LoaderResult<TProps extends Record<string, any> = Record<string, any>> {
+  props?: TProps;
   redirect?: { destination: string; permanent?: boolean };
   notFound?: boolean;
 
@@ -88,8 +142,24 @@ export interface LoaderResult {
 /**
  * Server loader function type (getServerSideProps).
  * This function is exported from server.hook.ts files.
+ * 
+ * @template TProps - Type of props that will be returned (defaults to Record<string, any>)
+ * 
+ * @example
+ * // Typed loader
+ * export const getServerSideProps: ServerLoader<{ user: User; posts: Post[] }> = async (ctx) => ({
+ *   props: { user: await getUser(), posts: await getPosts() }
+ * });
+ * 
+ * @example
+ * // Untyped loader (backward compatible)
+ * export const getServerSideProps: ServerLoader = async (ctx) => ({
+ *   props: { any: 'data' }
+ * });
  */
-export type ServerLoader = (ctx: ServerContext) => Promise<LoaderResult>;
+export type ServerLoader<TProps extends Record<string, any> = Record<string, any>> = (
+  ctx: ServerContext
+) => Promise<LoaderResult<TProps>>;
 
 export interface ClientRoute {
   pattern: string;
@@ -125,11 +195,45 @@ export interface ApiContext {
   locals: Record<string, any>;
 }
 
+/**
+ * API middleware function type.
+ * Middlewares run before the API handler and can modify ctx.locals, set headers, etc.
+ * 
+ * @param ctx - API context
+ * @param next - Function to call the next middleware in the chain (must be awaited if used)
+ * @returns Promise<void> | void
+ * 
+ * @example
+ * // Authentication middleware
+ * export const middlewares: ApiMiddleware[] = [
+ *   async (ctx, next) => {
+ *     const token = ctx.req.headers.authorization;
+ *     if (!token) {
+ *       return ctx.Response({ error: 'Unauthorized' }, 401);
+ *     }
+ *     ctx.locals.user = await verifyToken(token);
+ *     await next();
+ *   }
+ * ];
+ */
 export type ApiMiddleware = (
   ctx: ApiContext,
   next: () => Promise<void>
 ) => void | Promise<void>;
 
+/**
+ * API handler function type.
+ * Handles the actual API request after all middlewares have run.
+ * 
+ * @param ctx - API context
+ * @returns Promise<void> | void
+ * 
+ * @example
+ * export const GET: ApiHandler = async (ctx) => {
+ *   const user = ctx.locals.user;
+ *   return ctx.Response({ user }, 200);
+ * };
+ */
 export type ApiHandler = (ctx: ApiContext) => void | Promise<void>;
 export type WssHandler = (ctx: WssContext) => void | Promise<void>;
 

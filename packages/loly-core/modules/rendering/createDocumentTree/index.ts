@@ -16,26 +16,34 @@ import {
  * @param props - Props from loader
  * @returns React element tree
  */
+/**
+ * Builds the app tree (Page + layouts) in the same way for SSR and SSG.
+ *
+ * @param route - Route definition
+ * @param params - Route parameters
+ * @param props - Props from loader (combined layout + page props)
+ * @returns React element tree
+ */
 export function buildAppTree(
   route: LoadedRoute,
   params: Record<string, string>,
-  props: any
+  props: Record<string, any>
 ): ReactElement {
-  const Page = route.component as PageComponent;
+  const Page = route.component;
 
   let appTree: ReactElement = React.createElement(Page, {
     params,
     ...props,
-  });
+  } as any);
 
   const layoutChain = route.layouts.slice().reverse();
 
   for (const Layout of layoutChain) {
-    appTree = React.createElement(Layout as PageComponent, {
+    appTree = React.createElement(Layout, {
       params,
       ...props,
       children: appTree,
-    });
+    } as any);
   }
 
   return appTree;
@@ -51,7 +59,7 @@ export function createDocumentTree(options: {
   appTree: ReactElement;
   initialData: InitialData;
   routerData: RouterData;
-  meta: LoaderResult["metadata"];
+  meta: LoaderResult<any>["metadata"];
   titleFallback?: string;
   descriptionFallback?: string;
   chunkHref?: string | null;

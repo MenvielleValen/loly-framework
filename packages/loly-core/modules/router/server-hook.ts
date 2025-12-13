@@ -99,11 +99,29 @@ export function loadServerHookForDir(currentDir: string): {
     };
   }
 
-  const middlewares: RouteMiddleware[] = Array.isArray(
-    mod?.[NAMING.BEFORE_MIDDLEWARES]
-  )
-    ? mod[NAMING.BEFORE_MIDDLEWARES]
-    : [];
+  // Load and validate middlewares
+  let middlewares: RouteMiddleware[] = [];
+  const rawMiddlewares = mod?.[NAMING.BEFORE_MIDDLEWARES];
+  
+  if (rawMiddlewares !== undefined) {
+    if (!Array.isArray(rawMiddlewares)) {
+      console.warn(
+        `[framework][server-hook] ${NAMING.BEFORE_MIDDLEWARES} must be an array in ${file}, ignoring invalid value`
+      );
+    } else {
+      // Validate each middleware is a function
+      for (let i = 0; i < rawMiddlewares.length; i++) {
+        const mw = rawMiddlewares[i];
+        if (typeof mw !== "function") {
+          console.warn(
+            `[framework][server-hook] Middleware at index ${i} in ${NAMING.BEFORE_MIDDLEWARES} is not a function in ${file}, skipping`
+          );
+          continue;
+        }
+        middlewares.push(mw);
+      }
+    }
+  }
 
   const serverHook: ServerLoader | null =
     typeof mod?.[NAMING.GET_SERVER_DATA_FN] === "function"

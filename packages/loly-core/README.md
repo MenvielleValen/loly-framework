@@ -152,7 +152,7 @@ socket.emit("message", { text: "Hello!" });
 
 ### 🎯 Route-Level Middlewares
 
-Define middlewares directly in your routes for fine-grained control:
+Define middlewares directly in your routes for fine-grained control. Middlewares run before `getServerSideProps` (pages) or API handlers and can modify `ctx.locals`, set headers, redirect, etc.
 
 **For Pages:**
 
@@ -165,11 +165,11 @@ export const beforeServerData: RouteMiddleware[] = [
     // Authentication
     const token = ctx.req.headers.authorization;
     if (!token) {
-      ctx.res.status(401).json({ error: "Unauthorized" });
-      return;
+      ctx.res.redirect("/login");
+      return; // Don't call next() if redirecting
     }
     ctx.locals.user = await verifyToken(token);
-    await next();
+    await next(); // Call next() to continue to next middleware or getServerSideProps
   },
 ];
 
@@ -186,22 +186,27 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 import type { ApiMiddleware, ApiContext } from "@lolyjs/core";
 
 // Global middleware for all methods
-export const beforeApi: ApiMiddleware[] = [
+export const middlewares: ApiMiddleware[] = [
   async (ctx, next) => {
     // Authentication
-    const user = await verifyUser(ctx.req);
+    const user = await getUser(ctx.req);
+    if (!user) {
+      return ctx.Response({ error: "Unauthorized" }, 401);
+    }
     ctx.locals.user = user;
     await next();
   },
 ];
 
 // Method-specific middleware
-export const beforePOST: ApiMiddleware[] = [
-  async (ctx, next) => {
-    // Validation specific to POST
-    await next();
-  },
-];
+export const methodMiddlewares = {
+  POST: [
+    async (ctx, next) => {
+      // Validation specific to POST
+      await next();
+    },
+  ],
+};
 
 export async function GET(ctx: ApiContext) {
   const user = ctx.locals.user;

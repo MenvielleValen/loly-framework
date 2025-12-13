@@ -49,9 +49,9 @@ function createServerHookErrorMessage(
  * @throws Error with detailed context if server hook fails
  */
 export async function runRouteServerHook(
-  route: LoadedRoute,
+  route: LoadedRoute<any, any>,
   ctx: ServerContext
-): Promise<LoaderResult> {
+): Promise<LoaderResult<any>> {
   if (!route.loader) {
     return { props: {} };
   }

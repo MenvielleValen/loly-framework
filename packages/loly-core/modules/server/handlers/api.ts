@@ -82,32 +82,57 @@ export async function handleApiRequest(
       ? [autoRateLimiter, ...globalMws, ...perMethodMws]
       : [...globalMws, ...perMethodMws];
 
-    for (const mw of chain) {
-      // Check if this is an express-rate-limit middleware (expects req, res, next)
-      // express-rate-limit middlewares have specific properties
-      const isExpressRateLimit = mw && typeof mw === 'function' && 
-        ((mw as any).skip || (mw as any).resetKey || mw.name?.includes('rateLimit'));
+    for (let i = 0; i < chain.length; i++) {
+      const mw = chain[i];
       
-      if (isExpressRateLimit) {
-        // Call express-rate-limit middleware with (req, res, next)
-        await new Promise<void>((resolve, reject) => {
-          const next = (err?: any) => {
-            if (err) reject(err);
-            else resolve();
-          };
-          try {
-            const result = mw(req, res, next);
-            // If it returns a promise, wait for it
-            if (result && typeof result.then === 'function') {
-              result.then(() => resolve()).catch(reject);
-            }
-          } catch (err) {
-            reject(err);
-          }
+      // Validate middleware is a function
+      if (typeof mw !== 'function') {
+        reqLogger.warn("Invalid middleware in chain", {
+          route: route.pattern,
+          method,
+          middlewareIndex: i,
+          middlewareType: typeof mw,
         });
-      } else {
-        // Call framework middleware with (ctx, next)
-        await Promise.resolve(mw(ctx, async () => {}));
+        continue;
+      }
+      
+      try {
+        // Check if this is an express-rate-limit middleware (expects req, res, next)
+        // express-rate-limit middlewares have specific properties
+        const isExpressRateLimit = 
+          (mw as any).skip || (mw as any).resetKey || mw.name?.includes('rateLimit');
+        
+        if (isExpressRateLimit) {
+          // Call express-rate-limit middleware with (req, res, next)
+          await new Promise<void>((resolve, reject) => {
+            const next = (err?: any) => {
+              if (err) reject(err);
+              else resolve();
+            };
+            try {
+              const result = mw(req, res, next);
+              // If it returns a promise, wait for it
+              if (result && typeof result.then === 'function') {
+                result.then(() => resolve()).catch(reject);
+              }
+            } catch (err) {
+              reject(err);
+            }
+          });
+        } else {
+          // Call framework middleware with (ctx, next)
+          await Promise.resolve(mw(ctx, async () => {}));
+        }
+      } catch (error) {
+        reqLogger.error("API middleware failed", error instanceof Error ? error : new Error(String(error)), {
+          route: route.pattern,
+          method,
+          middlewareIndex: i,
+          middlewareName: mw.name || 'anonymous',
+        });
+        
+        // Re-throw to be handled by error handler
+        throw error;
       }
       
       if (res.headersSent) {

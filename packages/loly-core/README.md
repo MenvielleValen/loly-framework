@@ -37,7 +37,7 @@ Loly is a full-stack React framework that combines the simplicity of file-based 
 
 - 🔌 **Native WebSocket Support** - Built-in Socket.IO integration with automatic namespace routing
 - 🎯 **Route-Level Middlewares** - Define middlewares directly in your routes for pages and APIs
-- 📁 **Separation of Concerns** - Server logic in `server.hook.ts` separate from React components
+- 📁 **Separation of Concerns** - Server logic in `page.server.hook.ts` and `layout.server.hook.ts` separate from React components
 - 🚀 **Hybrid Rendering** - SSR, SSG, and CSR with streaming support
 - 🛡️ **Security First** - Built-in rate limiting, validation, sanitization, and security headers
 - ⚡ **Performance** - Fast bundling with Rspack and optimized code splitting
@@ -66,7 +66,7 @@ export default function Home() {
 ### Add Server-Side Data
 
 ```tsx
-// app/page/server.hook.ts
+// app/page.server.hook.ts (preferred) or app/server.hook.ts (legacy)
 import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -157,7 +157,7 @@ Define middlewares directly in your routes for fine-grained control:
 **For Pages:**
 
 ```tsx
-// app/dashboard/server.hook.ts
+// app/dashboard/page.server.hook.ts (preferred) or app/dashboard/server.hook.ts (legacy)
 import type { RouteMiddleware, ServerLoader } from "@lolyjs/core";
 
 export const beforeServerData: RouteMiddleware[] = [
@@ -233,28 +233,68 @@ Routes are automatically created from your file structure:
 
 ```tsx
 // app/layout.tsx (Root layout)
-export default function RootLayout({ children }) {
+export default function RootLayout({ children, appName, navigation }) {
   return (
     <div>
-      <nav>Navigation</nav>
+      <nav>{navigation}</nav>
       {children}
-      <footer>Footer</footer>
+      <footer>{appName}</footer>
     </div>
   );
 }
 ```
 
 ```tsx
+// app/layout.server.hook.ts (Root layout server hook - same directory as layout.tsx)
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  return {
+    props: {
+      appName: "My App",
+      navigation: ["Home", "About", "Blog"],
+    },
+  };
+};
+```
+
+```tsx
 // app/blog/layout.tsx (Nested layout)
-export default function BlogLayout({ children }) {
+export default function BlogLayout({ children, sectionTitle }) {
   return (
     <div>
+      <h1>{sectionTitle}</h1>
       <aside>Sidebar</aside>
       <main>{children}</main>
     </div>
   );
 }
 ```
+
+```tsx
+// app/blog/layout.server.hook.ts (Nested layout server hook - same directory as layout.tsx)
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  return {
+    props: {
+      sectionTitle: "Blog Section",
+    },
+  };
+};
+```
+
+**Layout Server Hooks:**
+
+Layouts can have their own server hooks that provide stable data across all pages. Props from layout server hooks are automatically merged with page props:
+
+- **Layout props** (from `layout.server.hook.ts`) are stable and available to both the layout and all pages
+- **Page props** (from `page.server.hook.ts`) are specific to each page and override layout props if there's a conflict
+- **Combined props** are available to both layouts and pages
+
+**File Convention:**
+- Layout server hooks: `app/layout.server.hook.ts` (same directory as `layout.tsx`)
+- Page server hooks: `app/page.server.hook.ts` (preferred) or `app/server.hook.ts` (legacy, backward compatible)
 
 ### 🚀 Hybrid Rendering
 
@@ -263,7 +303,7 @@ Choose the best rendering strategy for each page:
 **SSR (Server-Side Rendering):**
 
 ```tsx
-// app/posts/server.hook.ts
+// app/posts/page.server.hook.ts (preferred) or app/posts/server.hook.ts (legacy)
 export const dynamic = "force-dynamic" as const;
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -275,7 +315,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 **SSG (Static Site Generation):**
 
 ```tsx
-// app/blog/[slug]/server.hook.ts
+// app/blog/[slug]/page.server.hook.ts (preferred) or app/blog/[slug]/server.hook.ts (legacy)
 export const dynamic = "force-static" as const;
 
 export const generateStaticParams: GenerateStaticParams = async () => {
@@ -292,7 +332,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 **CSR (Client-Side Rendering):**
 
 ```tsx
-// app/dashboard/page.tsx (No server.hook.ts)
+// app/dashboard/page.tsx (No page.server.hook.ts)
 import { useState, useEffect } from "react";
 
 export default function Dashboard() {
@@ -407,16 +447,18 @@ logger.error("Error occurred", error);
 your-app/
 ├── app/
 │   ├── layout.tsx              # Root layout
+│   ├── layout.server.hook.ts  # Root layout server hook (stable props)
 │   ├── page.tsx                # Home page (/)
-│   ├── server.hook.ts          # Server logic for home
+│   ├── page.server.hook.ts    # Page server hook (preferred) or server.hook.ts (legacy)
 │   ├── _not-found.tsx          # Custom 404
 │   ├── _error.tsx              # Custom error page
 │   ├── blog/
 │   │   ├── layout.tsx          # Blog layout
+│   │   ├── layout.server.hook.ts  # Blog layout server hook
 │   │   ├── page.tsx            # /blog
 │   │   └── [slug]/
 │   │       ├── page.tsx        # /blog/:slug
-│   │       └── server.hook.ts  # Server logic
+│   │       └── page.server.hook.ts  # Page server hook
 │   ├── api/
 │   │   └── posts/
 │   │       └── route.ts        # /api/posts
@@ -437,7 +479,10 @@ your-app/
 
 ### Server Loader
 
+**Page Server Hook:**
+
 ```tsx
+// app/page.server.hook.ts (preferred) or app/server.hook.ts (legacy)
 import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -466,6 +511,48 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     },
   };
 };
+```
+
+**Layout Server Hook:**
+
+```tsx
+// app/layout.server.hook.ts (same directory as layout.tsx)
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  // Fetch stable data that persists across all pages
+  const user = await getCurrentUser();
+  const navigation = await getNavigation();
+
+  return {
+    props: {
+      user,        // Available to layout and all pages
+      navigation,  // Available to layout and all pages
+    },
+  };
+};
+```
+
+**Props Merging:**
+
+- Layout props (from `layout.server.hook.ts`) are merged first
+- Page props (from `page.server.hook.ts`) are merged second and override layout props
+- Both layouts and pages receive the combined props
+
+```tsx
+// app/layout.tsx
+export default function Layout({ user, navigation, children }) {
+  // Receives: user, navigation (from layout.server.hook.ts)
+  // Also receives: any props from page.server.hook.ts
+  return <div>{/* ... */}</div>;
+}
+
+// app/page.tsx
+export default function Page({ user, navigation, posts }) {
+  // Receives: user, navigation (from layout.server.hook.ts)
+  // Receives: posts (from page.server.hook.ts)
+  return <div>{/* ... */}</div>;
+}
 ```
 
 ### API Route Handler

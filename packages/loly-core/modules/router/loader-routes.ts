@@ -5,7 +5,7 @@ import {
   LoadedRoute,
   WssRoute,
 } from "./index.types";
-import { loadLoaderForDir } from "./loader";
+import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
 import { BUILD_FOLDER_NAME, ERROR_PATTERN } from "@constants/globals";
 import {
   extractApiHandlers,
@@ -54,8 +54,17 @@ export function loadRoutesFromManifest(projectRoot: string): {
       path.join(projectRoot, f)
     );
     const pageDir = path.dirname(pageFile);
-    const { middlewares, loader, dynamic, generateStaticParams } =
-      loadLoaderForDir(pageDir);
+    
+    // Load server hooks for each layout (root → specific, same order as layouts)
+    // For a layout at app/layout.tsx, we look for app/layout.server.hook.ts (same directory)
+    const layoutServerHooks: (typeof serverHook)[] = [];
+    for (const layoutFile of layoutFiles) {
+      const layoutServerHook = loadLayoutServerHook(layoutFile);
+      layoutServerHooks.push(layoutServerHook);
+    }
+    
+    const { middlewares, serverHook, dynamic, generateStaticParams } =
+      loadServerHookForDir(pageDir);
 
     pageRoutes.push({
       pattern: entry.pattern,
@@ -66,7 +75,8 @@ export function loadRoutesFromManifest(projectRoot: string): {
       pageFile,
       layoutFiles,
       middlewares,
-      loader,
+      loader: serverHook, // Keep 'loader' field name for backward compatibility
+      layoutServerHooks, // Server hooks for each layout (same order as layouts)
       dynamic: entry.dynamic ?? dynamic,
       generateStaticParams,
     });

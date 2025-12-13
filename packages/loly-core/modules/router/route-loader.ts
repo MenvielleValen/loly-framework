@@ -3,7 +3,7 @@ import path from "path";
 import { ApiRoute, LoadedRoute, PageComponent, WssRoute } from "./index.types";
 
 import { loadLayoutsForDir } from "./layout";
-import { loadLoaderForDir } from "./loader";
+import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
 import {
   loadRoutesFromManifest,
   loadNotFoundFromManifest,
@@ -153,8 +153,16 @@ export function loadNotFoundRouteFromFilesystem(
     appDir
   );
 
-  const { middlewares, loader, dynamic, generateStaticParams } =
-    loadLoaderForDir(notFoundDir);
+  // Load server hooks for each layout
+  // For a layout at app/layout.tsx, we look for app/layout.server.hook.ts (same directory)
+  const layoutServerHooks: (typeof serverHook)[] = [];
+  for (const layoutFile of layoutFiles) {
+    const layoutServerHook = loadLayoutServerHook(layoutFile);
+    layoutServerHooks.push(layoutServerHook);
+  }
+
+  const { middlewares, serverHook, dynamic, generateStaticParams } =
+    loadServerHookForDir(notFoundDir);
 
   return {
     pattern: NOT_FOUND_PATTERN,
@@ -165,7 +173,8 @@ export function loadNotFoundRouteFromFilesystem(
     pageFile: notFoundFile,
     layoutFiles,
     middlewares,
-    loader,
+    loader: serverHook, // Keep 'loader' field name for backward compatibility
+    layoutServerHooks, // Server hooks for each layout (same order as layouts)
     dynamic,
     generateStaticParams,
   };
@@ -213,8 +222,16 @@ export function loadErrorRouteFromFilesystem(
     appDir
   );
 
-  const { middlewares, loader, dynamic, generateStaticParams } =
-    loadLoaderForDir(appDir);
+  // Load server hooks for each layout
+  // For a layout at app/layout.tsx, we look for app/layout.server.hook.ts (same directory)
+  const layoutServerHooks: (typeof serverHook)[] = [];
+  for (const layoutFile of layoutFiles) {
+    const layoutServerHook = loadLayoutServerHook(layoutFile);
+    layoutServerHooks.push(layoutServerHook);
+  }
+
+  const { middlewares, serverHook, dynamic, generateStaticParams } =
+    loadServerHookForDir(appDir);
 
   return {
     pattern: ERROR_PATTERN,
@@ -225,7 +242,8 @@ export function loadErrorRouteFromFilesystem(
     pageFile: errorFile,
     layoutFiles,
     middlewares,
-    loader,
+    loader: serverHook, // Keep 'loader' field name for backward compatibility
+    layoutServerHooks, // Server hooks for each layout (same order as layouts)
     dynamic,
     generateStaticParams,
   };

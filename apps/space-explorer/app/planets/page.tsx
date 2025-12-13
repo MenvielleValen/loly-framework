@@ -11,20 +11,54 @@ import { Globe, ArrowRight } from "lucide-react";
 import type { Planet } from "@/lib/space-api";
 
 type PlanetsPageProps = {
+  // Props from page server.hook.ts (app/planets/page.server.hook.ts or app/planets/server.hook.ts)
   planets: Planet[];
+  // Props from planets layout server.hook.ts (app/planets/layout.server.hook.ts)
+  sectionTitle?: string;
+  sectionDescription?: string;
+  sectionConfig?: {
+    enableSearch: boolean;
+    itemsPerPage: number;
+  };
+  // Props from root layout server.hook.ts (app/layout.server.hook.ts) - also available!
+  appName?: string;
 };
 
 export default function PlanetsPage(props: PlanetsPageProps) {
+  // Props from page server.hook.ts
   const { planets = [] } = props || {};
+  
+  // Props from planets layout server.hook.ts (nested layout)
+  const { sectionTitle, sectionDescription, sectionConfig } = props || {};
+  
+  // Props from root layout server.hook.ts
+  const { appName } = props || {};
+  
+  // Log to see all combined props
+  console.log("🪐 PlanetsPage - Combined Props:", {
+    "📄 Page Props (from app/planets/page.server.hook.ts or app/planets/server.hook.ts)": { planets },
+    "📐 Planets Layout Props (from app/planets/layout.server.hook.ts)": { sectionTitle, sectionDescription, sectionConfig },
+    "📐 Root Layout Props (from app/layout.server.hook.ts)": { appName },
+    "🔗 All Props (merged)": props,
+  });
+
+  // Use layout props if available, otherwise use defaults
+  const title = sectionTitle || "Planets of the Solar System";
+  const description = sectionDescription || "Explore the 8 planets of our solar system";
 
   return (
     <main className="min-h-screen bg-background py-12">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mb-12">
-          <h1 className="text-4xl font-bold tracking-tight">Planets of the Solar System</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{title}</h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            Explore the 8 planets of our solar system
+            {description}
           </p>
+          {sectionConfig?.enableSearch && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Search enabled • Showing {planets.length} planets
+            </p>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

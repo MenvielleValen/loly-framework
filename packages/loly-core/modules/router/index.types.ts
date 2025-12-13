@@ -15,7 +15,10 @@ export interface LoadedRoute {
   pageFile: string;
   layoutFiles: string[];
   middlewares: RouteMiddleware[];
+  /** Server hook (getServerSideProps) from the page's server.hook.ts file */
   loader: ServerLoader | null;
+  /** Server hooks (getServerSideProps) from each layout's server.hook.ts file, in same order as layouts array */
+  layoutServerHooks?: (ServerLoader | null)[];
   dynamic: DynamicMode;
   generateStaticParams: GenerateStaticParams | null;
 }
@@ -82,6 +85,10 @@ export interface LoaderResult {
   theme?: string;
 }
 
+/**
+ * Server loader function type (getServerSideProps).
+ * This function is exported from server.hook.ts files.
+ */
 export type ServerLoader = (ctx: ServerContext) => Promise<LoaderResult>;
 
 export interface ClientRoute {

@@ -4,7 +4,7 @@ import { LoadedRoute, PageComponent } from "./index.types";
 import { PAGE_FILE_REGEX } from "./constants";
 import { buildRoutePathFromDir, buildRegexFromRoutePath } from "./path";
 import { loadLayoutsForDir } from "./layout";
-import { loadLoaderForDir } from "./loader";
+import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
 
 /**
  * Scans the app directory and loads all page routes.
@@ -64,8 +64,16 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         appDir
       );
 
-      const { middlewares, loader, dynamic, generateStaticParams } =
-        loadLoaderForDir(currentDir);
+      // Load server hooks for each layout (root → specific, same order as layouts)
+      // For a layout at app/layout.tsx, we look for app/layout.server.hook.ts (same directory)
+      const layoutServerHooks: (typeof serverHook)[] = [];
+      for (const layoutFile of layoutFiles) {
+        const layoutServerHook = loadLayoutServerHook(layoutFile);
+        layoutServerHooks.push(layoutServerHook);
+      }
+
+      const { middlewares, serverHook, dynamic, generateStaticParams } =
+        loadServerHookForDir(currentDir);
 
       routes.push({
         pattern: routePath,
@@ -76,7 +84,8 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         pageFile: fullPath,
         layoutFiles,
         middlewares,
-        loader,
+        loader: serverHook, // Keep 'loader' field name for backward compatibility
+        layoutServerHooks, // Server hooks for each layout (same order as layouts)
         dynamic,
         generateStaticParams,
       });

@@ -10,7 +10,7 @@ export * from "./matcher";
 export * from "./manifest";
 export * from "./path";
 export * from "./layout";
-export * from "./loader";
+export * from "./server-hook";
 export * from "./index.types";
 export * from "./loader-routes";
 export * from "./route-loader";

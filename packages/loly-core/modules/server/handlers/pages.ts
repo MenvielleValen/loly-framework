@@ -13,7 +13,7 @@ import {
   buildRouterData,
 } from "@rendering/index";
 import { runRouteMiddlewares } from "./middleware";
-import { runRouteLoader } from "./loader";
+import { runRouteServerHook } from "./server-hook";
 import { handleDataResponse, handleRedirect, handleNotFound } from "./response";
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
@@ -133,13 +133,46 @@ async function handlePageRequestInternal(
         locals: {},
       };
 
-      let loaderResult = await runRouteLoader(notFoundPage, ctx);
+      // Execute layout server hooks and combine props
+      const layoutProps: Record<string, any> = {};
+      if (notFoundPage.layoutServerHooks && notFoundPage.layoutServerHooks.length > 0) {
+        for (let i = 0; i < notFoundPage.layoutServerHooks.length; i++) {
+          const layoutServerHook = notFoundPage.layoutServerHooks[i];
+          if (layoutServerHook) {
+            try {
+              const layoutResult = await layoutServerHook(ctx);
+              if (layoutResult.props) {
+                Object.assign(layoutProps, layoutResult.props);
+              }
+            } catch (error) {
+              // Log but continue
+              const reqLogger = getRequestLogger(req);
+              reqLogger.warn(`Layout server hook ${i} failed for not-found`, {
+                error,
+                layoutFile: notFoundPage.layoutFiles[i],
+              });
+            }
+          }
+        }
+      }
+
+      let loaderResult = await runRouteServerHook(notFoundPage, ctx);
       // Automatically inject theme from server into loaderResult if not already set
       if (!loaderResult.theme) {
         loaderResult.theme = theme;
       }
     
-      const initialData = buildInitialData(urlPath, {}, loaderResult);
+      // Combine props: layout props + page props
+      const combinedProps = {
+        ...layoutProps,
+        ...(loaderResult.props || {}),
+      };
+      const combinedLoaderResult: LoaderResult = {
+        ...loaderResult,
+        props: combinedProps,
+      };
+    
+      const initialData = buildInitialData(urlPath, {}, combinedLoaderResult);
       const appTree = buildAppTree(notFoundPage, {}, initialData.props);
       initialData.notFound = true;
     
@@ -150,7 +183,7 @@ async function handlePageRequestInternal(
         appTree,
         initialData,
         routerData,
-        meta: loaderResult.metadata ?? null,
+        meta: combinedLoaderResult.metadata ?? null,
         titleFallback: "Not found",
         descriptionFallback: "Loly demo",
         chunkHref: null,
@@ -216,9 +249,36 @@ async function handlePageRequestInternal(
     return;
   }
 
+  // 1. Execute layout server hooks (root → specific) and collect props
+  const layoutProps: Record<string, any> = {};
+  const reqLogger = getRequestLogger(req);
+
+  if (route.layoutServerHooks && route.layoutServerHooks.length > 0) {
+    for (let i = 0; i < route.layoutServerHooks.length; i++) {
+      const layoutServerHook = route.layoutServerHooks[i];
+      if (layoutServerHook) {
+        try {
+          const layoutResult = await layoutServerHook(ctx);
+          // Merge props (more specific layouts override general ones)
+          if (layoutResult.props) {
+            Object.assign(layoutProps, layoutResult.props);
+          }
+        } catch (error) {
+          // Log error but continue (layout server hook failure shouldn't break the page)
+          reqLogger.warn(`Layout server hook ${i} failed`, {
+            error,
+            layoutFile: route.layoutFiles[i],
+            route: route.pattern,
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Execute page server hook (getServerSideProps)
   let loaderResult: LoaderResult;
   try {
-    loaderResult = await runRouteLoader(route, ctx);
+    loaderResult = await runRouteServerHook(route, ctx);
     // Automatically inject theme from server into loaderResult if not already set
     if (!loaderResult.theme) {
       loaderResult.theme = theme;
@@ -242,8 +302,21 @@ async function handlePageRequestInternal(
     }
   }
 
+  // 3. Combine props: layout props (stable) + page props (page overrides layout)
+  // This must be done before checking for redirect/notFound to ensure data requests get combined props
+  const combinedProps = {
+    ...layoutProps, // Props from layouts (stable)
+    ...(loaderResult.props || {}), // Props from page (overrides layout)
+  };
+
+  // Use combined props in loaderResult
+  const combinedLoaderResult: LoaderResult = {
+    ...loaderResult,
+    props: combinedProps,
+  };
+
   if (isDataReq) {
-    handleDataResponse(res, loaderResult, theme);
+    handleDataResponse(res, combinedLoaderResult, theme);
     return;
   }
 
@@ -261,7 +334,7 @@ async function handlePageRequestInternal(
     return;
   }
 
-  const initialData = buildInitialData(urlPath, params, loaderResult);
+  const initialData = buildInitialData(urlPath, params, combinedLoaderResult);
   const appTree = buildAppTree(route, params, initialData.props);
 
   // Get chunk href with hash if available
@@ -284,7 +357,7 @@ async function handlePageRequestInternal(
     appTree,
     initialData,
     routerData,
-    meta: loaderResult.metadata,
+    meta: combinedLoaderResult.metadata,
     titleFallback: "Loly framework",
     descriptionFallback: "Loly demo",
     chunkHref,
@@ -365,13 +438,46 @@ async function renderErrorPageWithStream(
       locals: { error },
     };
 
-    let loaderResult = await runRouteLoader(errorPage, ctx);
+    // Execute layout server hooks and combine props
+    const layoutProps: Record<string, any> = {};
+    const reqLogger = getRequestLogger(req);
+    if (errorPage.layoutServerHooks && errorPage.layoutServerHooks.length > 0) {
+      for (let i = 0; i < errorPage.layoutServerHooks.length; i++) {
+        const layoutServerHook = errorPage.layoutServerHooks[i];
+        if (layoutServerHook) {
+          try {
+            const layoutResult = await layoutServerHook(ctx);
+            if (layoutResult.props) {
+              Object.assign(layoutProps, layoutResult.props);
+            }
+          } catch (err) {
+            // Log but continue
+            reqLogger.warn(`Layout server hook ${i} failed for error page`, {
+              error: err,
+              layoutFile: errorPage.layoutFiles[i],
+            });
+          }
+        }
+      }
+    }
+
+    let loaderResult = await runRouteServerHook(errorPage, ctx);
     // Automatically inject theme from server into loaderResult if not already set
     if (!loaderResult.theme && theme) {
       loaderResult.theme = theme;
     }
 
-    const initialData = buildInitialData(req.path, { error: String(error) }, loaderResult);
+    // Combine props: layout props + page props
+    const combinedProps = {
+      ...layoutProps,
+      ...(loaderResult.props || {}),
+    };
+    const combinedLoaderResult: LoaderResult = {
+      ...loaderResult,
+      props: combinedProps,
+    };
+
+    const initialData = buildInitialData(req.path, { error: String(error) }, combinedLoaderResult);
     const routerData = buildRouterData(req);
     initialData.error = true;
     
@@ -383,8 +489,8 @@ async function renderErrorPageWithStream(
         error: true,
         message: String(error),
         props: initialData.props,
-        metadata: loaderResult.metadata ?? null,
-        theme: loaderResult.theme ?? theme ?? null,
+        metadata: combinedLoaderResult.metadata ?? null,
+        theme: combinedLoaderResult.theme ?? theme ?? null,
       }));
       return;
     }
@@ -417,7 +523,7 @@ async function renderErrorPageWithStream(
       appTree,
       initialData,
       routerData,
-      meta: loaderResult.metadata ?? null,
+      meta: combinedLoaderResult.metadata ?? null,
       titleFallback: "Error",
       descriptionFallback: "An error occurred",
       chunkHref,

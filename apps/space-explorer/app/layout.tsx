@@ -4,15 +4,38 @@ import { ThemeSwitch } from "@/components/shared/theme-switch";
 import { Link } from "@lolyjs/core/components";
 import { Rocket } from "lucide-react";
 
-export default function RootLayout({
-  children,
-  appName,
-  theme,
-}: {
+type LayoutProps = {
   children: React.ReactNode;
-  appName: string;
+  // Props from layout server.hook.ts - available in all pages
+  appName?: string;
+  navigation?: Array<{ href: string; label: string }>;
+  footerLinks?: {
+    explore: Array<{ href: string; label: string; external?: boolean }>;
+    apis: Array<{ href: string; label: string; external?: boolean }>;
+    framework: Array<{ href: string; label: string; external?: boolean }>;
+  };
+  siteMetadata?: {
+    description: string;
+    copyright: string;
+  };
+  // Props from page server.hook.ts (if any) - can be used here too
   theme?: string;
-}) {
+};
+
+export default function RootLayout(props: LayoutProps) {
+  const {
+    children,
+    appName = "Space Explorer",
+    navigation = [
+      { href: "/planets", label: "Planets" },
+      { href: "/launches", label: "Launches" },
+      { href: "/astronauts", label: "Astronauts" },
+      { href: "/apod", label: "APOD" },
+    ],
+    footerLinks,
+    siteMetadata,
+    theme,
+  } = props;
   return (
     <ThemeProvider initialTheme={theme}>
       {/* Header */}
@@ -28,30 +51,15 @@ export default function RootLayout({
               </span>
             </Link>
             <div className="hidden items-center gap-6 md:flex">
-              <Link
-                href="/planets"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Planets
-              </Link>
-              <Link
-                href="/launches"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Launches
-              </Link>
-              <Link
-                href="/astronauts"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Astronauts
-              </Link>
-              <Link
-                href="/apod"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                APOD
-              </Link>
+              {navigation.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
           </div>
 
@@ -90,7 +98,7 @@ export default function RootLayout({
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Exploring the universe with real data from NASA and SpaceX.
+                {siteMetadata?.description || "Exploring the universe with real data from NASA and SpaceX."}
               </p>
             </div>
 
@@ -99,26 +107,24 @@ export default function RootLayout({
                 Explore
               </h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="/planets" className="hover:text-foreground">
-                    Planets
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/launches" className="hover:text-foreground">
-                    Launches
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/astronauts" className="hover:text-foreground">
-                    Astronauts
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/apod" className="hover:text-foreground">
-                    Picture of the Day
-                  </Link>
-                </li>
+                {(footerLinks?.explore || []).map((item) => (
+                  <li key={item.href}>
+                    {item.external ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-foreground"
+                      >
+                        {item.label}
+                      </a>
+                    ) : (
+                      <Link href={item.href} className="hover:text-foreground">
+                        {item.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -127,31 +133,24 @@ export default function RootLayout({
                 APIs
               </h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <a
-                    href="https://api.nasa.gov"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-foreground"
-                  >
-                    NASA API
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://docs.spacexdata.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-foreground"
-                  >
-                    SpaceX API
-                  </a>
-                </li>
-                <li>
-                  <Link href="/api/search" className="hover:text-foreground">
-                    API Search
-                  </Link>
-                </li>
+                {(footerLinks?.apis || []).map((item) => (
+                  <li key={item.href}>
+                    {item.external ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-foreground"
+                      >
+                        {item.label}
+                      </a>
+                    ) : (
+                      <Link href={item.href} className="hover:text-foreground">
+                        {item.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -160,16 +159,24 @@ export default function RootLayout({
                 Framework
               </h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <a
-                    href="https://github.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-foreground"
-                  >
-                    Loly Framework
-                  </a>
-                </li>
+                {(footerLinks?.framework || []).map((item) => (
+                  <li key={item.href}>
+                    {item.external ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-foreground"
+                      >
+                        {item.label}
+                      </a>
+                    ) : (
+                      <Link href={item.href} className="hover:text-foreground">
+                        {item.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
                 <li>
                   <span className="text-xs">SSR + SSG + API Routes</span>
                 </li>
@@ -178,7 +185,7 @@ export default function RootLayout({
           </div>
 
           <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-            © 2025 Space Explorer. Made with 💙 using Loly Framework.
+            {siteMetadata?.copyright || "© 2025 Space Explorer. Made with 💙 using Loly Framework."}
           </div>
         </div>
       </footer>

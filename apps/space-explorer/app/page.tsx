@@ -12,8 +12,12 @@ import type { NASAPOD, SpaceXLaunch } from "@/lib/space-api";
 import { cn } from "@/lib/utils";
 
 type HomePageProps = {
+  // Props from page server.hook.ts (specific to this page)
   apod: NASAPOD | null;
   recentLaunches: SpaceXLaunch[];
+  // Props from layout server.hook.ts (available in all pages!)
+  appName?: string;
+  navigation?: Array<{ href: string; label: string }>;
 };
 
 // Format date consistently for SSR/client hydration
@@ -31,7 +35,22 @@ function formatDate(dateString: string): string {
 }
 
 export default function HomePage(props: HomePageProps) {
+  // Props from page server.hook.ts (app/page.server.hook.ts) - specific to this page
   const { apod = null, recentLaunches = [] } = props || {};
+  
+  // Props from layout server.hook.ts - also available here!
+  // This demonstrates that layout props are merged with page props.
+  // Layout props come from app/layout.server.hook.ts
+  // Page props come from app/page.server.hook.ts
+  // Both are combined and available to both layout and page components
+  const { appName, navigation } = props || {};
+  
+  // Log to console to see the combined props in action
+  console.log("🏠 HomePage - Combined Props:", {
+    "📄 Page Props (from app/page.server.hook.ts)": { apod, recentLaunches },
+    "📐 Layout Props (from app/layout.server.hook.ts)": { appName, navigation },
+    "🔗 All Props (merged)": props,
+  });
 
   return (
     <main className="min-h-screen bg-background text-foreground">

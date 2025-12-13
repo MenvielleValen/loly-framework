@@ -4,6 +4,7 @@ import { getWindowData, getRouterData, setRouterData } from "./window-data";
 import { matchRouteClient } from "./route-matcher";
 import { applyMetadata } from "./metadata";
 import { AppShell } from "./AppShell";
+import { setupHotReload } from "./hot-reload";
 import type {
   InitialData,
   ClientRouteLoaded,
@@ -60,79 +61,94 @@ export async function loadInitialRoute(
 }
 
 /**
- * Sets up hot reload via Server-Sent Events (SSE) in development mode.
- * Listens for file changes and reloads the page when needed.
+ * Initializes router data from server or builds it from the current URL.
+ * 
+ * @param initialUrl - Current URL pathname + search
+ * @param initialData - Initial data from server
+ * @returns RouterData object
  */
-function setupHotReload(): void {
-  // Only enable hot reload in development mode
-  // In production, process.env.NODE_ENV is replaced by DefinePlugin with "production"
-  // @ts-ignore - process.env.NODE_ENV is replaced by DefinePlugin at build time
-  // DefinePlugin always defines process.env.NODE_ENV, so this should always be replaced
-  const nodeEnv: string = (typeof process !== "undefined" && (process as any).env?.NODE_ENV) || "production";
-  const isDev = nodeEnv !== "production";
-  
-  if (!isDev) {
-    return; // Skip hot reload in production
+function initializeRouterData(
+  initialUrl: string,
+  initialData: InitialData | null
+): void {
+  let routerData = getRouterData();
+  if (!routerData) {
+    const url = new URL(initialUrl, window.location.origin);
+    routerData = {
+      pathname: url.pathname,
+      params: initialData?.params || {},
+      searchParams: Object.fromEntries(url.searchParams.entries()),
+    };
+    setRouterData(routerData);
   }
+}
 
+/**
+ * Loads and hydrates the initial route.
+ * 
+ * @param container - DOM container element for React hydration
+ * @param initialUrl - Current URL pathname + search
+ * @param initialData - Initial data from server
+ * @param routes - Array of client routes
+ * @param notFoundRoute - Not-found route definition
+ * @param errorRoute - Error route definition
+ */
+async function hydrateInitialRoute(
+  container: HTMLElement,
+  initialUrl: string,
+  initialData: InitialData | null,
+  routes: ClientRouteLoaded[],
+  notFoundRoute: ClientRouteLoaded | null,
+  errorRoute: ClientRouteLoaded | null
+): Promise<void> {
   try {
-    console.log("[hot-reload] Attempting to connect to /__fw/hot...");
-    const eventSource = new EventSource("/__fw/hot");
-    let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
+    // Load initial route
+    const initialState = await loadInitialRoute(
+      initialUrl,
+      initialData,
+      routes,
+      notFoundRoute,
+      errorRoute
+    );
 
-    eventSource.addEventListener("message", (event) => {
-      const data = event.data;
-      if (data && data.startsWith("reload:")) {
-        const filePath = data.slice(7);
-        console.log(`[hot-reload] File changed: ${filePath}`);
-
-        // Clear any pending reload
-        if (reloadTimeout) {
-          clearTimeout(reloadTimeout);
-        }
-
-        // Wait a bit for the bundler to finish compiling and files to be written
-        // Increased timeout to ensure everything is ready
-        reloadTimeout = setTimeout(() => {
-          console.log("[hot-reload] Reloading page...");
-          // Force reload without cache to ensure we get the latest files
-          window.location.reload();
-        }, 500);
+    // Apply metadata if available
+    if (initialData?.metadata) {
+      try {
+        applyMetadata(initialData.metadata);
+      } catch (metadataError) {
+        console.warn("[client] Error applying metadata:", metadataError);
+        // Continue even if metadata fails
       }
-    });
+    }
 
-    eventSource.addEventListener("ping", () => {
-      console.log("[hot-reload] ✓ Connected to hot reload server");
-    });
-
-    eventSource.onopen = () => {
-      console.log("[hot-reload] ✓ SSE connection opened");
-    };
-
-    eventSource.onerror = (error) => {
-      // Log connection state for debugging
-      const states = ["CONNECTING", "OPEN", "CLOSED"];
-      const state = states[eventSource.readyState] || "UNKNOWN";
-      
-      if (eventSource.readyState === EventSource.CONNECTING) {
-        // Still connecting, might be normal
-        console.log("[hot-reload] Connecting...");
-      } else if (eventSource.readyState === EventSource.OPEN) {
-        console.warn("[hot-reload] Connection error (but connection is open):", error);
-      } else {
-        // Connection closed - might be production mode or server not running
-        console.log("[hot-reload] Connection closed (readyState:", state, ")");
-      }
-      // EventSource automatically reconnects, so we don't need to do anything
-    };
+    // Hydrate React root
+    hydrateRoot(
+      container,
+      <AppShell
+        initialState={initialState}
+        routes={routes}
+        notFoundRoute={notFoundRoute}
+        errorRoute={errorRoute}
+      />
+    );
   } catch (error) {
-    // Fail silently if EventSource is not supported
-    console.log("[hot-reload] EventSource not supported or error:", error);
+    console.error(
+      "[client] Error loading initial route components for",
+      initialUrl,
+      error
+    );
+    throw error; // Re-throw to handle in bootstrapClient
   }
 }
 
 /**
  * Bootstraps the client-side application.
+ * 
+ * Simplified flow:
+ * 1. Setup hot reload (development only)
+ * 2. Get container and initial data
+ * 3. Initialize router data
+ * 4. Load and hydrate initial route
  *
  * @param routes - Array of client routes
  * @param notFoundRoute - Not-found route definition
@@ -143,62 +159,37 @@ export function bootstrapClient(
   notFoundRoute: ClientRouteLoaded | null,
   errorRoute: ClientRouteLoaded | null = null
 ): void {
-  // Set up hot reload in development mode
-  console.log("[client] Bootstrap starting, setting up hot reload...");
+  // 1. Setup hot reload (development only)
   setupHotReload();
 
-  (async function bootstrap() {
-    const container = document.getElementById(APP_CONTAINER_ID);
-    const initialData = getWindowData();
-
-    if (!container) {
-      console.error(`Container #${APP_CONTAINER_ID} not found for hydration`);
-      return;
-    }
-
-    const initialUrl = window.location.pathname + window.location.search;
-
-    // Initialize routerData from server if available, otherwise build from URL
-    let routerData = getRouterData();
-    if (!routerData) {
-      const url = new URL(initialUrl, window.location.origin);
-      routerData = {
-        pathname: url.pathname,
-        params: initialData?.params || {},
-        searchParams: Object.fromEntries(url.searchParams.entries()),
-      };
-      setRouterData(routerData);
-    }
-
+  // Start bootstrap process
+  (async () => {
     try {
-      const initialState = await loadInitialRoute(
+      // 2. Get container and initial data
+      const container = document.getElementById(APP_CONTAINER_ID);
+      if (!container) {
+        console.error(`[client] Container #${APP_CONTAINER_ID} not found for hydration`);
+        return;
+      }
+
+      const initialData = getWindowData();
+      const initialUrl = window.location.pathname + window.location.search;
+
+      // 3. Initialize router data
+      initializeRouterData(initialUrl, initialData);
+
+      // 4. Load and hydrate initial route
+      await hydrateInitialRoute(
+        container,
         initialUrl,
         initialData,
         routes,
         notFoundRoute,
         errorRoute
       );
-
-      if (initialData?.metadata) {
-        applyMetadata(initialData.metadata);
-      }
-
-      hydrateRoot(
-        container,
-        <AppShell
-          initialState={initialState}
-          routes={routes}
-          notFoundRoute={notFoundRoute}
-          errorRoute={errorRoute}
-        />
-      );
     } catch (error) {
-      console.error(
-        "[client] Error loading initial route components for",
-        initialUrl,
-        error
-      );
-
+      // Fatal error during bootstrap - reload the page
+      console.error("[client] Fatal error during bootstrap:", error);
       window.location.reload();
     }
   })();

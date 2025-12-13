@@ -48,7 +48,7 @@ export default function RootLayout(props: LayoutProps) {
               </div>
               <span className="text-xl font-bold text-foreground">
                 {appName}
-              </span>
+              </span>  
             </Link>
             <div className="hidden items-center gap-6 md:flex">
               {navigation.map((item) => (

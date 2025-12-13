@@ -8,19 +8,7 @@ import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
 
 /**
  * Scans the app directory and loads all page routes.
- * 
- * Recursively walks through the app directory, finding all `page.tsx`, `page.ts`,
- * `page.jsx`, or `page.js` files and creating route definitions.
- * 
- * @param appDir - Root directory of the app (e.g., 'app')
- * @returns Array of loaded routes with components, layouts, loaders, etc.
- * 
- * @example
- * const routes = loadRoutes('app');
- * // [
- * //   { pattern: '/', component: HomePage, layouts: [], ... },
- * //   { pattern: '/blog/[slug]', component: BlogPage, layouts: [RootLayout], ... },
- * // ]
+ * Recursively walks through the app directory, finding all page files and creating route definitions.
  */
 export function loadRoutes(appDir: string): LoadedRoute[] {
   if (!fs.existsSync(appDir)) {

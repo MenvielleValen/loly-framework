@@ -5,15 +5,7 @@ import { LAYOUT_FILE_BASENAME } from "./constants";
 
 /**
  * Finds a layout file in the given directory.
- * 
- * Checks for layout files in this order:
- * 1. layout.tsx
- * 2. layout.ts
- * 3. layout.jsx
- * 4. layout.js
- * 
- * @param dir - Directory to search for layout file
- * @returns Full path to layout file, or null if not found
+ * Checks for layout.tsx, layout.ts, layout.jsx, or layout.js.
  */
 export function findLayoutFileInDir(dir: string): string | null {
   const candidates = [
@@ -33,21 +25,8 @@ export function findLayoutFileInDir(dir: string): string | null {
 
 /**
  * Loads all layout components for a page directory.
- * 
- * Walks up from the page directory to the app root, collecting layouts
- * at each level. Returns layouts in order from root to most specific.
- * 
- * @param pageDir - Directory containing the page file
- * @param appDir - Root app directory
- * @returns Object with layout components and their file paths
- * 
- * @example
- * // app/layout.tsx (root)
- * // app/blog/layout.tsx (blog)
- * // app/blog/[slug]/page.tsx (page)
- * 
- * loadLayoutsForDir('app/blog/[slug]', 'app')
- * // Returns: [RootLayout, BlogLayout] (in that order)
+ * Walks up from the page directory to the app root, collecting layouts at each level.
+ * Returns layouts in order from root to most specific.
  */
 export function loadLayoutsForDir(
   pageDir: string,

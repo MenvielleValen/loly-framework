@@ -62,10 +62,6 @@ export async function loadInitialRoute(
 
 /**
  * Initializes router data from server or builds it from the current URL.
- * 
- * @param initialUrl - Current URL pathname + search
- * @param initialData - Initial data from server
- * @returns RouterData object
  */
 function initializeRouterData(
   initialUrl: string,
@@ -85,13 +81,6 @@ function initializeRouterData(
 
 /**
  * Loads and hydrates the initial route.
- * 
- * @param container - DOM container element for React hydration
- * @param initialUrl - Current URL pathname + search
- * @param initialData - Initial data from server
- * @param routes - Array of client routes
- * @param notFoundRoute - Not-found route definition
- * @param errorRoute - Error route definition
  */
 async function hydrateInitialRoute(
   container: HTMLElement,

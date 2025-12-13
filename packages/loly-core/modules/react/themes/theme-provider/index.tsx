@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useBroadcastChannel } from "../../hooks/useBroadcastChannel";
 
 const ThemeContext = createContext<{
@@ -25,46 +25,69 @@ export const ThemeProvider = ({
   initialTheme?: string;
 }) => {
   const { message: themeMessage, sendMessage } = useBroadcastChannel('theme_channel');
+  
+  // Track what we last sent to avoid loops
+  const lastSentRef = useRef<string | null>(null);
 
   // Initialize theme consistently between server and client
-  // The server renders with initialTheme, and we must use the same value on client
-  // to avoid hydration mismatch. Priority: initialTheme prop > window.__FW_DATA__ > cookie > default
   const [theme, setTheme] = useState<string>(() => {
-    // 1. Use prop if provided (this should match what server rendered)
     if (initialTheme) return initialTheme;
     
-    // 2. On client, use window.__FW_DATA__ from SSR (this is set before hydration)
-    // This ensures consistency between server and client
     if (typeof window !== "undefined") {
       const windowData = (window as any).__FW_DATA__;
       if (windowData?.theme) return windowData.theme;
     }
     
-    // 3. Fallback to cookie (only if window.__FW_DATA__ not available yet)
     if (typeof window !== "undefined") {
       const cookieTheme = getCookie("theme");
       if (cookieTheme) return cookieTheme;
     }
     
-    // Default fallback
     return "light";
   });
 
-  // Listen for theme changes from broadcast channel (other tabs/windows)
+  // Handle messages from broadcast channel (other tabs)
+  // This effect ONLY responds to themeMessage changes, not theme changes
   useEffect(() => {
     if (!themeMessage) return;
-    if (themeMessage !== theme) {
-      setTheme(themeMessage);
+    
+    // Ignore if this is a message we just sent
+    if (themeMessage === lastSentRef.current) {
+      lastSentRef.current = null;
+      return;
     }
-  }, [themeMessage, theme]);
+    
+    // Only update if different from current theme
+    setTheme((currentTheme) => {
+      if (themeMessage !== currentTheme) {
+        // Update cookie
+        if (typeof document !== "undefined") {
+          document.cookie = `theme=${themeMessage}; path=/; max-age=31536000`;
+        }
+        
+        // Update window data
+        if (typeof window !== "undefined") {
+          if (!(window as any).__FW_DATA__) {
+            (window as any).__FW_DATA__ = {};
+          }
+          (window as any).__FW_DATA__ = {
+            ...(window as any).__FW_DATA__,
+            theme: themeMessage,
+          };
+        }
+        
+        return themeMessage;
+      }
+      return currentTheme;
+    });
+  }, [themeMessage]); // Only depend on themeMessage, NOT theme!
 
-  // Listen for theme changes from window.__FW_DATA__ during SPA navigation
+  // Handle window.__FW_DATA__ changes during SPA navigation
   useEffect(() => {
     const handleDataRefresh = () => {
       if (typeof window !== "undefined") {
         const windowData = (window as any).__FW_DATA__;
         if (windowData?.theme) {
-          // Use functional update to avoid stale closure
           setTheme((currentTheme) => {
             if (windowData.theme !== currentTheme) {
               return windowData.theme;
@@ -75,60 +98,70 @@ export const ThemeProvider = ({
       }
     };
 
-    window.addEventListener("fw-data-refresh", handleDataRefresh);
+    if (typeof window !== "undefined") {
+      window.addEventListener("fw-data-refresh", handleDataRefresh);
+      return () => {
+        window.removeEventListener("fw-data-refresh", handleDataRefresh);
+      };
+    }
+  }, []); // No dependencies - event listener doesn't need theme
 
-    return () => {
-      window.removeEventListener("fw-data-refresh", handleDataRefresh);
-    };
-  }, []);
-
-  // Update theme when initialTheme prop changes (e.g., during SPA navigation)
-  // This is the primary way theme updates during SPA navigation when layout re-renders
+  // Handle initialTheme prop changes
   useEffect(() => {
-    if (initialTheme) {
-      // Always update if initialTheme is provided, even if it's the same
-      // This ensures theme syncs correctly during SPA navigation
+    if (initialTheme && initialTheme !== theme) {
       setTheme(initialTheme);
     }
-  }, [initialTheme]);
+  }, [initialTheme]); // Only depend on initialTheme, not theme
 
-  // Update body class when theme changes (skip during initial hydration to avoid mismatch)
+  // Update body class when theme changes
   useEffect(() => {
     if (typeof document === "undefined") return;
 
     const body = document.body;
     const currentClasses = body.className.split(" ").filter(Boolean);
-    
-    // Remove old theme classes (light, dark, etc.)
     const themeClasses = ["light", "dark"];
     const filteredClasses = currentClasses.filter(
       (cls) => !themeClasses.includes(cls)
     );
-    
-    // Add new theme class
     const newClassName = [...filteredClasses, theme].filter(Boolean).join(" ");
     
-    // Only update if different to avoid unnecessary DOM updates
     if (body.className !== newClassName) {
       body.className = newClassName;
     }
-
-    sendMessage(theme);
-  }, [theme, sendMessage]);
+  }, [theme]);
 
   const handleThemeChange = (newTheme: string) => {
+    // Update state immediately
     setTheme(newTheme);
 
-    // Set theme cookie
-    document.cookie = `theme=${newTheme}; path=/; max-age=31536000`; // 1 year expiry
+    // Update cookie
+    if (typeof document !== "undefined") {
+      document.cookie = `theme=${newTheme}; path=/; max-age=31536000`;
+    }
 
-    // Update window.__FW_DATA__.theme so getCurrentTheme() returns the correct value during navigation
-    if (typeof window !== "undefined" && (window as any).__FW_DATA__) {
+    // Update window data
+    if (typeof window !== "undefined") {
+      if (!(window as any).__FW_DATA__) {
+        (window as any).__FW_DATA__ = {};
+      }
       (window as any).__FW_DATA__ = {
         ...(window as any).__FW_DATA__,
         theme: newTheme,
       };
     }
+    
+    // Mark this as the last value we sent
+    lastSentRef.current = newTheme;
+    
+    // Broadcast to other tabs
+    sendMessage(newTheme);
+    
+    // Clear the ref after a delay
+    setTimeout(() => {
+      if (lastSentRef.current === newTheme) {
+        lastSentRef.current = null;
+      }
+    }, 500);
   };
 
   return (

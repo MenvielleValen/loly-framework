@@ -8,67 +8,6 @@ importers:
 
   .: {}
 
-  apps/chat:
-    dependencies:
-      '@lolyjs/core':
-        specifier: workspace:*
-        version: link:../../packages/loly-core
-      axios:
-        specifier: ^1.13.2
-        version: 1.13.2
-      react:
-        specifier: ^19.2.0
-        version: 19.2.0
-      react-dom:
-        specifier: ^19.2.0
-        version: 19.2.0(react@19.2.0)
-      socket.io-client:
-        specifier: ^4.8.1
-        version: 4.8.1
-      ws:
-        specifier: ^8.18.3
-        version: 8.18.3
-    devDependencies:
-      '@tailwindcss/postcss':
-        specifier: ^4.1.17
-        version: 4.1.17
-      '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.1
-      '@types/react':
-        specifier: ^19.2.6
-        version: 19.2.6
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.6)
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
-      autoprefixer:
-        specifier: ^10.4.22
-        version: 10.4.22(postcss@8.5.6)
-      css-loader:
-        specifier: ^7.1.2
-        version: 7.1.2(@rspack/core@1.6.4)(webpack@5.103.0)
-      postcss:
-        specifier: ^8.5.6
-        version: 8.5.6
-      postcss-loader:
-        specifier: ^8.2.0
-        version: 8.2.0(@rspack/core@1.6.4)(postcss@8.5.6)(typescript@5.9.3)(webpack@5.103.0)
-      style-loader:
-        specifier: ^4.0.0
-        version: 4.0.0(webpack@5.103.0)
-      tailwindcss:
-        specifier: ^4.1.17
-        version: 4.1.17
-      tsx:
-        specifier: ^4.20.6
-        version: 4.20.6
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
   apps/space-explorer:
     dependencies:
       '@lolyjs/core':
@@ -1083,9 +1022,6 @@ packages:
 
   '@types/serve-static@1.15.10':
     resolution: {integrity: sha512-tRs1dB+g8Itk72rlSI2ZrW6vZg0YrLI81iQSTkMmOqnqCaNr/8Ek4VwWcN5vZgCYWbg/JJSGBlUaYGAOP73qBw==}
-
-  '@types/ws@8.18.1':
-    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@webassemblyjs/ast@1.14.1':
     resolution: {integrity: sha512-nuBEDgQfm1ccRp/8bCQrx1frohyufl4JlbMMZ4P1wpeOfDhF6FQkxZJ1b/e+PLwr6X1Nhw6OLme5usuBWYBvuQ==}
@@ -2337,18 +2273,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.18.3:
-    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   xmlhttprequest-ssl@2.1.2:
     resolution: {integrity: sha512-TEU+nJVUUnA4CYJFLvK5X9AOeH4KvDvhIfm0vV1GaQRtchnG0hgK5p8hw/xjv8cunWYCsiPCSDzObPyhEwq3KQ==}
     engines: {node: '>=0.4.0'}
@@ -2968,10 +2892,6 @@ snapshots:
       '@types/http-errors': 2.0.5
       '@types/node': 24.10.1
       '@types/send': 0.17.6
-
-  '@types/ws@8.18.1':
-    dependencies:
-      '@types/node': 24.10.1
 
   '@webassemblyjs/ast@1.14.1':
     dependencies:
@@ -4363,8 +4283,6 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@8.17.1: {}
-
-  ws@8.18.3: {}
 
   xmlhttprequest-ssl@2.1.2: {}
 

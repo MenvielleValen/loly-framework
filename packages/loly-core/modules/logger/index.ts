@@ -270,9 +270,8 @@ export function requestLoggerMiddleware(options: {
       
       res.on("finish", () => {
         const duration = Date.now() - startTime;
-        // Only log errors and warnings by default, or successful requests if explicitly enabled
-        const shouldLogSuccess = logRequests === true; // Only if logRequests is explicitly true
         
+        // By default, only log errors and warnings (not successful 2xx requests)
         if (res.statusCode >= 500) {
           reqLogger.error(`${req.method} ${req.path} ${res.statusCode}`, {
             statusCode: res.statusCode,
@@ -283,13 +282,8 @@ export function requestLoggerMiddleware(options: {
             statusCode: res.statusCode,
             duration: `${duration}ms`,
           });
-        } else if (shouldLogSuccess) {
-          // Only log successful requests if explicitly enabled
-          reqLogger.debug(`${req.method} ${req.path} ${res.statusCode}`, {
-            statusCode: res.statusCode,
-            duration: `${duration}ms`,
-          });
         }
+        // 2xx requests are not logged by default to reduce noise
       });
     }
 

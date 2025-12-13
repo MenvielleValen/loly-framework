@@ -1,10 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 
 export const useBroadcastChannel = (channelName: string) => {
   const [message, setMessage] = useState(null);
-  const channel = new BroadcastChannel(channelName);
+  const channelRef = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
+    // Create channel only once, inside useEffect
+    if (!channelRef.current && typeof window !== "undefined") {
+      channelRef.current = new BroadcastChannel(channelName);
+    }
+
+    const channel = channelRef.current;
+    if (!channel) return;
+
     const handleMessage = (event: MessageEvent) => {
       setMessage(event.data);
     };
@@ -13,13 +21,18 @@ export const useBroadcastChannel = (channelName: string) => {
 
     // Clean up the channel when the component unmounts
     return () => {
-      channel.close();
+      if (channelRef.current) {
+        channelRef.current.close();
+        channelRef.current = null;
+      }
     };
-  }, [channel]);
+  }, [channelName]);
 
-  const sendMessage = (msg: unknown) => {
-    channel.postMessage(msg);
-  };
+  const sendMessage = useCallback((msg: unknown) => {
+    if (channelRef.current) {
+      channelRef.current.postMessage(msg);
+    }
+  }, []);
 
   return { message, sendMessage };
 };

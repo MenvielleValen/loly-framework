@@ -112,26 +112,26 @@ export async function startServer(options: StartServerOptions = {}) {
 
   httpServer.listen(port, host, () => {
     if (isDev) {
-      logger.info("🚀 Dev server running", {
-        url: `http://${host}:${port}`,
-        appDir,
-      });
-      logger.info("🧭 Reading routes from", { appDir });
-      logger.info("📦 Client served from /static/client.js");
+      // ANSI color codes for terminal output
+      const reset = "\x1b[0m";
+      const cyan = "\x1b[36m";
+      const green = "\x1b[32m";
+      const dim = "\x1b[2m";
+      const bold = "\x1b[1m";
+      
+      const url = `http://${host === "0.0.0.0" ? "localhost" : host}:${port}`;
+      
+      console.log();
+      console.log(`${bold}${green}✓${reset} ${bold}Dev server ready${reset}`);
+      console.log(`${dim}  Local:${reset}    ${cyan}${url}${reset}`);
+      if (routes.length > 0 || apiRoutes.length > 0 || wssRoutes.length > 0) {
+        console.log(`${dim}  Routes:${reset}  ${routes.length} pages, ${apiRoutes.length} API, ${wssRoutes.length} WSS`);
+      }
+      console.log();
     } else {
-      const buildDir = config.directories.build;
-      logger.info("🚀 Prod server running", {
-        url: `http://${host}:${port}`,
-        appDir,
-        buildDir,
-      });
-      logger.info("🧭 Reading compiled routes from", { appDir });
-      logger.info("📦 Client served from", {
-        path: `/static (${buildDir}/client)`,
-      });
-      logger.info("📄 SSG served from", {
-        path: `${buildDir}/ssg (if exists)`,
-      });
+      // Production: simple, clean output
+      const url = `http://${host}:${port}`;
+      console.log(`🚀 Server running on ${url}`);
     }
   });
 }

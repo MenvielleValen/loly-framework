@@ -86,7 +86,9 @@ export function createClientConfig(
     },
     plugins: [
       new rspack.DefinePlugin({
-        "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || mode),
+        // Use mode directly to ensure development mode is correctly set
+        // This replaces process.env.NODE_ENV in the client bundle with the literal string value
+        "process.env.NODE_ENV": JSON.stringify(mode),
         ...publicEnv,
       }),
       new rspack.CssExtractRspackPlugin({

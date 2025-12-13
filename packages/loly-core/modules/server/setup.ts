@@ -87,7 +87,7 @@ export function setupServer(
       //   and the require cache is cleared above to ensure server-side code reloads
     };
     
-    setupHotReload({ app, appDir, waitForBuild, onFileChange });
+    setupHotReload({ app, appDir, projectRoot, waitForBuild, onFileChange });
     
     app.use("/static", express.static(outDir));
 

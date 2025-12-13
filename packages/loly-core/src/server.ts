@@ -6,6 +6,7 @@ import { setupApplication } from "@server/application";
 import { FilesystemRouteLoader, ManifestRouteLoader } from "@router/index";
 import {
   loadConfig,
+  ConfigValidationError,
   getAppDir,
   getBuildDir,
   type FrameworkConfig,
@@ -42,8 +43,17 @@ export async function startServer(options: StartServerOptions = {}) {
   const isDev = options.isDev ?? process.env.NODE_ENV === "development";
   const projectRoot = options.rootDir ?? process.cwd();
 
-  // Load configuration
-  const config = options.config ?? loadConfig(projectRoot);
+  // Load and validate configuration
+  let config: FrameworkConfig;
+  try {
+    config = options.config ?? loadConfig(projectRoot);
+  } catch (error) {
+    if (error instanceof ConfigValidationError) {
+      console.error('\n' + error.message + '\n');
+      process.exit(1);
+    }
+    throw error;
+  }
 
   // Use config values, but allow overrides from options and environment variables
   // PORT and HOST are standard environment variables in hosting platforms (Render, Heroku, etc.)
@@ -88,7 +98,7 @@ export async function startServer(options: StartServerOptions = {}) {
     });
 
   const routeLoader = isDev
-    ? new FilesystemRouteLoader(appDir)
+    ? new FilesystemRouteLoader(appDir, projectRoot)
     : new ManifestRouteLoader(projectRoot);
 
   // Set up Socket.IO server and WebSocket event handlers

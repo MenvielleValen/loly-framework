@@ -34,30 +34,334 @@ export interface RouteLoader {
 }
 
 /**
- * Loads routes directly from the filesystem.
+ * File change tracking for intelligent cache invalidation.
+ */
+interface FileStats {
+  mtime: number;
+  size: number;
+}
+
+/**
+ * Cache entry for routes with file tracking.
+ */
+interface RoutesCache {
+  routes: LoadedRoute[];
+  apiRoutes: ApiRoute[];
+  wssRoutes: WssRoute[];
+  notFoundRoute: LoadedRoute | null;
+  errorRoute: LoadedRoute | null;
+  fileStats: Map<string, FileStats>;
+  timestamp: number;
+}
+
+/**
+ * Directories to always skip when tracking file changes.
+ * These are directories that never contain code affecting routes.
+ */
+const SKIP_DIRECTORIES = new Set([
+  'node_modules',
+  '.git',
+  '.loly',
+  'dist',
+  'build',
+  '.next',
+  '.cache',
+  'coverage',
+  '.vscode',
+  '.idea',
+  '.turbo',
+  '.swc',
+]);
+
+/**
+ * Gets all relevant files for change detection.
+ * Monitors the entire project root (except excluded directories) to catch
+ * any changes in TypeScript/JavaScript files, regardless of directory structure.
+ * 
+ * This approach doesn't assume any specific directory names (lib, components, etc.)
+ * and will detect changes anywhere in the project that could affect routes.
+ * 
+ * @param appDir - App directory path (used for context, but projectRoot is scanned)
+ * @param projectRoot - Project root directory path to scan
+ */
+function getRelevantFiles(appDir: string, projectRoot: string): string[] {
+  const files: string[] = [];
+  const projectRootNormalized = path.resolve(projectRoot);
+  
+  function walk(currentDir: string) {
+    if (!fs.existsSync(currentDir)) {
+      return;
+    }
+    
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      
+      if (entry.isDirectory()) {
+        // Skip directories that never contain source code affecting routes
+        // Note: We skip dot-prefixed dirs except those we know might have source (like .github/scripts)
+        // but in practice, most dot-dirs are config/build artifacts
+        if (SKIP_DIRECTORIES.has(entry.name)) {
+          continue;
+        }
+        
+        // Skip hidden directories (starting with .) unless they're known source dirs
+        // This is a safe default - user can reorganize if needed
+        if (entry.name.startsWith('.')) {
+          continue;
+        }
+        
+        walk(fullPath);
+      } else {
+        // Track all TypeScript/JavaScript files that could affect routes
+        // This includes components, utils, libs, hooks - any code that routes might import
+        const ext = path.extname(entry.name);
+        if (['.ts', '.tsx', '.js', '.jsx'].includes(ext)) {
+          files.push(fullPath);
+        }
+      }
+    }
+  }
+  
+  // Walk the entire project root - this catches changes in any directory structure
+  // The appDir will be included automatically if it's within projectRoot
+  walk(projectRootNormalized);
+  
+  return files;
+}
+
+/**
+ * Checks if any relevant files have changed since cache was created.
+ */
+function hasFilesChanged(
+  appDir: string,
+  projectRoot: string,
+  cachedStats: Map<string, FileStats>
+): boolean {
+  const currentFiles = getRelevantFiles(appDir, projectRoot);
+  const currentFilesSet = new Set(currentFiles);
+  
+  // Check if any cached file was deleted
+  for (const [filePath] of cachedStats.entries()) {
+    if (!currentFilesSet.has(filePath)) {
+      return true; // File was deleted
+    }
+  }
+  
+  // Check if any file changed (new or modified)
+  for (const filePath of currentFiles) {
+    if (!fs.existsSync(filePath)) {
+      continue;
+    }
+    
+    const stats = fs.statSync(filePath);
+    const cachedStat = cachedStats.get(filePath);
+    
+    if (!cachedStat) {
+      return true; // New file
+    }
+    
+    // Check if mtime or size changed
+    if (
+      stats.mtimeMs !== cachedStat.mtime ||
+      stats.size !== cachedStat.size
+    ) {
+      return true; // File was modified
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Builds a map of file stats for change detection.
+ */
+function buildFileStats(files: string[]): Map<string, FileStats> {
+  const statsMap = new Map<string, FileStats>();
+  
+  for (const filePath of files) {
+    if (fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
+      statsMap.set(filePath, {
+        mtime: stats.mtimeMs,
+        size: stats.size,
+      });
+    }
+  }
+  
+  return statsMap;
+}
+
+/**
+ * Loads routes directly from the filesystem with intelligent caching.
  * Used in development mode.
+ * 
+ * Caches routes and only reloads when files change, reducing overhead.
+ * Monitors both app directory and common source directories outside app.
  */
 export class FilesystemRouteLoader implements RouteLoader {
-  constructor(private appDir: string) {}
+  private cache: RoutesCache | null = null;
+  private readonly cacheMaxAge = 1000; // Maximum cache age in ms (1 second fallback)
+
+  constructor(
+    private appDir: string,
+    private projectRoot: string = appDir
+  ) {
+    // If projectRoot not provided, use appDir's parent or appDir itself
+    if (this.projectRoot === this.appDir) {
+      // Try to find project root by going up from appDir
+      let current = path.resolve(this.appDir);
+      while (current !== path.dirname(current)) {
+        if (fs.existsSync(path.join(current, 'package.json'))) {
+          this.projectRoot = current;
+          break;
+        }
+        current = path.dirname(current);
+      }
+    }
+  }
+
+  /**
+   * Invalidates the cache, forcing a reload on next access.
+   */
+  invalidateCache(): void {
+    this.cache = null;
+  }
+
+  /**
+   * Checks if cache is still valid, invalidates if files changed.
+   */
+  private ensureCacheValid(): void {
+    if (!this.cache) {
+      return; // No cache, will be built on next access
+    }
+
+    // Check if cache is too old (fallback safety)
+    const now = Date.now();
+    if (now - this.cache.timestamp > this.cacheMaxAge) {
+      // Verify files haven't changed
+      if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats)) {
+        this.cache = null;
+      } else {
+        // Cache is still valid, just update timestamp
+        this.cache.timestamp = now;
+      }
+    }
+  }
 
   loadRoutes(): LoadedRoute[] {
-    return loadRoutes(this.appDir);
+    this.ensureCacheValid();
+    
+    if (!this.cache || hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats)) {
+      const routes = loadRoutes(this.appDir);
+      const files = getRelevantFiles(this.appDir, this.projectRoot);
+      const fileStats = buildFileStats(files);
+      
+      // Initialize or update cache
+      this.cache = {
+        routes,
+        apiRoutes: this.cache?.apiRoutes || [],
+        wssRoutes: this.cache?.wssRoutes || [],
+        notFoundRoute: this.cache?.notFoundRoute ?? null,
+        errorRoute: this.cache?.errorRoute ?? null,
+        fileStats,
+        timestamp: Date.now(),
+      };
+    }
+    
+    return this.cache.routes;
   }
 
   loadApiRoutes(): ApiRoute[] {
-    return loadApiRoutes(this.appDir);
+    this.ensureCacheValid();
+    
+    // Ensure cache exists
+    if (!this.cache) {
+      this.loadRoutes(); // This will initialize the cache
+    }
+    
+    // Ensure we have a cache at this point
+    if (!this.cache) {
+      throw new Error('Failed to initialize route cache');
+    }
+    
+    if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.apiRoutes.length === 0) {
+      // Files changed or not loaded yet, reload
+      const files = getRelevantFiles(this.appDir, this.projectRoot);
+      const fileStats = buildFileStats(files);
+      this.cache.apiRoutes = loadApiRoutes(this.appDir);
+      this.cache.fileStats = fileStats;
+      this.cache.timestamp = Date.now();
+    }
+    
+    return this.cache.apiRoutes;
   }
 
   loadWssRoutes(): WssRoute[] {
-    return loadWssRoutes(this.appDir);
+    this.ensureCacheValid();
+    
+    if (!this.cache) {
+      this.loadRoutes(); // Initialize cache
+    }
+    
+    if (!this.cache) {
+      throw new Error('Failed to initialize route cache');
+    }
+    
+    if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.wssRoutes.length === 0) {
+      const files = getRelevantFiles(this.appDir, this.projectRoot);
+      const fileStats = buildFileStats(files);
+      this.cache.wssRoutes = loadWssRoutes(this.appDir);
+      this.cache.fileStats = fileStats;
+      this.cache.timestamp = Date.now();
+    }
+    
+    return this.cache.wssRoutes;
   }
 
   loadNotFoundRoute(): LoadedRoute | null {
-    return loadNotFoundRouteFromFilesystem(this.appDir);
+    this.ensureCacheValid();
+    
+    if (!this.cache) {
+      this.loadRoutes(); // Initialize cache
+    }
+    
+    if (!this.cache) {
+      throw new Error('Failed to initialize route cache');
+    }
+    
+    if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.notFoundRoute === undefined) {
+      const files = getRelevantFiles(this.appDir, this.projectRoot);
+      const fileStats = buildFileStats(files);
+      this.cache.notFoundRoute = loadNotFoundRouteFromFilesystem(this.appDir);
+      this.cache.fileStats = fileStats;
+      this.cache.timestamp = Date.now();
+    }
+    
+    return this.cache.notFoundRoute;
   }
 
   loadErrorRoute(): LoadedRoute | null {
-    return loadErrorRouteFromFilesystem(this.appDir);
+    this.ensureCacheValid();
+    
+    if (!this.cache) {
+      this.loadRoutes(); // Initialize cache
+    }
+    
+    if (!this.cache) {
+      throw new Error('Failed to initialize route cache');
+    }
+    
+    if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.errorRoute === undefined) {
+      const files = getRelevantFiles(this.appDir, this.projectRoot);
+      const fileStats = buildFileStats(files);
+      this.cache.errorRoute = loadErrorRouteFromFilesystem(this.appDir);
+      this.cache.fileStats = fileStats;
+      this.cache.timestamp = Date.now();
+    }
+    
+    return this.cache.errorRoute;
   }
 
   loadRouteChunks(): Record<string, string> {

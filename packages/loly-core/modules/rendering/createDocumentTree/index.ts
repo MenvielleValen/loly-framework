@@ -151,7 +151,7 @@ export function createDocumentTree(options: {
       "body",
       { 
         style: { margin: 0 }, 
-        className: [initialData.className, theme].filter(Boolean).join(" "),
+        className: [initialData.className || "", theme].filter(Boolean).join(" "),
         suppressHydrationWarning: true // Allow theme class to differ between server and client initially
       },
       React.createElement("div", { id: APP_CONTAINER_ID }, appTree)

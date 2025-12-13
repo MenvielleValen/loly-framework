@@ -50,7 +50,7 @@ export function setupServer(
   const { projectRoot, appDir, isDev, config } = options;
 
   const routeLoader: RouteLoader = isDev
-    ? new FilesystemRouteLoader(appDir)
+    ? new FilesystemRouteLoader(appDir, projectRoot)
     : new ManifestRouteLoader(projectRoot);
 
   if (isDev) {
@@ -74,7 +74,7 @@ export function setupServer(
       // Reload client routes manifest for page files (affects client-side routing)
       // This is needed when routes are added/removed/changed
       if (isPageFile) {
-        const loader = new FilesystemRouteLoader(appDir);
+        const loader = new FilesystemRouteLoader(appDir, projectRoot);
         const newRoutes = loader.loadRoutes();
         writeClientRoutesManifest(newRoutes, projectRoot);
         console.log("[hot-reload] Client routes manifest reloaded");
@@ -97,12 +97,17 @@ export function setupServer(
     const errorPage = routeLoader.loadErrorRoute();
     writeClientRoutesManifest(routes, projectRoot);
 
+    // Reuse the same loader instance to benefit from caching
+    // Pass projectRoot so it can monitor files outside app/ directory
+    const sharedLoader = new FilesystemRouteLoader(appDir, projectRoot);
+    
     function getRoutes() {
       clearAppRequireCache(appDir);
-      const loader = new FilesystemRouteLoader(appDir);
+      // Invalidate cache to force reload after clearing require cache
+      sharedLoader.invalidateCache();
       return {
-        routes: loader.loadRoutes(),
-        apiRoutes: loader.loadApiRoutes(),
+        routes: sharedLoader.loadRoutes(),
+        apiRoutes: sharedLoader.loadApiRoutes(),
       };
     }
 

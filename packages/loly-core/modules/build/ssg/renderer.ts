@@ -92,19 +92,52 @@ export async function renderStaticRoute(
     );
   }
 
-  // Execute loader
+  // 1. Execute layout server hooks (root → specific) and collect props
+  const layoutProps: Record<string, any> = {};
+
+  if (route.layoutServerHooks && route.layoutServerHooks.length > 0) {
+    for (let i = 0; i < route.layoutServerHooks.length; i++) {
+      const layoutServerHook = route.layoutServerHooks[i];
+      if (layoutServerHook) {
+        try {
+          const layoutResult = await layoutServerHook(ctx);
+          // Merge props (more specific layouts override general ones)
+          if (layoutResult.props) {
+            Object.assign(layoutProps, layoutResult.props);
+          }
+        } catch (error) {
+          // Log error but continue (layout server hook failure shouldn't break SSG)
+          console.warn(`[framework][ssg] Layout server hook ${i} failed for route ${route.pattern}:`, error);
+        }
+      }
+    }
+  }
+
+  // 2. Execute page server hook (getServerSideProps)
   let loaderResult: LoaderResult = { props: {} };
 
   if (route.loader) {
     loaderResult = await route.loader(ctx);
   }
 
-  if (loaderResult.redirect || loaderResult.notFound) {
+  // 3. Combine props: layout props (stable) + page props (page overrides layout)
+  const combinedProps = {
+    ...layoutProps,
+    ...(loaderResult.props || {}),
+  };
+
+  // Create combined loader result with merged props
+  const combinedLoaderResult: LoaderResult = {
+    ...loaderResult,
+    props: combinedProps,
+  };
+
+  if (combinedLoaderResult.redirect || combinedLoaderResult.notFound) {
     return;
   }
 
-  // Build React component tree
-  const initialData = buildInitialData(urlPath, params, loaderResult);
+  // Build React component tree with combined props
+  const initialData = buildInitialData(urlPath, params, combinedLoaderResult);
   const routerData = buildRouterData(req);
   const appTree = buildAppTree(route, params, initialData.props);
   const documentTree = createDocumentTree({

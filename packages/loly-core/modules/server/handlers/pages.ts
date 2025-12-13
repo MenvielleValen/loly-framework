@@ -20,6 +20,7 @@ import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
 import { getClientJsPath, getClientCssPath, loadAssetManifest } from "@build/utils";
 import { sanitizeParams } from "@security/sanitize";
 import { getRequestLogger } from "@logger/index";
+import path from "path";
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
@@ -147,10 +148,17 @@ async function handlePageRequestInternal(
             } catch (error) {
               // Log but continue
               const reqLogger = getRequestLogger(req);
-              reqLogger.warn(`Layout server hook ${i} failed for not-found`, {
-                error,
-                layoutFile: notFoundPage.layoutFiles[i],
-              });
+            const layoutFile = notFoundPage.layoutFiles[i];
+            const relativeLayoutPath = layoutFile
+              ? path.relative(projectRoot || process.cwd(), layoutFile)
+              : "unknown";
+            
+            reqLogger.warn("Layout server hook failed for not-found page", {
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+              layoutFile: relativeLayoutPath,
+              layoutIndex: i,
+            });
             }
           }
         }
@@ -265,10 +273,18 @@ async function handlePageRequestInternal(
           }
         } catch (error) {
           // Log error but continue (layout server hook failure shouldn't break the page)
-          reqLogger.warn(`Layout server hook ${i} failed`, {
-            error,
-            layoutFile: route.layoutFiles[i],
+          const layoutFile = route.layoutFiles[i];
+          const relativeLayoutPath = layoutFile
+            ? path.relative(projectRoot || process.cwd(), layoutFile)
+            : "unknown";
+          
+          reqLogger.warn("Layout server hook failed", {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            layoutFile: relativeLayoutPath,
             route: route.pattern,
+            layoutIndex: i,
+            suggestion: "Check your layout.server.hook.ts file for errors",
           });
         }
       }
@@ -284,12 +300,32 @@ async function handlePageRequestInternal(
       loaderResult.theme = theme;
     }
   } catch (error) {
+    // Log detailed error information
+    const relativePagePath = route.pageFile
+      ? path.relative(projectRoot || process.cwd(), route.pageFile)
+      : "unknown";
+    
+    reqLogger.error("Page server hook failed", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      pageFile: relativePagePath,
+      route: route.pattern,
+      pathname: urlPath,
+      suggestion: "Check your page.server.hook.ts (or server.hook.ts) file for errors",
+    });
+    
     // If loader throws, handle error appropriately
     if (isDataReq) {
-      // For data requests, return error JSON
+      // For data requests, return error JSON with more context
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
-      res.end(JSON.stringify({ error: true, message: String(error) }));
+      const errorResponse = {
+        error: true,
+        message: error instanceof Error ? error.message : String(error),
+        route: route.pattern,
+        pageFile: relativePagePath,
+      };
+      res.end(JSON.stringify(errorResponse, null, 2));
       return;
     } else {
       // For HTML requests, render error page
@@ -452,9 +488,16 @@ async function renderErrorPageWithStream(
             }
           } catch (err) {
             // Log but continue
-            reqLogger.warn(`Layout server hook ${i} failed for error page`, {
-              error: err,
-              layoutFile: errorPage.layoutFiles[i],
+            const layoutFile = errorPage.layoutFiles[i];
+            const relativeLayoutPath = layoutFile
+              ? path.relative(projectRoot || process.cwd(), layoutFile)
+              : "unknown";
+            
+            reqLogger.warn("Layout server hook failed for error page", {
+              error: err instanceof Error ? err.message : String(err),
+              stack: err instanceof Error ? err.stack : undefined,
+              layoutFile: relativeLayoutPath,
+              layoutIndex: i,
             });
           }
         }

@@ -1,4 +1,4 @@
-import { InitialData } from "../index.types";
+import type { InitialData } from "../index.types";
 import type { LoaderResult } from "@router/index";
 
 /**
@@ -25,7 +25,7 @@ export function buildInitialData(
     params,
     props,
     metadata: loaderResult.metadata ?? null,
-    className: loaderResult.className ?? "",
+    className: loaderResult.className,
     error: false,
     notFound: false,
   };

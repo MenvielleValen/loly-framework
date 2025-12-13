@@ -121,6 +121,158 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
 }
 
 /**
+ * Configuration validation errors.
+ */
+export class ConfigValidationError extends Error {
+  constructor(message: string, public readonly errors: string[] = []) {
+    super(message);
+    this.name = 'ConfigValidationError';
+  }
+}
+
+/**
+ * Validates framework configuration.
+ * 
+ * @param config - Configuration to validate
+ * @param projectRoot - Root directory of the project
+ * @throws ConfigValidationError if validation fails
+ */
+function validateConfig(config: FrameworkConfig, projectRoot: string): void {
+  const errors: string[] = [];
+
+  // Validate directories
+  if (!config.directories.app || typeof config.directories.app !== 'string') {
+    errors.push('config.directories.app must be a non-empty string');
+  } else {
+    const appDir = path.join(projectRoot, config.directories.app);
+    if (!fs.existsSync(appDir) && process.env.NODE_ENV !== 'test') {
+      errors.push(
+        `App directory not found: ${config.directories.app}\n` +
+        `  Expected at: ${appDir}\n` +
+        `  💡 Suggestion: Create the directory or update config.directories.app`
+      );
+    }
+  }
+
+  if (!config.directories.build || typeof config.directories.build !== 'string') {
+    errors.push('config.directories.build must be a non-empty string');
+  }
+
+  if (!config.directories.static || typeof config.directories.static !== 'string') {
+    errors.push('config.directories.static must be a non-empty string');
+  }
+
+  // Validate conventions
+  const conventionKeys = ['page', 'layout', 'notFound', 'error', 'api'] as const;
+  for (const key of conventionKeys) {
+    if (!config.conventions[key] || typeof config.conventions[key] !== 'string') {
+      errors.push(`config.conventions.${key} must be a non-empty string`);
+    }
+  }
+
+  // Validate routing
+  if (!['always', 'never', 'ignore'].includes(config.routing.trailingSlash)) {
+    errors.push(
+      `config.routing.trailingSlash must be 'always', 'never', or 'ignore'\n` +
+      `  Received: ${JSON.stringify(config.routing.trailingSlash)}\n` +
+      `  💡 Suggestion: Use one of the valid values: 'always' | 'never' | 'ignore'`
+    );
+  }
+
+  if (typeof config.routing.caseSensitive !== 'boolean') {
+    errors.push('config.routing.caseSensitive must be a boolean');
+  }
+
+  if (typeof config.routing.basePath !== 'string') {
+    errors.push('config.routing.basePath must be a string');
+  } else if (config.routing.basePath && !config.routing.basePath.startsWith('/')) {
+    errors.push(
+      `config.routing.basePath must start with '/' (if not empty)\n` +
+      `  Received: ${JSON.stringify(config.routing.basePath)}\n` +
+      `  💡 Suggestion: Use an empty string '' or a path starting with '/', e.g., '/api'`
+    );
+  }
+
+  // Validate build
+  const validClientBundlers = ['rspack', 'webpack', 'vite'];
+  if (!validClientBundlers.includes(config.build.clientBundler)) {
+    errors.push(
+      `config.build.clientBundler must be one of: ${validClientBundlers.join(', ')}\n` +
+      `  Received: ${JSON.stringify(config.build.clientBundler)}`
+    );
+  }
+
+  const validServerBundlers = ['esbuild', 'tsup', 'swc'];
+  if (!validServerBundlers.includes(config.build.serverBundler)) {
+    errors.push(
+      `config.build.serverBundler must be one of: ${validServerBundlers.join(', ')}\n` +
+      `  Received: ${JSON.stringify(config.build.serverBundler)}`
+    );
+  }
+
+  if (!['cjs', 'esm'].includes(config.build.outputFormat)) {
+    errors.push(
+      `config.build.outputFormat must be 'cjs' or 'esm'\n` +
+      `  Received: ${JSON.stringify(config.build.outputFormat)}`
+    );
+  }
+
+  // Validate server
+  const validAdapters = ['express', 'fastify', 'koa'];
+  if (!validAdapters.includes(config.server.adapter)) {
+    errors.push(
+      `config.server.adapter must be one of: ${validAdapters.join(', ')}\n` +
+      `  Received: ${JSON.stringify(config.server.adapter)}`
+    );
+  }
+
+  if (typeof config.server.port !== 'number' || config.server.port < 1 || config.server.port > 65535) {
+    errors.push(
+      `config.server.port must be a number between 1 and 65535\n` +
+      `  Received: ${JSON.stringify(config.server.port)}`
+    );
+  }
+
+  if (!config.server.host || typeof config.server.host !== 'string') {
+    errors.push('config.server.host must be a non-empty string');
+  }
+
+  // Validate rendering
+  const validFrameworks = ['react', 'preact', 'vue', 'svelte'];
+  if (!validFrameworks.includes(config.rendering.framework)) {
+    errors.push(
+      `config.rendering.framework must be one of: ${validFrameworks.join(', ')}\n` +
+      `  Received: ${JSON.stringify(config.rendering.framework)}`
+    );
+  }
+
+  if (typeof config.rendering.streaming !== 'boolean') {
+    errors.push('config.rendering.streaming must be a boolean');
+  }
+
+  if (typeof config.rendering.ssr !== 'boolean') {
+    errors.push('config.rendering.ssr must be a boolean');
+  }
+
+  if (typeof config.rendering.ssg !== 'boolean') {
+    errors.push('config.rendering.ssg must be a boolean');
+  }
+
+  // If there are errors, throw with detailed message
+  if (errors.length > 0) {
+    const errorMessage = [
+      '❌ Configuration validation failed:',
+      '',
+      ...errors.map((err, i) => `${i + 1}. ${err}`),
+      '',
+      '💡 Please check your loly.config.ts file and fix the errors above.',
+    ].join('\n');
+
+    throw new ConfigValidationError(errorMessage, errors);
+  }
+}
+
+/**
  * Loads framework configuration from project root.
  * 
  * Looks for configuration in the following order:
@@ -132,6 +284,7 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
  * 
  * @param projectRoot - Root directory of the project
  * @returns Framework configuration
+ * @throws ConfigValidationError if configuration is invalid
  */
 export function loadConfig(projectRoot: string): FrameworkConfig {
   const configFiles = [
@@ -141,6 +294,7 @@ export function loadConfig(projectRoot: string): FrameworkConfig {
   ];
 
   let userConfig: Partial<FrameworkConfig> = {};
+  let loadedConfigFile: string | null = null;
 
   // Try to load config file
   for (const configFile of configFiles) {
@@ -162,9 +316,15 @@ export function loadConfig(projectRoot: string): FrameworkConfig {
             ? mod.default(process.env.NODE_ENV)
             : (mod.default || mod.config || mod);
         }
+        loadedConfigFile = path.relative(projectRoot, configFile);
         break;
       } catch (error) {
-        console.warn(`[framework] Failed to load config from ${configFile}:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        throw new ConfigValidationError(
+          `Failed to load configuration from ${path.relative(projectRoot, configFile)}:\n` +
+          `  ${errorMessage}\n` +
+          `  💡 Suggestion: Check that your config file exports a valid configuration object`
+        );
       }
     }
   }
@@ -172,10 +332,18 @@ export function loadConfig(projectRoot: string): FrameworkConfig {
   // Merge with defaults
   const config = deepMerge(DEFAULT_CONFIG, userConfig);
 
-  // Validate critical paths
-  const appDir = path.join(projectRoot, config.directories.app);
-  if (!fs.existsSync(appDir) && process.env.NODE_ENV !== 'test') {
-    console.warn(`[framework] App directory not found: ${appDir}`);
+  // Validate configuration
+  try {
+    validateConfig(config, projectRoot);
+  } catch (error) {
+    if (error instanceof ConfigValidationError) {
+      // Enhance error message with config file info
+      if (loadedConfigFile) {
+        error.message = `[Configuration Error in ${loadedConfigFile}]\n\n${error.message}`;
+      }
+      throw error;
+    }
+    throw error;
   }
 
   return config;

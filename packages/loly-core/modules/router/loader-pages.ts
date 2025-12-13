@@ -7,6 +7,63 @@ import { loadLayoutsForDir } from "./layout";
 import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
 
 /**
+ * Validates loaded routes and warns about common issues.
+ */
+function validateRoutes(routes: LoadedRoute[], appDir: string): void {
+  const routePatterns = new Map<string, LoadedRoute[]>();
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Check for duplicate route patterns
+  for (const route of routes) {
+    const existing = routePatterns.get(route.pattern) || [];
+    existing.push(route);
+    routePatterns.set(route.pattern, existing);
+  }
+
+  for (const [pattern, duplicateRoutes] of routePatterns.entries()) {
+    if (duplicateRoutes.length > 1) {
+      const files = duplicateRoutes.map(r => 
+        r.pageFile ? path.relative(appDir, r.pageFile) : 'unknown'
+      ).join(', ');
+      errors.push(
+        `Duplicate route pattern "${pattern}" found in multiple files:\n` +
+        `  ${files}\n` +
+        `  💡 Suggestion: Ensure each route has a unique path pattern`
+      );
+    }
+  }
+
+  // Check for routes with missing page files
+  for (const route of routes) {
+    if (!route.pageFile || !fs.existsSync(route.pageFile)) {
+      warnings.push(
+        `Route pattern "${route.pattern}" references a missing page file`
+      );
+    }
+  }
+
+  // Report errors (fatal)
+  if (errors.length > 0) {
+    const errorMessage = [
+      '❌ Route validation failed:',
+      '',
+      ...errors,
+      '',
+      '💡 Please fix the errors above before starting the server.',
+    ].join('\n');
+    throw new Error(errorMessage);
+  }
+
+  // Report warnings (non-fatal, but informative)
+  if (warnings.length > 0 && process.env.NODE_ENV === 'development') {
+    console.warn('\n⚠️  Route warnings:');
+    warnings.forEach(warning => console.warn(`  • ${warning}`));
+    console.warn('');
+  }
+}
+
+/**
  * Scans the app directory and loads all page routes.
  * Recursively walks through the app directory, finding all page files and creating route definitions.
  */
@@ -81,6 +138,9 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
   }
 
   walk(appDir);
+
+  // Validate routes and report issues
+  validateRoutes(routes, appDir);
 
   return routes;
 }

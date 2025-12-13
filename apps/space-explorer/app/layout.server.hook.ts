@@ -13,7 +13,7 @@ export const getServerSideProps: ServerLoader = async () => {
   return {
     props: {
       // App name - available in layout and all pages
-      appName: "Space Explorer xd",
+      appName: "Space Explorer",
       
       // Navigation items - could come from CMS or config
       navigation: [

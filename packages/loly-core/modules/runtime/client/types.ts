@@ -5,6 +5,7 @@ export type InitialData = {
   params: Record<string, string>;
   props: Record<string, any>;
   metadata?: { title?: string; description?: string } | null;
+  className?: string;
   notFound?: boolean;
   error?: boolean;
   theme?: string;

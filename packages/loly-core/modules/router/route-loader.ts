@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { ApiRoute, LoadedRoute, PageComponent, WssRoute } from "./index.types";
+import { ApiRoute, LoadedRoute, PageComponent, WssRoute, RoutesManifest } from "./index.types";
 
 import { loadLayoutsForDir } from "./layout";
 import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
@@ -10,6 +10,7 @@ import {
   loadErrorFromManifest,
   loadChunksFromManifest,
 } from "./loader-routes";
+import { readManifest } from "./helpers/routes";
 import { loadRoutes } from "./loader-pages";
 import { loadApiRoutes } from "./loader-api";
 import {
@@ -371,37 +372,103 @@ export class FilesystemRouteLoader implements RouteLoader {
 }
 
 /**
+ * Cache entry for manifest-based routes.
+ * In production, routes are static and don't change, so we cache everything.
+ */
+interface ManifestCache {
+  routes?: LoadedRoute[];
+  apiRoutes?: ApiRoute[];
+  wssRoutes?: WssRoute[];
+  notFoundRoute?: LoadedRoute | null;
+  errorRoute?: LoadedRoute | null;
+  routeChunks?: Record<string, string>;
+  manifest?: RoutesManifest | null;
+}
+
+/**
  * Loads routes from the compiled manifest file.
  * Used in production mode.
+ * 
+ * Implements caching to avoid re-reading and re-processing the manifest
+ * on every request, since routes are static in production.
  */
 export class ManifestRouteLoader implements RouteLoader {
+  private cache: ManifestCache = {};
+
   constructor(private projectRoot: string) {}
 
+  /**
+   * Gets the manifest, using cache if available.
+   * The manifest is read once and cached for the lifetime of the loader.
+   */
+  private getManifest(): RoutesManifest | null {
+    if (this.cache.manifest !== undefined) {
+      return this.cache.manifest;
+    }
+
+    const manifest = readManifest(this.projectRoot);
+    this.cache.manifest = manifest;
+    return manifest;
+  }
+
   loadRoutes(): LoadedRoute[] {
+    if (this.cache.routes) {
+      return this.cache.routes;
+    }
+
     const { routes } = loadRoutesFromManifest(this.projectRoot);
+    this.cache.routes = routes;
     return routes;
   }
 
   loadApiRoutes(): ApiRoute[] {
+    if (this.cache.apiRoutes) {
+      return this.cache.apiRoutes;
+    }
+
     const { apiRoutes } = loadRoutesFromManifest(this.projectRoot);
+    this.cache.apiRoutes = apiRoutes;
     return apiRoutes;
   }
 
   loadWssRoutes(): WssRoute[] {
+    if (this.cache.wssRoutes) {
+      return this.cache.wssRoutes;
+    }
+
     const { wssRoutes } = loadRoutesFromManifest(this.projectRoot);
+    this.cache.wssRoutes = wssRoutes;
     return wssRoutes;
   }
 
   loadNotFoundRoute(): LoadedRoute | null {
-    return loadNotFoundFromManifest(this.projectRoot);
+    if (this.cache.notFoundRoute !== undefined) {
+      return this.cache.notFoundRoute;
+    }
+
+    const route = loadNotFoundFromManifest(this.projectRoot);
+    this.cache.notFoundRoute = route;
+    return route;
   }
 
   loadErrorRoute(): LoadedRoute | null {
-    return loadErrorFromManifest(this.projectRoot);
+    if (this.cache.errorRoute !== undefined) {
+      return this.cache.errorRoute;
+    }
+
+    const route = loadErrorFromManifest(this.projectRoot);
+    this.cache.errorRoute = route;
+    return route;
   }
 
   loadRouteChunks(): Record<string, string> {
-    return loadChunksFromManifest(this.projectRoot);
+    if (this.cache.routeChunks) {
+      return this.cache.routeChunks;
+    }
+
+    const chunks = loadChunksFromManifest(this.projectRoot);
+    this.cache.routeChunks = chunks;
+    return chunks;
   }
 }
 

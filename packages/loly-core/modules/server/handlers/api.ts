@@ -11,6 +11,7 @@ export interface HandleApiRequestOptions {
   res: Response;
   env?: "dev" | "prod";
   strictRateLimitPatterns?: string[];
+  rateLimitConfig?: { windowMs?: number; strictMax?: number };
 }
 
 /**
@@ -62,7 +63,8 @@ export async function handleApiRequest(
     // Auto-apply rate limiting if route matches strict patterns and doesn't already have one
     const autoRateLimiter = getAutoRateLimiter(
       route,
-      options.strictRateLimitPatterns
+      options.strictRateLimitPatterns,
+      options.rateLimitConfig
     );
     
     const reqLogger = getRequestLogger(req);

@@ -1,5 +1,5 @@
 import { ApiRoute } from "@router/index.types";
-import { strictRateLimiter, defaultRateLimiter, lenientRateLimiter } from "./rate-limit";
+import { strictRateLimiter, defaultRateLimiter, lenientRateLimiter, createStrictRateLimiterFromConfig } from "./rate-limit";
 
 /**
  * Determines if a route path matches any of the strict patterns.
@@ -62,11 +62,13 @@ function isRateLimiter(mw: any): boolean {
  * 
  * @param route - API route
  * @param strictPatterns - Patterns that should use strict rate limiting
+ * @param rateLimitConfig - Optional rate limit configuration from ServerConfig
  * @returns Rate limiter middleware or null if route already has rate limiting
  */
 export function getAutoRateLimiter(
   route: ApiRoute,
-  strictPatterns: string[] = []
+  strictPatterns: string[] = [],
+  rateLimitConfig?: { windowMs?: number; strictMax?: number }
 ): any | null {
   // If route already has rate limiting middleware, don't add another
   const hasRateLimiter = route.middlewares?.some(isRateLimiter) ||
@@ -80,8 +82,12 @@ export function getAutoRateLimiter(
 
   // Check if route matches strict patterns
   if (strictPatterns.length > 0 && matchesStrictPattern(route.pattern, strictPatterns)) {
-    console.log(`[rate-limit] Applying strict rate limiter to route: ${route.pattern}`);
-    return strictRateLimiter;
+    // Use config-based strict limiter if config provided, otherwise use default
+    const limiter = rateLimitConfig 
+      ? createStrictRateLimiterFromConfig(rateLimitConfig)
+      : strictRateLimiter;
+    
+    return limiter;
   }
 
   // Default: no auto rate limiting (global rate limiter already applied)

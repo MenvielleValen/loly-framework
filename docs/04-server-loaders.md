@@ -12,7 +12,10 @@ Un Server Loader es una función que:
 
 ## Definición Básica
 
-Los server loaders se definen en un archivo separado `server.hook.ts` en el mismo directorio que la página:
+Los server loaders se definen en un archivo separado en el mismo directorio que la página:
+
+**Para páginas**: `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy, backward compatible)
+**Para layouts**: `layout.server.hook.ts` (mismo directorio que `layout.tsx`)
 
 ```tsx
 // app/page.tsx
@@ -22,7 +25,7 @@ export default function HomePage({ props }) {
 ```
 
 ```tsx
-// app/server.hook.ts
+// app/page.server.hook.ts (preferido) o app/server.hook.ts (legacy)
 import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -37,7 +40,75 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 };
 ```
 
-**Nota importante**: El loader debe estar en `server.hook.ts`, no en el mismo archivo que el componente.
+**Nota importante**: 
+- El loader debe estar en un archivo separado, no en el mismo archivo que el componente
+- `page.server.hook.ts` es el nombre preferido para consistencia con `layout.server.hook.ts`
+- `server.hook.ts` sigue siendo soportado para backward compatibility
+
+## Layout Server Hooks
+
+Los layouts pueden tener sus propios server hooks que proporcionan datos estables compartidos entre todas las páginas. Los props del layout se combinan automáticamente con los props de la página.
+
+### Definición
+
+Crea `layout.server.hook.ts` en el mismo directorio que `layout.tsx`:
+
+```tsx
+// app/layout.server.hook.ts (mismo directorio que app/layout.tsx)
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  // Datos estables que se comparten entre todas las páginas
+  return {
+    props: {
+      appName: "My App",
+      navigation: [
+        { href: "/", label: "Home" },
+        { href: "/about", label: "About" },
+        { href: "/blog", label: "Blog" },
+      ],
+    },
+    metadata: {
+      // Metadata base para todas las páginas
+      description: "My App - Description",
+      openGraph: {
+        siteName: "My App",
+        type: "website",
+      },
+    },
+  };
+};
+```
+
+### Combinación de Props
+
+- **Layout props** (de `layout.server.hook.ts`) son estables y disponibles tanto en el layout como en todas las páginas
+- **Page props** (de `page.server.hook.ts`) son específicos de cada página y sobrescriben layout props si hay conflicto
+- **Props combinados** están disponibles tanto en layouts como en páginas
+
+```tsx
+// app/layout.tsx
+export default function RootLayout({ children, appName, navigation, user }) {
+  // appName y navigation vienen del layout.server.hook.ts
+  // user puede venir del page.server.hook.ts (si existe)
+  return (
+    <div>
+      <nav>{navigation.map(...)}</nav>
+      <div>App: {appName}</div>
+      {children}
+    </div>
+  );
+}
+```
+
+### Combinación de Metadata
+
+La metadata también se combina inteligentemente:
+- **Layout metadata** actúa como base/fallback
+- **Page metadata** sobrescribe campos específicos
+- Los objetos anidados (openGraph, twitter) se combinan shallow
+
+Ver la sección "Metadata" más abajo para más detalles.
 
 ## ServerContext
 
@@ -131,7 +202,9 @@ return {
 ```
 
 ### Metadata
-Configurar metadata de la página:
+Configurar metadata de la página para SEO y social sharing:
+
+**Metadata Básica:**
 
 ```tsx
 return {
@@ -139,17 +212,145 @@ return {
   metadata: {
     title: post.title,
     description: post.excerpt,
-    metaTags: [
-      {
-        property: "og:title",
-        content: post.title,
-      },
-      {
-        property: "og:image",
-        content: post.image,
-      },
-    ],
+    canonical: `https://mysite.com/blog/${post.slug}`,
+    robots: "index, follow",
+    themeColor: "#000000",
   },
+};
+```
+
+**Open Graph (para compartir en redes sociales):**
+
+```tsx
+metadata: {
+  title: post.title,
+  description: post.excerpt,
+  openGraph: {
+    title: post.title,
+    description: post.excerpt,
+    type: "article",
+    url: `https://mysite.com/blog/${post.slug}`,
+    image: {
+      url: post.imageUrl,
+      width: 1200,
+      height: 630,
+      alt: post.title,
+    },
+    siteName: "My Site",
+    locale: "es_ES",
+  },
+}
+```
+
+**Twitter Cards:**
+
+```tsx
+metadata: {
+  twitter: {
+    card: "summary_large_image",
+    title: post.title,
+    description: post.excerpt,
+    image: post.imageUrl,
+    imageAlt: post.title,
+    site: "@mysite",
+    creator: "@author",
+  },
+}
+```
+
+**Metadata Completa:**
+
+```tsx
+metadata: {
+  // Campos básicos
+  title: "Mi Página",
+  description: "Descripción de la página",
+  lang: "es",
+  canonical: "https://mysite.com/page",
+  robots: "index, follow",
+  themeColor: "#000000",
+  viewport: "width=device-width, initial-scale=1",
+  
+  // Open Graph
+  openGraph: {
+    title: "Mi Página",
+    description: "Descripción para compartir",
+    type: "website",
+    url: "https://mysite.com/page",
+    image: {
+      url: "https://mysite.com/og-image.jpg",
+      width: 1200,
+      height: 630,
+      alt: "Imagen de la página",
+    },
+    siteName: "My Site",
+    locale: "es_ES",
+  },
+  
+  // Twitter Cards
+  twitter: {
+    card: "summary_large_image",
+    title: "Mi Página",
+    description: "Descripción para Twitter",
+    image: "https://mysite.com/twitter-image.jpg",
+    imageAlt: "Imagen para Twitter",
+    site: "@mysite",
+    creator: "@author",
+  },
+  
+  // Meta tags personalizados
+  metaTags: [
+    { name: "keywords", content: "palabra1, palabra2" },
+    { name: "author", content: "Autor" },
+  ],
+  
+  // Link tags personalizados
+  links: [
+    { rel: "preconnect", href: "https://fonts.googleapis.com" },
+    { rel: "dns-prefetch", href: "https://api.example.com" },
+  ],
+}
+```
+
+**Combinación Layout + Page:**
+
+La metadata se combina inteligentemente:
+- **Layout metadata** (en `layout.server.hook.ts`) actúa como base/fallback
+- **Page metadata** (en `page.server.hook.ts`) sobrescribe campos específicos
+- Los objetos anidados (openGraph, twitter) se combinan shallow
+
+```tsx
+// app/layout.server.hook.ts - Metadata base
+export const getServerSideProps: ServerLoader = async () => {
+  return {
+    props: { /* ... */ },
+    metadata: {
+      description: "Site description", // Base
+      openGraph: {
+        type: "website",        // Base
+        siteName: "My Site",   // Base
+      },
+      twitter: {
+        card: "summary_large_image", // Base
+      },
+    },
+  };
+};
+
+// app/page.server.hook.ts - Metadata específica
+export const getServerSideProps: ServerLoader = async () => {
+  return {
+    props: { /* ... */ },
+    metadata: {
+      title: "Page Title", // Sobrescribe (no hay title en layout)
+      openGraph: {
+        title: "Page Title",      // Agrega (no hay en layout)
+        description: "Page desc", // Agrega (no hay en layout)
+        // type y siteName vienen del layout
+      },
+      // twitter.card viene del layout
+    },
+  };
 };
 ```
 
@@ -192,7 +393,7 @@ El framework decide automáticamente:
 Para generar múltiples rutas estáticas:
 
 ```tsx
-// app/blog/[slug]/server.hook.ts
+// app/blog/[slug]/page.server.hook.ts (preferido) o app/blog/[slug]/server.hook.ts (legacy)
 import type { GenerateStaticParams, ServerLoader } from "@lolyjs/core";
 
 export const dynamic = "force-static" as const;
@@ -236,7 +437,7 @@ export default function LaunchesPage({ props }) {
 ```
 
 ```tsx
-// app/launches/server.hook.ts
+// app/launches/page.server.hook.ts (preferido) o app/launches/server.hook.ts (legacy)
 import type { ServerLoader } from "@lolyjs/core";
 
 export const dynamic = "force-dynamic" as const;
@@ -299,7 +500,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 ### Página con Validación de Parámetros
 
 ```tsx
-// app/product/[id]/server.hook.ts
+// app/product/[id]/page.server.hook.ts (preferido) o app/product/[id]/server.hook.ts (legacy)
 import { validate } from "@lolyjs/core";
 import { z } from "zod";
 import type { ServerLoader } from "@lolyjs/core";
@@ -330,7 +531,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 ### Página con Cache
 
 ```tsx
-// app/data/server.hook.ts
+// app/data/page.server.hook.ts (preferido) o app/data/server.hook.ts (legacy)
 import { withCache } from "@lolyjs/core";
 import type { ServerLoader } from "@lolyjs/core";
 
@@ -358,10 +559,10 @@ export default function MyPage({ props, params }) {
 
 ## Middleware y Locals
 
-Los middlewares se definen en `server.hook.ts` usando `beforeServerData`:
+Los middlewares se definen en `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy) usando `beforeServerData`:
 
 ```tsx
-// app/dashboard/server.hook.ts
+// app/dashboard/page.server.hook.ts (preferido) o app/dashboard/server.hook.ts (legacy)
 import type { RouteMiddleware, ServerLoader } from "@lolyjs/core";
 
 export const beforeServerData: RouteMiddleware[] = [
@@ -384,23 +585,39 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 
 ## Estructura de Archivos
 
-Los server loaders se definen en `server.hook.ts` en el mismo directorio que la página:
+Los server loaders se definen en `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy) en el mismo directorio que la página:
 
 ```
 app/
 ├── page.tsx              # Componente de la página
-└── server.hook.ts        # Loader, middlewares y configuración
+└── page.server.hook.ts   # Loader, middlewares y configuración (preferido)
+# o
+└── server.hook.ts        # Loader, middlewares y configuración (legacy)
+```
+
+Para layouts, se usa `layout.server.hook.ts` en el mismo directorio que `layout.tsx`:
+
+```
+app/
+├── layout.tsx
+└── layout.server.hook.ts  # Loader para el layout (proporciona props estables)
 ```
 
 O para rutas anidadas:
 
 ```
 app/
+├── layout.tsx
+├── layout.server.hook.ts  # Layout raíz
+├── page.tsx
+├── page.server.hook.ts     # Página raíz
 └── blog/
-    ├── [slug]/
-    │   ├── page.tsx
-    │   └── server.hook.ts
-    └── server.hook.ts    # Middleware para todas las rutas de blog
+    ├── layout.tsx
+    ├── layout.server.hook.ts  # Layout de blog
+    ├── page.tsx
+    └── [slug]/
+        ├── page.tsx
+        └── page.server.hook.ts  # Loader de la página (preferido) o server.hook.ts (legacy)
 ```
 
 ## Mejores Prácticas
@@ -410,10 +627,11 @@ app/
 3. **Cache**: Usa `withCache` para operaciones costosas
 4. **Metadata**: Siempre proporciona metadata para SEO
 5. **Type Safety**: Tipa tus props con TypeScript
-6. **Separación**: Mantén los loaders en `server.hook.ts` separados de los componentes
+6. **Separación**: Mantén los loaders en `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy) separados de los componentes
+7. **Layout Loaders**: Usa `layout.server.hook.ts` para datos estables que se comparten entre todas las páginas
 
 ```tsx
-// app/post/[id]/server.hook.ts
+// app/post/[id]/page.server.hook.ts (preferido) o app/post/[id]/server.hook.ts (legacy)
 type PageProps = {
   post: {
     id: string;

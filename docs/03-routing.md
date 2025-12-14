@@ -232,10 +232,10 @@ function handleClick() {
 
 ## Middleware de Ruta
 
-**Característica única de Loly**: Puedes agregar middleware directamente en tus rutas usando `server.hook.ts`:
+**Característica única de Loly**: Puedes agregar middleware directamente en tus rutas usando `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy):
 
 ```tsx
-// app/admin/server.hook.ts
+// app/admin/page.server.hook.ts (preferido) o app/admin/server.hook.ts (legacy)
 import type { RouteMiddleware, ServerLoader } from "@lolyjs/core";
 
 export const beforeServerData: RouteMiddleware[] = [

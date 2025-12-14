@@ -10,7 +10,7 @@ Loly Framework soporta tres estrategias principales de renderizado:
 El contenido se renderiza en el servidor en cada request:
 
 ```tsx
-// app/page/server.hook.ts
+// app/page.server.hook.ts (preferido) o app/server.hook.ts (legacy)
 export const dynamic = "force-dynamic" as const;
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -30,7 +30,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 El contenido se genera en build time:
 
 ```tsx
-// app/page/server.hook.ts
+// app/page.server.hook.ts (preferido) o app/server.hook.ts (legacy)
 export const dynamic = "force-static" as const;
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -51,7 +51,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 El contenido se renderiza completamente en el cliente:
 
 ```tsx
-// app/page.tsx - Sin server.hook.ts
+// app/page.tsx - Sin page.server.hook.ts o server.hook.ts
 export default function ClientPage() {
   const [data, setData] = useState(null);
   
@@ -282,7 +282,7 @@ export default function AboutPage({ props }) {
 ```
 
 ```tsx
-// app/about/server.hook.ts
+// app/about/page.server.hook.ts (preferido) o app/about/server.hook.ts (legacy)
 import type { ServerLoader } from "@lolyjs/core";
 
 export const dynamic = "force-static" as const;
@@ -321,7 +321,7 @@ export default function PostPage({ props }) {
 ```
 
 ```tsx
-// app/posts/[slug]/server.hook.ts
+// app/posts/[slug]/page.server.hook.ts (preferido) o app/posts/[slug]/server.hook.ts (legacy)
 import type { ServerLoader } from "@lolyjs/core";
 
 export const dynamic = "force-dynamic" as const;
@@ -346,7 +346,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 ### Página Estática con Múltiples Rutas
 
 ```tsx
-// app/products/[id]/server.hook.ts
+// app/products/[id]/page.server.hook.ts (preferido) o app/products/[id]/server.hook.ts (legacy)
 import type { GenerateStaticParams, ServerLoader } from "@lolyjs/core";
 
 export const dynamic = "force-static" as const;

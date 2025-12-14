@@ -191,19 +191,19 @@ Loly Framework soporta tres estrategias principales:
 ### force-dynamic (SSR)
 La página siempre se renderiza en el servidor en cada request:
 ```tsx
-// app/page/server.hook.ts
+// app/page.server.hook.ts (preferido) o app/server.hook.ts (legacy)
 export const dynamic = "force-dynamic" as const;
 ```
 
 ### force-static (SSG)
 La página se genera estáticamente en build time:
 ```tsx
-// app/page/server.hook.ts
+// app/page.server.hook.ts (preferido) o app/server.hook.ts (legacy)
 export const dynamic = "force-static" as const;
 ```
 
 ### CSR (Client-Side)
-Sin `server.hook.ts`, la página se renderiza completamente en el cliente.
+Sin `page.server.hook.ts` o `server.hook.ts`, la página se renderiza completamente en el cliente.
 
 ### auto (default)
 El framework decide automáticamente basado en:

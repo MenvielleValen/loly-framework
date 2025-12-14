@@ -186,8 +186,8 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 // app/api/protected/route.ts
 import type { ApiMiddleware, ApiContext } from "@lolyjs/core";
 
-// Global middleware for all methods
-export const middlewares: ApiMiddleware[] = [
+// Global middleware for all methods (GET, POST, PUT, etc.)
+export const beforeApi: ApiMiddleware[] = [
   async (ctx, next) => {
     // Authentication
     const user = await getUser(ctx.req);
@@ -199,19 +199,31 @@ export const middlewares: ApiMiddleware[] = [
   },
 ];
 
-// Method-specific middleware
-export const methodMiddlewares = {
-  POST: [
-    async (ctx, next) => {
-      // Validation specific to POST
-      await next();
-    },
-  ],
-};
+// Method-specific middleware (only runs before POST)
+export const beforePOST: ApiMiddleware[] = [
+  async (ctx, next) => {
+    // Validation specific to POST
+    await next();
+  },
+];
+
+// Method-specific middleware (only runs before GET)
+export const beforeGET: ApiMiddleware[] = [
+  async (ctx, next) => {
+    // Cache logic specific to GET
+    await next();
+  },
+];
 
 export async function GET(ctx: ApiContext) {
   const user = ctx.locals.user;
   return ctx.Response({ user });
+}
+
+export async function POST(ctx: ApiContext) {
+  const user = ctx.locals.user;
+  const data = ctx.req.body;
+  return ctx.Response({ created: true }, 201);
 }
 ```
 

@@ -17,8 +17,8 @@ Sistema de routing basado en archivos con características avanzadas:
 - Archivos `page.tsx` definen rutas
 - Archivos `layout.tsx` definen layouts anidados
 - Soporte para rutas dinámicas con `[param]` y catch-all con `[...slug]`
-- **Middlewares en rutas**: Define `beforeServerData` en `server.hook.ts` para ejecutar lógica antes de los loaders
-- **Separación de concerns**: Loaders y middlewares en `server.hook.ts` separados de los componentes
+- **Middlewares en rutas**: Define `beforeServerData` en `page.server.hook.ts` (o `server.hook.ts` legacy) para ejecutar lógica antes de los loaders
+- **Separación de concerns**: Loaders y middlewares en `page.server.hook.ts` / `layout.server.hook.ts` separados de los componentes
 
 ### 🔌 API Routes
 Rutas API integradas en el mismo sistema de archivos con middlewares flexibles:
@@ -114,7 +114,7 @@ export default function HomePage() {
 ### 2. Crear un server loader
 
 ```tsx
-// app/page.tsx
+// app/page.server.hook.ts (preferido) o app/server.hook.ts (legacy)
 import type { ServerLoader } from "@lolyjs/core";
 
 export const getServerSideProps: ServerLoader = async (ctx) => {
@@ -124,7 +124,10 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     },
   };
 };
+```
 
+```tsx
+// app/page.tsx
 export default function HomePage({ props }) {
   return <h1>{props.message}</h1>;
 }
@@ -144,15 +147,15 @@ startDevServer({
 ## Conceptos Clave
 
 ### Server Loaders
-Funciones que se ejecutan en el servidor antes de renderizar una página. **Diferencia clave**: Se definen en `server.hook.ts` separado del componente, permitiendo mejor organización. Permiten:
+Funciones que se ejecutan en el servidor antes de renderizar una página. **Diferencia clave**: Se definen en `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy) separado del componente, permitiendo mejor organización. Para layouts, se usa `layout.server.hook.ts`. Permiten:
 - Fetch de datos
 - Acceso a bases de datos
 - Redirecciones
-- Configuración de metadata
+- Configuración de metadata (SEO, Open Graph, Twitter Cards)
 
 ### Middlewares en Rutas
 **Característica única**: Puedes definir middlewares directamente en tus rutas:
-- **Páginas**: `beforeServerData` en `server.hook.ts` se ejecuta antes del loader
+- **Páginas**: `beforeServerData` en `page.server.hook.ts` (o `server.hook.ts` legacy) se ejecuta antes del loader
 - **APIs**: `beforeApi` para todos los métodos, `beforeGET`, `beforePOST`, etc. para métodos específicos
 - Permite autenticación, logging, transformación de requests a nivel de ruta
 
@@ -193,7 +196,9 @@ Soporte completo y nativo para WebSockets integrado en el sistema de routing:
 - Sin configuración manual adicional
 
 ### 📁 Separación de Concerns
-Los server loaders y middlewares se definen en `server.hook.ts` separado de los componentes:
+Los server loaders y middlewares se definen en archivos separados de los componentes:
+- **Páginas**: `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy)
+- **Layouts**: `layout.server.hook.ts` (mismo directorio que `layout.tsx`)
 - Mejor organización del código
 - Facilita testing
 - Separación clara entre lógica del servidor y componentes React

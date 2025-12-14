@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import crypto from "crypto";
 import { getServerConfig } from "@server/config";
-import { createRateLimiter } from "@server/middleware/rate-limit";
+import { createRateLimiter, createRateLimiterFromConfig } from "@server/middleware/rate-limit";
 import { requestLoggerMiddleware, createModuleLogger } from "@logger/index";
 
 interface SetupAppOptions {
@@ -218,14 +218,37 @@ export const setupApplication = async ({
   app.use(cors(corsOptions));
 
   // Security: Rate limiting
-  if (rateLimit && process.env.NODE_ENV !== "development") {
-    const generalLimiter = createRateLimiter({
-      windowMs: rateLimit.windowMs,
-      max: rateLimit.max,
-    });
-
-    // Apply general rate limiting to all routes
-    app.use(generalLimiter);
+  // Apply rate limiting in production, or in development if explicitly enabled
+  if (rateLimit) {
+    // In development, only apply if explicitly configured (not just defaults)
+    const shouldApply = process.env.NODE_ENV !== "development" || 
+                       process.env.ENABLE_RATE_LIMIT === "true";
+    
+    if (shouldApply) {
+      try {
+        const generalLimiter = createRateLimiterFromConfig(rateLimit, false);
+        
+        if (generalLimiter) {
+          // Apply general rate limiting to all routes
+          app.use(generalLimiter);
+          
+          const logger = createModuleLogger("server");
+          logger.info("Rate limiting enabled", {
+            windowMs: rateLimit.windowMs ?? 15 * 60 * 1000,
+            max: rateLimit.max ?? 100,
+            apiMax: rateLimit.apiMax,
+            strictMax: rateLimit.strictMax,
+            strictPatterns: rateLimit.strictPatterns?.length ?? 0,
+          });
+        }
+      } catch (error) {
+        const logger = createModuleLogger("server");
+        logger.error("Failed to setup rate limiting", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Don't throw - continue without rate limiting rather than crashing
+      }
+    }
   }
 
   app.use(cookieParser());

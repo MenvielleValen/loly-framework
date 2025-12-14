@@ -5,10 +5,10 @@ El sistema de middleware de Loly permite ejecutar código antes de que se ejecut
 ## Tipos de Middleware
 
 ### Route Middleware
-Se ejecuta antes de los server loaders en páginas. Se define en `server.hook.ts` usando `beforeServerData`:
+Se ejecuta antes de los server loaders en páginas. Se define en `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy) usando `beforeServerData`:
 
 ```tsx
-// app/admin/server.hook.ts
+// app/admin/page.server.hook.ts (preferido) o app/admin/server.hook.ts (legacy)
 import type { RouteMiddleware, ServerLoader } from "@lolyjs/core";
 
 export const beforeServerData: RouteMiddleware[] = [

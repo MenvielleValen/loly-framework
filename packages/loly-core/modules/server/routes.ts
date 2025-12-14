@@ -60,6 +60,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
     // Get rate limit configuration for auto-application
     const serverConfig = await getServerConfig(projectRoot);
     const strictPatterns = serverConfig.rateLimit?.strictPatterns || [];
+    const rateLimitConfig = serverConfig.rateLimit;
 
     await handleApiRequest({
       apiRoutes,
@@ -68,6 +69,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
       res,
       env: isDev ? "dev" : "prod",
       strictRateLimitPatterns: strictPatterns,
+      rateLimitConfig,
     });
   });
 

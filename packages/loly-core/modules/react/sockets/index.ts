@@ -28,30 +28,38 @@ export const lolySocket = (
   namespace: string,
   opts?: Partial<ManagerOptions & SocketOptions>
 ): Socket => {
-  // @ts-ignore - process.env.PUBLIC_WS_BASE_URL is replaced by DefinePlugin at build time
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const wsBaseUrl: string | undefined = (process as any).env?.PUBLIC_WS_BASE_URL;
-  
-  let baseUrl: string;
-  if (wsBaseUrl && wsBaseUrl.trim() !== "") {
-    baseUrl = wsBaseUrl;
-  } else if (typeof window !== "undefined") {
-    baseUrl = window.location.origin;
-  } else {
+  // SIMPLIFICADO: Siempre usar el origin actual en el navegador
+  // Socket.IO maneja el namespace automáticamente
+  if (typeof window === "undefined") {
     throw new Error(
-      "[loly:socket] Cannot determine base URL in server-side context. " +
-      "Either set PUBLIC_WS_BASE_URL in your .env file or ensure lolySocket is only called on the client."
+      "[loly:socket] lolySocket can only be called on the client side."
     );
   }
 
   const normalizedNamespace = namespace.startsWith("/") ? namespace : `/${namespace}`;
-  const fullUrl = `${baseUrl}${normalizedNamespace}`;
+  
+  // Socket.IO: io(namespace, { path: '/wss' })
+  // Socket.IO usa window.location.origin automáticamente
+  // El path '/wss' es el endpoint del engine de Socket.IO
+  // El namespace se maneja en el handshake
+  
+  console.log("[loly:socket] Connecting to namespace:", normalizedNamespace, "path:", "/wss");
 
-  const socket = io(fullUrl, {
+  const socket = io(normalizedNamespace, {
     path: "/wss",
     transports: ["websocket", "polling"],
     autoConnect: true,
     ...opts,
+  });
+
+  // Add connection error logging
+  socket.on("connect_error", (error) => {
+    console.error("[loly:socket] Connection error:", error.message);
+    console.error("[loly:socket] Namespace:", normalizedNamespace);
+  });
+  
+  socket.on("connect", () => {
+    console.log("[loly:socket] ✅ Connected to namespace:", normalizedNamespace);
   });
 
   return socket;

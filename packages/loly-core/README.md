@@ -101,33 +101,54 @@ npx loly dev
 
 ## Key Features
 
-### 🔌 Native WebSocket Support
+### 🔌 Native WebSocket Support (Realtime v1)
 
-Loly includes built-in WebSocket support with automatic namespace routing. Define WebSocket events using the same file-based routing pattern as pages and APIs:
+Loly includes production-ready WebSocket support with automatic namespace routing, authentication, validation, rate limiting, and multi-instance scaling. Define WebSocket events using the new `defineWssRoute()` API:
 
 ```tsx
 // app/wss/chat/events.ts
-import type { WssContext } from "@lolyjs/core";
+import { defineWssRoute } from "@lolyjs/core";
+import { z } from "zod";
 
-export const events = [
-  {
-    name: "connection",
-    handler: (ctx: WssContext) => {
-      console.log("Client connected:", ctx.socket.id);
+export default defineWssRoute({
+  // Authentication hook
+  auth: async (ctx) => {
+    const token = ctx.req.headers.authorization;
+    return await verifyToken(token); // Returns user or null
+  },
+
+  // Connection hook
+  onConnect: (ctx) => {
+    console.log("User connected:", ctx.user?.id);
+  },
+
+  // Event handlers with validation, guards, and rate limiting
+  events: {
+    message: {
+      // Schema validation (Zod/Valibot)
+      schema: z.object({
+        text: z.string().min(1).max(500),
+      }),
+      
+      // Guard (permissions check)
+      guard: ({ user }) => !!user, // Require authentication
+      
+      // Per-event rate limiting
+      rateLimit: {
+        eventsPerSecond: 10,
+        burst: 20,
+      },
+      
+      // Handler
+      handler: (ctx) => {
+        ctx.actions.broadcast("message", {
+          text: ctx.data.text,
+          from: ctx.user?.id,
+        });
+      },
     },
   },
-  {
-    name: "message",
-    handler: (ctx: WssContext) => {
-      const { data, actions } = ctx;
-      // Broadcast to all clients
-      actions.broadcast("message", {
-        text: data.text,
-        from: ctx.socket.id,
-      });
-    },
-  },
-];
+});
 ```
 
 **Client-side:**
@@ -144,12 +165,19 @@ socket.on("message", (data) => {
 socket.emit("message", { text: "Hello!" });
 ```
 
-**Key Benefits:**
+**Key Features:**
 
-- Automatic namespace creation from file structure
-- Same routing pattern as pages and APIs
-- Built-in broadcasting helpers (`emit`, `broadcast`, `emitTo`, `emitToClient`)
-- No manual configuration required
+- ✅ **Production-ready**: Auth, validation, rate limiting, logging
+- ✅ **Multi-instance**: Redis adapter for horizontal scaling
+- ✅ **State Store**: Shared state across instances (memory/Redis)
+- ✅ **Presence**: User-to-socket mapping for targeted messaging
+- ✅ **Type-safe**: Full TypeScript support
+- ✅ **Automatic namespace creation** from file structure
+- ✅ **Same routing pattern** as pages and APIs
+- ✅ **Built-in helpers**: `emit`, `broadcast`, `toUser()`, `toRoom()`, `join()`, `leave()`
+- ✅ **No manual configuration required** (works out of the box for localhost)
+
+**📖 For complete documentation, see [REALTIME.md](./docs/REALTIME.md)**
 
 ### 🎯 Route-Level Middlewares
 
@@ -747,34 +775,43 @@ export async function DELETE(ctx: ApiContext) {
 }
 ```
 
-### WebSocket Event Handler
+### WebSocket Event Handler (New API - Realtime v1)
 
 ```tsx
-import type { WssContext } from "@lolyjs/core";
+import { defineWssRoute } from "@lolyjs/core";
+import { z } from "zod";
 
-export const events = [
-  {
-    name: "connection",
-    handler: (ctx: WssContext) => {
-      // Handle connection
+export default defineWssRoute({
+  auth: async (ctx) => {
+    // Authenticate user
+    return await getUserFromToken(ctx.req.headers.authorization);
+  },
+
+  onConnect: (ctx) => {
+    console.log("User connected:", ctx.user?.id);
+  },
+
+  events: {
+    "custom-event": {
+      schema: z.object({ message: z.string() }),
+      guard: ({ user }) => !!user,
+      handler: (ctx) => {
+        // Emit to all clients
+        ctx.actions.emit("response", { message: "Hello" });
+
+        // Broadcast to all except sender
+        ctx.actions.broadcast("notification", ctx.data);
+
+        // Send to specific user
+        ctx.actions.toUser(userId).emit("private", ctx.data);
+
+        // Send to room
+        ctx.actions.toRoom("room-name").emit("room-message", ctx.data);
+      },
     },
   },
-  {
-    name: "custom-event",
-    handler: (ctx: WssContext) => {
-      const { socket, data, actions } = ctx;
-
-      // Emit to all clients
-      actions.emit("response", { message: "Hello" });
-
-      // Broadcast to all except sender
-      actions.broadcast("notification", data);
-
-      // Emit to specific socket
-      actions.emitTo(socketId, "private", data);
-    },
-  },
-];
+});
+```
 ```
 
 ### Client Cache
@@ -846,25 +883,42 @@ export default {
 
 ### Server Configuration
 
-Configure server settings (CORS, rate limiting, etc.) in `loly.config.ts` by exporting a `config` function:
+Configure server settings (CORS, rate limiting, WebSocket, etc.) in `loly.config.ts` by exporting a `config` function:
 
 ```tsx
 // loly.config.ts
 import { ServerConfig } from "@lolyjs/core";
 
 export const config = (env: string): ServerConfig => {
+  const isDev = env === "development";
+  
   return {
     bodyLimit: "1mb",
-    corsOrigin: env === "production" ? ["https://yourdomain.com"] : "*",
+    corsOrigin: isDev ? "*" : ["https://yourdomain.com"],
     rateLimit: {
       windowMs: 15 * 60 * 1000,
       max: 1000,
       strictMax: 5,
       strictPatterns: ["/api/auth/**"],
     },
+    // Realtime (WebSocket) configuration
+    realtime: {
+      enabled: true,
+      // For production, configure allowed origins
+      // For development, localhost is auto-allowed
+      allowedOrigins: isDev ? undefined : ["https://yourdomain.com"],
+      // Optional: Configure Redis for multi-instance scaling
+      // scale: {
+      //   mode: "cluster",
+      //   adapter: { url: "redis://localhost:6379" },
+      //   stateStore: { name: "redis", url: "redis://localhost:6379" },
+      // },
+    },
   };
 };
 ```
+
+**Note:** For local development, Realtime works out of the box without any configuration. The framework automatically allows `localhost` connections. Only configure `allowedOrigins` when deploying to production.
 
 ### Server Initialization
 
@@ -947,8 +1001,12 @@ This generates:
 PORT=3000
 HOST=0.0.0.0
 NODE_ENV=production
+# PUBLIC_WS_BASE_URL is optional - defaults to window.location.origin
+# Only set if WebSocket server is on a different domain
 PUBLIC_WS_BASE_URL=http://localhost:3000
 ```
+
+**Note:** For WebSocket connections, `PUBLIC_WS_BASE_URL` is optional. By default, `lolySocket` uses `window.location.origin`, so you only need to set it if your WebSocket server is on a different domain than your web app.
 
 ---
 

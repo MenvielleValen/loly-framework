@@ -14,8 +14,14 @@ const DEFAULT_CONFIG: ServerConfig = {
   },
 };
 
+// Configuración simple - el framework auto-detecta localhost
+// Solo configura esto si despliegas a producción real
 const PROD_CONFIG: ServerConfig = {
-  corsOrigin: ["https://space-explorer.example.com"],
+  // En producción real, descomenta y configura tu dominio:
+  // corsOrigin: ["https://tu-dominio.com"],
+  // realtime: {
+  //   allowedOrigins: ["https://tu-dominio.com"],
+  // },
 };
 
 const DEV_CONFIG: ServerConfig = {};

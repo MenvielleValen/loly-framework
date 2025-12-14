@@ -6,3 +6,6 @@ export * from "./wss";
 export * from './config';
 export * from './application';
 
+// Export RealtimeConfig type
+export type { RealtimeConfig } from './config';
+

@@ -19,7 +19,7 @@ import {
   NOT_FOUND_FILE_PREFIX,
   ERROR_FILE_PREFIX,
 } from "@constants/globals";
-import { loadWssRoutes } from "./loader-wss";
+import { loadWssRoutes, type ExtendedWssRoute } from "./loader-wss";
 
 /**
  * Unified interface for loading routes from different sources.
@@ -28,7 +28,7 @@ import { loadWssRoutes } from "./loader-wss";
 export interface RouteLoader {
   loadRoutes(): LoadedRoute[];
   loadApiRoutes(): ApiRoute[];
-  loadWssRoutes(): WssRoute[];
+  loadWssRoutes(): ExtendedWssRoute[];
   loadNotFoundRoute(): LoadedRoute | null;
   loadErrorRoute(): LoadedRoute | null;
   loadRouteChunks(): Record<string, string>;
@@ -48,7 +48,7 @@ interface FileStats {
 interface RoutesCache {
   routes: LoadedRoute[];
   apiRoutes: ApiRoute[];
-  wssRoutes: WssRoute[];
+  wssRoutes: ExtendedWssRoute[];
   notFoundRoute: LoadedRoute | null;
   errorRoute: LoadedRoute | null;
   fileStats: Map<string, FileStats>;
@@ -299,7 +299,7 @@ export class FilesystemRouteLoader implements RouteLoader {
     return this.cache.apiRoutes;
   }
 
-  loadWssRoutes(): WssRoute[] {
+  loadWssRoutes(): ExtendedWssRoute[] {
     this.ensureCacheValid();
     
     if (!this.cache) {
@@ -378,7 +378,7 @@ export class FilesystemRouteLoader implements RouteLoader {
 interface ManifestCache {
   routes?: LoadedRoute[];
   apiRoutes?: ApiRoute[];
-  wssRoutes?: WssRoute[];
+  wssRoutes?: ExtendedWssRoute[];
   notFoundRoute?: LoadedRoute | null;
   errorRoute?: LoadedRoute | null;
   routeChunks?: Record<string, string>;
@@ -431,7 +431,7 @@ export class ManifestRouteLoader implements RouteLoader {
     return apiRoutes;
   }
 
-  loadWssRoutes(): WssRoute[] {
+  loadWssRoutes(): ExtendedWssRoute[] {
     if (this.cache.wssRoutes) {
       return this.cache.wssRoutes;
     }

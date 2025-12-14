@@ -19,12 +19,13 @@ export const getServerSideProps: ServerLoader = async () => {
       appName: "Space Explorer",
       
       // Navigation items - could come from CMS or config
-      navigation: [
-        { href: "/planets", label: "Planets" },
-        { href: "/launches", label: "Launches" },
-        { href: "/astronauts", label: "Astronauts" },
-        { href: "/apod", label: "APOD" },
-      ],
+    navigation: [
+      { href: "/planets", label: "Planets" },
+      { href: "/launches", label: "Launches" },
+      { href: "/astronauts", label: "Astronauts" },
+      { href: "/apod", label: "APOD" },
+      { href: "/realtime", label: "Realtime" },
+    ],
       
       // Footer data - stable across all pages
       footerLinks: {

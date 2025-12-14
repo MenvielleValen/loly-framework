@@ -9,6 +9,7 @@
       "@src/*": ["src/*"],
       "@constants/*": ["constants/*"],
       "@rendering/*": ["modules/rendering/*"],
+      "@realtime/*": ["modules/realtime/*"],
       "@router/*": ["modules/router/*"],
       "@build/*": ["modules/build/*"],
       "@dev/*": ["modules/dev/*"],

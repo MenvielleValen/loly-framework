@@ -102,9 +102,10 @@ export async function startServer(options: StartServerOptions = {}) {
     : new ManifestRouteLoader(projectRoot);
 
   // Set up Socket.IO server and WebSocket event handlers
-  setupWssEvents({
+  await setupWssEvents({
     httpServer,
     wssRoutes,
+    projectRoot,
   });
 
   setupRoutes({

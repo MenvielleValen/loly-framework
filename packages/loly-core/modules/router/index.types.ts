@@ -3,6 +3,10 @@ import React from "react";
 import type { Request, Response } from "express";
 import { Server, Socket } from "socket.io";
 
+// Re-export WssContext from realtime/types for backwards compatibility
+// The real definition is in @realtime/types with required state and log
+export type { WssContext } from "@realtime/types";
+
 /**
  * Page component type. Accepts props that extend a base object with params.
  * @template TProps - Type of props passed to the component (defaults to Record<string, any>)
@@ -61,34 +65,65 @@ export interface ServerContext {
 
 export interface WssActions {
   /**
+   * Emit to current socket only (reply)
+   */
+  reply(event: string, payload?: any): void;
+
+  /**
    * Emit an event to all clients in the namespace
    */
   emit: (event: string, ...args: any[]) => void;
   
   /**
-   * Emit an event to a specific socket by Socket.IO socket ID
+   * Emit to everyone except current socket
    */
-  emitTo: (socketId: string, event: string, ...args: any[]) => void;
+  broadcast(
+    event: string,
+    payload?: any,
+    opts?: { excludeSelf?: boolean }
+  ): void;
+
+  /**
+   * Join a room
+   */
+  join(room: string): Promise<void>;
+
+  /**
+   * Leave a room
+   */
+  leave(room: string): Promise<void>;
+
+  /**
+   * Emit to a specific room
+   */
+  toRoom(room: string): {
+    emit(event: string, payload?: any): void;
+  };
+
+  /**
+   * Emit to a specific user (by userId)
+   * Uses presence mapping to find user's sockets
+   */
+  toUser(userId: string): {
+    emit(event: string, payload?: any): void;
+  };
+
+  /**
+   * Emit error event (reserved event: __loly:error)
+   */
+  error(code: string, message: string, details?: any): void;
+  
+  /**
+   * Emit an event to a specific socket by Socket.IO socket ID
+   * @deprecated Use toUser() for user targeting
+   */
+  emitTo?: (socketId: string, event: string, ...args: any[]) => void;
   
   /**
    * Emit an event to a specific client by custom clientId
-   * Requires clientId to be stored in socket.data.clientId during connection
+   * @deprecated Use toUser() for user targeting
    */
-  emitToClient: (clientId: string, event: string, ...args: any[]) => void;
-  
-  /**
-   * Broadcast an event to all clients in the namespace except the sender
-   */
-  broadcast: (event: string, ...args: any[]) => void;
-}
-
-export interface WssContext {
-  socket: Socket;
-  io: Server;
-  params: Record<string, string>;
-  pathname: string;
-  data?: any;
-  actions: WssActions;
+  emitToClient?: (clientId: string, event: string, ...args: any[]) => void;
 }
 
 /**
@@ -295,7 +330,6 @@ export type ApiMiddleware = (
  * };
  */
 export type ApiHandler = (ctx: ApiContext) => void | Promise<void>;
-export type WssHandler = (ctx: WssContext) => void | Promise<void>;
 
 export interface ApiRoute {
   pattern: string;

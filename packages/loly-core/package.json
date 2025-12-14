@@ -98,6 +98,10 @@
     "socket.io": "^4.8.1",
     "zod": "^3.24.1"
   },
+  "optionalDependencies": {
+    "@socket.io/redis-adapter": "^8.3.1",
+    "ioredis": "^5.4.1"
+  },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0",

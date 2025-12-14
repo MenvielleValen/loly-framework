@@ -176,3 +176,6 @@ export function loadPageComponent(
   return pageMod?.default || null;
 }
 
+// Export WSS route extractor
+export { extractDefineWssRoute, type NormalizedWssRoute } from "./extract-wss-route";
+

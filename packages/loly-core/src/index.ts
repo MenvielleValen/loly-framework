@@ -1,5 +1,5 @@
 export { startDevServer, startProdServer } from "./server";
-export { InitServerData, ServerConfig } from "@server/index";
+export { InitServerData, ServerConfig, type RealtimeConfig } from "@server/index";
 export { buildApp } from "@build/index";
 export {
   ServerContext,
@@ -11,7 +11,22 @@ export {
   GenerateStaticParams,
   ServerLoader,
   WssContext,
+  WssActions,
 } from "@router/index.types";
+export {
+  defineWssRoute,
+  type WssRouteDefinition,
+  type WssEventDefinition,
+  type WssHandler,
+  type AuthFn,
+  type GuardFn,
+  type AuthContext,
+  type RateLimitCfg,
+  type Schema,
+  type RealtimeStateStore,
+  type RealtimeLogger,
+  type RealtimeMetrics,
+} from "@realtime/index";
 export { bootstrapClient } from "@runtime/client";
 export {
   FrameworkConfig,

@@ -12,11 +12,13 @@ import {
   extractApiMiddlewares,
   extractRouteRegex,
   extractWssHandlers,
+  extractDefineWssRoute,
   loadLayouts,
   loadModuleSafely,
   loadPageComponent,
   readManifest,
 } from "./helpers/routes";
+import type { ExtendedWssRoute } from "./loader-wss";
 
 /**
  * Loads page and API routes from the routes manifest file.
@@ -28,7 +30,7 @@ import {
 export function loadRoutesFromManifest(projectRoot: string): {
   routes: LoadedRoute[];
   apiRoutes: ApiRoute[];
-  wssRoutes: WssRoute[];
+  wssRoutes: ExtendedWssRoute[];
 } {
   const manifest = readManifest(projectRoot);
   if (!manifest) {
@@ -112,7 +114,7 @@ export function loadRoutesFromManifest(projectRoot: string): {
     });
   }
 
-  const wssRoutes: WssRoute[] = [];
+  const wssRoutes: ExtendedWssRoute[] = [];
 
   for (const entry of manifest.wssRoutes) {
     const { regex, paramNames } = extractRouteRegex(
@@ -126,9 +128,38 @@ export function loadRoutesFromManifest(projectRoot: string): {
       continue;
     }
 
+    // Extract namespace from pattern (same logic as loader-wss.ts)
+    let namespace = entry.pattern.replace(/^\/wss/, "");
+    if (!namespace.startsWith("/")) {
+      namespace = "/" + namespace;
+    }
+    if (namespace === "") {
+      namespace = "/";
+    }
+
+    // Try to extract new format route (normalized)
+    let normalized = null;
+    try {
+      normalized = extractDefineWssRoute(mod, namespace);
+    } catch (error) {
+      // If new format fails, fall back to legacy format
+      console.warn(
+        `[loly:realtime] Failed to extract normalized route from ${filePath}:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    // Extract handlers (for backwards compatibility or if normalized failed)
     const handlers = extractWssHandlers(mod, entry.events || []);
     const { global: globalMiddlewares, methodSpecific: methodMiddlewares } =
       extractApiMiddlewares(mod, []);
+
+    // If normalized exists, also extract handlers from it for backwards compatibility
+    if (normalized) {
+      for (const [eventName, eventDef] of normalized.events.entries()) {
+        handlers[eventName] = eventDef.handler as any; // WssHandler is different from ApiHandler
+      }
+    }
 
     wssRoutes.push({
       pattern: entry.pattern,
@@ -138,6 +169,7 @@ export function loadRoutesFromManifest(projectRoot: string): {
       middlewares: globalMiddlewares,
       methodMiddlewares,
       filePath,
+      normalized: normalized || undefined, // Store normalized structure (use undefined instead of null)
     });
   }
 

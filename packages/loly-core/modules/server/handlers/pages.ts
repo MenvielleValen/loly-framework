@@ -187,6 +187,12 @@ async function handlePageRequestInternal(
       // Get nonce from res.locals (set by Helmet for CSP)
       const nonce = (res.locals as any).nonce || undefined;
 
+      // Get entrypoint files in order for preload
+      const entrypointFiles: string[] = [];
+      if (assetManifest?.entrypoints?.client) {
+        entrypointFiles.push(...assetManifest.entrypoints.client.map(file => `${STATIC_PATH}/${file}`));
+      }
+
       const documentTree = createDocumentTree({
         appTree,
         initialData,
@@ -195,6 +201,7 @@ async function handlePageRequestInternal(
         titleFallback: "Not found",
         descriptionFallback: "Loly demo",
         chunkHref: null,
+        entrypointFiles,
         theme,
         clientJsPath,
         clientCssPath,
@@ -389,6 +396,12 @@ async function handlePageRequestInternal(
   // Get nonce from res.locals (set by Helmet for CSP)
   const nonce = (res.locals as any).nonce || undefined;
 
+  // Get entrypoint files in order (runtime, vendor, commons, entry) for preload
+  const entrypointFiles: string[] = [];
+  if (assetManifest?.entrypoints?.client) {
+    entrypointFiles.push(...assetManifest.entrypoints.client.map(file => `${STATIC_PATH}/${file}`));
+  }
+
   const documentTree = createDocumentTree({
     appTree,
     initialData,
@@ -397,6 +410,7 @@ async function handlePageRequestInternal(
     titleFallback: "Loly framework",
     descriptionFallback: "Loly demo",
     chunkHref,
+    entrypointFiles,
     theme,
     clientJsPath,
     clientCssPath,
@@ -561,6 +575,12 @@ async function renderErrorPageWithStream(
 
     // Get nonce from res.locals (set by Helmet for CSP)
     const nonce = (res.locals as any).nonce || undefined;
+
+    // Get entrypoint files in order for preload
+    const entrypointFiles: string[] = [];
+    if (assetManifest?.entrypoints?.client) {
+      entrypointFiles.push(...assetManifest.entrypoints.client.map(file => `${STATIC_PATH}/${file}`));
+    }
 
     const documentTree = createDocumentTree({
       appTree,

@@ -159,21 +159,26 @@ export interface AssetManifest {
     css: string; // e.g., "client.def456.css"
   };
   chunks: Record<string, string>; // chunk name -> hashed filename, e.g., "route-root" -> "route-root.xyz789.js"
+  entrypoints?: {
+    client: string[]; // All JS files needed for client entrypoint in order (runtime, vendor, commons, entry)
+  };
 }
 
 /**
  * Generates an asset manifest by scanning the build output directory.
  * 
  * Finds files with content hashes and maps them to their logical names.
+ * Optionally uses Rspack stats to get entrypoints in correct order.
  * 
  * @param outDir - Output directory to scan
+ * @param stats - Optional Rspack stats to extract entrypoints
  * @returns Asset manifest with hashed filenames
  * 
  * @example
- * const manifest = generateAssetManifest('/project/.loly/client');
- * // { client: { js: 'client.abc123.js', css: 'client.def456.css' }, chunks: {...} }
+ * const manifest = generateAssetManifest('/project/.loly/client', stats);
+ * // { client: { js: 'client.abc123.js', css: 'client.def456.css' }, chunks: {...}, entrypoints: {...} }
  */
-export function generateAssetManifest(outDir: string): AssetManifest {
+export function generateAssetManifest(outDir: string, stats?: any): AssetManifest {
   const manifest: AssetManifest = {
     client: {
       js: "client.js",
@@ -188,39 +193,183 @@ export function generateAssetManifest(outDir: string): AssetManifest {
 
   const files = fs.readdirSync(outDir);
   
-  // Find client.js (with or without hash)
-  const clientJsMatch = files.find((f) => /^client\.[\w-]+\.js$/.test(f) || f === "client.js");
-  if (clientJsMatch) {
-    manifest.client.js = clientJsMatch;
+  // Try to get entrypoints from stats (more reliable than regex)
+  if (stats) {
+    try {
+      const statsJson = stats.toJson({ 
+        all: false, 
+        entrypoints: true, 
+        assets: true, 
+        chunks: true,
+        chunkRelations: true, // Include chunk dependencies
+      });
+      const clientEntrypoint = statsJson.entrypoints?.client;
+      
+      if (clientEntrypoint?.assets) {
+        // Extract JS files in order (runtime, vendor, commons, entry)
+        const clientJsFiles = clientEntrypoint.assets
+          .map((asset: string | { name: string }) => typeof asset === "string" ? asset : asset.name)
+          .filter((name: string) => name.endsWith(".js"));
+        
+        // Include chunks that are dependencies of the entrypoint
+        // Rspack may generate shared chunks that are needed by the entrypoint
+        if (statsJson.chunks && clientEntrypoint.chunks) {
+          const entrypointChunkIds = new Set(
+            Array.isArray(clientEntrypoint.chunks) 
+              ? clientEntrypoint.chunks 
+              : [clientEntrypoint.chunks]
+          );
+          
+          // Find all chunks that are part of the entrypoint
+          const dependencyChunks: string[] = [];
+          for (const chunk of statsJson.chunks) {
+            if (chunk.id && entrypointChunkIds.has(chunk.id)) {
+              // This chunk is part of the entrypoint
+              if (chunk.files) {
+                const jsFiles = chunk.files
+                  .filter((f: string) => f.endsWith(".js"))
+                  .filter((f: string) => !clientJsFiles.includes(f));
+                dependencyChunks.push(...jsFiles);
+              }
+            }
+          }
+          
+          // Check for chunks that are children/dependencies of entrypoint chunks
+          const visitedChunkIds = new Set(entrypointChunkIds);
+          const chunksToCheck = Array.from(entrypointChunkIds);
+          
+          while (chunksToCheck.length > 0) {
+            const chunkId = chunksToCheck.shift();
+            if (!chunkId) continue;
+            
+            const chunk = statsJson.chunks?.find((c: any) => c.id === chunkId);
+            if (chunk?.children) {
+              const children = Array.isArray(chunk.children) ? chunk.children : [chunk.children];
+              for (const childId of children) {
+                if (!visitedChunkIds.has(childId)) {
+                  visitedChunkIds.add(childId);
+                  chunksToCheck.push(childId);
+                  
+                  // Add this child chunk's files to dependency chunks
+                  const childChunk = statsJson.chunks?.find((c: any) => c.id === childId);
+                  if (childChunk?.files) {
+                    const jsFiles = childChunk.files
+                      .filter((f: string) => f.endsWith(".js"))
+                      .filter((f: string) => !clientJsFiles.includes(f) && !dependencyChunks.includes(f));
+                    dependencyChunks.push(...jsFiles);
+                  }
+                }
+              }
+            }
+          }
+          
+          // Add dependency chunks before the main entry
+          if (dependencyChunks.length > 0) {
+            clientJsFiles.splice(-1, 0, ...dependencyChunks);
+          }
+        }
+        
+        if (clientJsFiles.length > 0) {
+          manifest.entrypoints = {
+            client: clientJsFiles,
+          };
+          
+          // Last file is the main entry
+          manifest.client.js = clientJsFiles[clientJsFiles.length - 1];
+          
+          // Extract CSS files
+          const clientCssFiles = clientEntrypoint.assets
+            .map((asset: string | { name: string }) => typeof asset === "string" ? asset : asset.name)
+            .filter((name: string) => name.endsWith(".css"));
+          
+          if (clientCssFiles.length > 0) {
+            manifest.client.css = clientCssFiles[0];
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[framework] Failed to extract entrypoints from stats, falling back to file scanning:", err);
+    }
+  }
+  
+  // Fallback: Find client.js (with or without hash) if not found in stats
+  if (!manifest.client.js) {
+    const clientJsMatch = files.find((f) => /^client\.[\w-]+\.js$/.test(f) || f === "client.js");
+    if (clientJsMatch) {
+      manifest.client.js = clientJsMatch;
+    }
   }
 
-  // Find client.css (with or without hash)
-  const clientCssMatch = files.find((f) => /^client\.[\w-]+\.css$/.test(f) || f === "client.css");
-  if (clientCssMatch) {
-    manifest.client.css = clientCssMatch;
+  // Fallback: Find client.css (with or without hash) if not found in stats
+  if (!manifest.client.css) {
+    const clientCssMatch = files.find((f) => /^client\.[\w-]+\.css$/.test(f) || f === "client.css");
+    if (clientCssMatch) {
+      manifest.client.css = clientCssMatch;
+    }
   }
 
   // Find all chunk files (route-*.js, 0.js, 1.js, etc. with or without hash)
   // Pattern: route-*.js or numeric chunks like 0.js, 1.js, etc.
+  const sharedChunksToAdd: string[] = []; // Chunks that should be in entrypoints
+  
   for (const file of files) {
     if (!file.endsWith(".js")) continue;
     
     // Skip the main client.js file
     if (file === manifest.client.js) continue;
     
+    // Skip files already in entrypoints
+    if (manifest.entrypoints?.client?.includes(file)) continue;
+    
     // Match route chunks: route-*.js or route-*.[hash].js
     const routeMatch = file.match(/^(route-[^.]+)(\.[\w-]+)?\.js$/);
     if (routeMatch) {
       const chunkName = routeMatch[1]; // e.g., "route-root"
       manifest.chunks[chunkName] = file;
+      continue; // Route chunks are loaded on-demand, not in entrypoints
+    }
+    
+    // Match vendor chunks: vendor.js or vendor.[hash].js
+    const vendorMatch = file.match(/^(vendor)(\.[\w-]+)?\.js$/);
+    if (vendorMatch) {
+      const chunkName = vendorMatch[1]; // e.g., "vendor"
+      manifest.chunks[chunkName] = file;
+      sharedChunksToAdd.push(file); // Vendor chunks should be in entrypoints
+      continue;
+    }
+    
+    // Match vendor-commons chunks: vendor-commons.js or vendor-commons.[hash].js
+    const vendorCommonsMatch = file.match(/^(vendor-commons)(\.[\w-]+)?\.js$/);
+    if (vendorCommonsMatch) {
+      const chunkName = vendorCommonsMatch[1]; // e.g., "vendor-commons"
+      manifest.chunks[chunkName] = file;
+      sharedChunksToAdd.push(file); // Vendor-commons chunks should be in entrypoints
       continue;
     }
     
     // Match numeric chunks: 0.js, 1.js, etc. or 0.[hash].js
     const numericMatch = file.match(/^(\d+)(\.[\w-]+)?\.js$/);
     if (numericMatch) {
-      const chunkName = numericMatch[1]; // e.g., "0"
+      const chunkName = numericMatch[1];
       manifest.chunks[chunkName] = file;
+      sharedChunksToAdd.push(file);
+      continue;
+    }
+  }
+  
+  // Add shared chunks to entrypoints if they're not already there
+  if (sharedChunksToAdd.length > 0 && manifest.entrypoints?.client) {
+    const entrypoints = manifest.entrypoints.client;
+    const mainEntry = entrypoints[entrypoints.length - 1];
+    const uniqueShared = sharedChunksToAdd.filter(f => !entrypoints.includes(f));
+    entrypoints.splice(-1, 0, ...uniqueShared);
+    // Ensure main entry is still last
+    if (entrypoints[entrypoints.length - 1] !== mainEntry) {
+      const mainIndex = entrypoints.indexOf(mainEntry);
+      if (mainIndex >= 0) {
+        entrypoints.splice(mainIndex, 1);
+      }
+      entrypoints.push(mainEntry);
     }
   }
 

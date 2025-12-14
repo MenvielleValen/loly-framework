@@ -63,6 +63,7 @@ export function createDocumentTree(options: {
   titleFallback?: string;
   descriptionFallback?: string;
   chunkHref?: string | null;
+  entrypointFiles?: string[]; // All JS files for client entrypoint in order (runtime, vendor, commons, entry)
   theme?: string;
   clientJsPath?: string;
   clientCssPath?: string;
@@ -76,6 +77,7 @@ export function createDocumentTree(options: {
     titleFallback,
     descriptionFallback,
     chunkHref,
+    entrypointFiles = [],
     theme,
     clientJsPath = "/static/client.js",
     clientCssPath = "/static/client.css",
@@ -135,9 +137,23 @@ export function createDocumentTree(options: {
         content: "width=device-width, initial-scale=1",
       }),
       ...extraMetaTags,
+      // Preload all entrypoint files except the last one (runtime, vendor, commons)
+      // The last file is the main entry which we load as a script
+      ...(entrypointFiles.length > 0
+        ? entrypointFiles.slice(0, -1).map((file) =>
+            React.createElement("link", {
+              key: `preload-${file}`,
+              rel: "preload",
+              href: file,
+              as: "script",
+            })
+          )
+        : []),
+      // Preload route-specific chunk if available
       chunkHref &&
         React.createElement("link", {
-          rel: "modulepreload",
+          key: `preload-${chunkHref}`,
+          rel: "preload",
           href: chunkHref,
           as: "script",
         }),
@@ -150,10 +166,25 @@ export function createDocumentTree(options: {
         rel: "stylesheet",
         href: clientCssPath,
       }),
-      React.createElement("script", {
-        src: clientJsPath,
-        defer: true,
-      })
+      // Execute ALL entrypoint files in order (runtime, vendor, commons, entry)
+      // With defer, browser downloads in parallel but executes in DOM order
+      ...(entrypointFiles.length > 0
+        ? entrypointFiles.map((file) =>
+            React.createElement("script", {
+              key: file,
+              src: file,
+              defer: true,
+              nonce, // CSP nonce for external scripts
+            })
+          )
+        : [
+            React.createElement("script", {
+              key: "client",
+              src: clientJsPath,
+              defer: true,
+              nonce, // CSP nonce for external scripts
+            }),
+          ])
     ),
     React.createElement(
       "body",

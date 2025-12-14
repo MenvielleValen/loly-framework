@@ -272,9 +272,12 @@ export function writeClientBoostrapManifest(projectRoot: string): void {
 
   lines.push(`import { bootstrapClient } from "@lolyjs/core/runtime"`);
   lines.push("");
-  lines.push(
-    "bootstrapClient(routes as ClientRouteLoaded[], notFoundRoute, errorRoute);"
-  );
+  lines.push(`try {`);
+  lines.push(`  bootstrapClient(routes as ClientRouteLoaded[], notFoundRoute, errorRoute);`);
+  lines.push(`} catch (error) {`);
+  lines.push(`  console.error("[bootstrap] Fatal error during bootstrap:", error);`);
+  lines.push(`  throw error;`);
+  lines.push(`}`);
 
   fs.writeFileSync(manifestPath, lines.join("\n"), "utf-8");
 }

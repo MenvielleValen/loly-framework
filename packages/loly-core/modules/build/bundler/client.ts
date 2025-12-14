@@ -155,8 +155,8 @@ export function buildClientBundle(
 
       copyStaticAssets(projectRoot, outDir);
 
-      // Generate asset manifest with hashed filenames
-      const assetManifest = generateAssetManifest(outDir);
+      // Generate asset manifest with hashed filenames using stats for entrypoints
+      const assetManifest = generateAssetManifest(outDir, stats);
       
       // Save asset manifest
       const manifestPath = path.join(projectRoot, BUILD_FOLDER_NAME, "asset-manifest.json");

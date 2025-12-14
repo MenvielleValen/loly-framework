@@ -170,14 +170,74 @@ export interface ClientRoute {
 
 //#region API
 
+/**
+ * Comprehensive page metadata for SEO and social sharing.
+ * Supports standard HTML meta tags, Open Graph, Twitter Cards, and more.
+ */
 export interface PageMetadata {
+  /** Page title (sets <title> tag) */
   title?: string;
+  
+  /** Page description (sets <meta name="description">) */
   description?: string;
-
+  
+  /** Language code (sets <html lang="...">) */
+  lang?: string;
+  
+  /** Canonical URL (sets <link rel="canonical">) */
+  canonical?: string;
+  
+  /** Robots directive (sets <meta name="robots">) */
+  robots?: string;
+  
+  /** Theme color (sets <meta name="theme-color">) */
+  themeColor?: string;
+  
+  /** Viewport configuration (sets <meta name="viewport">) */
+  viewport?: string;
+  
+  /** Open Graph metadata for social sharing */
+  openGraph?: {
+    title?: string;
+    description?: string;
+    type?: string; // e.g., "website", "article"
+    url?: string;
+    image?: string | {
+      url: string;
+      width?: number;
+      height?: number;
+      alt?: string;
+    };
+    siteName?: string;
+    locale?: string;
+  };
+  
+  /** Twitter Card metadata */
+  twitter?: {
+    card?: "summary" | "summary_large_image" | "app" | "player";
+    title?: string;
+    description?: string;
+    image?: string;
+    imageAlt?: string;
+    site?: string; // @username
+    creator?: string; // @username
+  };
+  
+  /** Additional custom meta tags */
   metaTags?: {
     name?: string;
     property?: string;
+    httpEquiv?: string;
     content: string;
+  }[];
+  
+  /** Additional link tags (e.g., preconnect, dns-prefetch) */
+  links?: {
+    rel: string;
+    href: string;
+    as?: string;
+    crossorigin?: string;
+    type?: string;
   }[];
 }
 

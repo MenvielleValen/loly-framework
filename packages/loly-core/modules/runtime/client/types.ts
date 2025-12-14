@@ -1,4 +1,4 @@
-import { WINDOW_DATA_KEY, ROUTER_DATA_KEY } from "./constants";
+import { WINDOW_DATA_KEY, ROUTER_DATA_KEY, ROUTER_NAVIGATE_KEY } from "./constants";
 
 export type InitialData = {
   pathname: string;
@@ -21,6 +21,7 @@ declare global {
   interface Window {
     [WINDOW_DATA_KEY]?: InitialData;
     [ROUTER_DATA_KEY]?: RouterData;
+    [ROUTER_NAVIGATE_KEY]?: (url: string, options?: { revalidate?: boolean; replace?: boolean }) => Promise<void>;
   }
 }
 

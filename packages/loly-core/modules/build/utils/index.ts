@@ -54,7 +54,8 @@ export function loadAliasesFromTsconfig(
   try {
     tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf-8"));
   } catch (err) {
-    console.warn("[framework] Could not read tsconfig.json:", err);
+    console.warn("⚠️  [framework] Could not read tsconfig.json:", err instanceof Error ? err.message : String(err));
+    console.warn("💡 Using default path aliases. For custom aliases, ensure tsconfig.json is valid.");
     aliases["@app"] = path.resolve(projectRoot, "app");
     return aliases;
   }

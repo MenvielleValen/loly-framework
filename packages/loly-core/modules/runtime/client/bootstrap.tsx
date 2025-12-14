@@ -157,7 +157,11 @@ export function bootstrapClient(
       // 2. Get container and initial data
       const container = document.getElementById(APP_CONTAINER_ID);
       if (!container) {
-        console.error(`[client] Container #${APP_CONTAINER_ID} not found for hydration`);
+        console.error(`\n❌ [client] Hydration failed: Container #${APP_CONTAINER_ID} not found`);
+        console.error("💡 This usually means:");
+        console.error("  • The HTML structure doesn't match what React expects");
+        console.error("  • The container was removed before hydration");
+        console.error("  • There's a mismatch between SSR and client HTML\n");
         return;
       }
 
@@ -178,7 +182,16 @@ export function bootstrapClient(
       );
     } catch (error) {
       // Fatal error during bootstrap - reload the page
-      console.error("[client] Fatal error during bootstrap:", error);
+      console.error("\n❌ [client] Fatal error during bootstrap:");
+      console.error(error);
+      if (error instanceof Error) {
+        console.error("\nError details:");
+        console.error(`  Message: ${error.message}`);
+        if (error.stack) {
+          console.error(`  Stack: ${error.stack}`);
+        }
+      }
+      console.error("\n💡 Attempting page reload to recover...\n");
       window.location.reload();
     }
   })();

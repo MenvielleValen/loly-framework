@@ -8,7 +8,7 @@ import {
   type NavigationHandlers,
 } from "./navigation";
 import { RouterContext } from "./RouterContext";
-import { ROUTER_NAVIGATE_KEY } from "./constants";
+import { ROUTER_NAVIGATE_KEY, WINDOW_DATA_KEY } from "./constants";
 import { applyMetadata } from "./metadata";
 import type {
   RouteViewState,
@@ -70,9 +70,9 @@ export function AppShell({
    */
   useEffect(() => {
     if (typeof window !== "undefined") {
-      (window as any)[ROUTER_NAVIGATE_KEY] = handleNavigate;
+      window[ROUTER_NAVIGATE_KEY] = handleNavigate;
       return () => {
-        delete (window as any)[ROUTER_NAVIGATE_KEY];
+        delete window[ROUTER_NAVIGATE_KEY];
       };
     }
   }, [handleNavigate]);
@@ -107,7 +107,7 @@ export function AppShell({
   // Listen for data refresh events and update state when current route is revalidated
   useEffect(() => {
     const handleDataRefresh = () => {
-      const freshData = (window as any)?.__FW_DATA__;
+      const freshData = window[WINDOW_DATA_KEY];
       
       if (!freshData) return;
       

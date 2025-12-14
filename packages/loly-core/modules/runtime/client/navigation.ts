@@ -1,4 +1,5 @@
 import { getRouteData } from "../../react/cache/index";
+import type { RouteDataResponse } from "../../react/cache/client-data-cache";
 import { matchRouteClient } from "./route-matcher";
 import { applyMetadata } from "./metadata";
 import { setWindowData, getCurrentTheme, setRouterData } from "./window-data";
@@ -19,7 +20,7 @@ export type NavigationHandlers = {
 
 async function handleErrorRoute(
   nextUrl: string,
-  json: any,
+  json: RouteDataResponse,
   errorRoute: ClientRouteLoaded,
   setState: (state: RouteViewState) => void
 ): Promise<boolean> {
@@ -79,10 +80,15 @@ async function handleErrorRoute(
     });
     return true;
   } catch (loadError) {
-    console.error(
-      "[client] Error loading error route components:",
-      loadError
-    );
+    console.error("\n❌ [client] Error loading error route components:");
+    console.error(loadError);
+    if (loadError instanceof Error) {
+      console.error(`   Message: ${loadError.message}`);
+      if (loadError.stack) {
+        console.error(`   Stack: ${loadError.stack.split('\n').slice(0, 3).join('\n   ')}`);
+      }
+    }
+    console.error("💡 Falling back to full page reload\n");
     window.location.href = nextUrl;
     return false;
   }
@@ -90,7 +96,7 @@ async function handleErrorRoute(
 
 async function handleNotFoundRoute(
   nextUrl: string,
-  json: any,
+  json: RouteDataResponse,
   notFoundRoute: ClientRouteLoaded | null,
   setState: (state: RouteViewState) => void
 ): Promise<void> {
@@ -158,7 +164,7 @@ async function handleNotFoundRoute(
 
 async function handleNormalRoute(
   nextUrl: string,
-  json: any,
+  json: RouteDataResponse,
   routes: ClientRouteLoaded[],
   setState: (state: RouteViewState) => void
 ): Promise<boolean> {
@@ -284,8 +290,8 @@ export async function navigate(
 
     // 🔴 HTTP error (404/500/etc)
     if (!ok) {
-      if (json && (json as any).redirect) {
-        window.location.href = (json as any).redirect.destination;
+      if (json?.redirect) {
+        window.location.href = json.redirect.destination;
         return;
       }
       window.location.href = nextUrl;

@@ -38,13 +38,15 @@ export async function buildStaticPages(
     } else {
       if (!route.generateStaticParams) {
         console.warn(
-          `[framework][ssg] Route ${route.pattern} is marked as force-static but has no generateStaticParams function. Skipping.`
+          `⚠️  [framework][ssg] Route "${route.pattern}" is marked as force-static but has no generateStaticParams function`
         );
+        console.warn(`   💡 Add a generateStaticParams export to enable static generation for this route`);
+        console.warn(`   Skipping this route...\n`);
         continue;
       }
       
       try {
-        console.log(`[framework][ssg] Generating static params for route: ${route.pattern}`);
+        console.log(`📦 [framework][ssg] Generating static params for route: ${route.pattern}`);
         
         // Add timeout to detect hanging
         let timeoutId: NodeJS.Timeout | null = null;
@@ -65,12 +67,14 @@ export async function buildStaticPages(
         }
         
         allParams = sp;
-        console.log(`[framework][ssg] Generated ${sp.length} static params for route: ${route.pattern}`);
+        console.log(`   ✅ Generated ${sp.length} static params for route: ${route.pattern}`);
       } catch (error) {
-        console.error(
-          `[framework][ssg] Error generating static params for route ${route.pattern}:`,
-          error
-        );
+        console.error(`\n❌ [framework][ssg] Error generating static params for route "${route.pattern}":`);
+        console.error(error instanceof Error ? error.message : String(error));
+        if (error instanceof Error && error.stack) {
+          console.error(`   Stack: ${error.stack.split('\n').slice(0, 3).join('\n   ')}`);
+        }
+        console.error(`💡 Check your generateStaticParams function for this route\n`);
         throw error;
       }
     }
@@ -80,6 +84,6 @@ export async function buildStaticPages(
     }
   }
   
-  console.log(`[framework][ssg] Finished building all static pages`);
+  console.log(`✅ [framework][ssg] Finished building all static pages`);
 }
 

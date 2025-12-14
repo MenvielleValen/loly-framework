@@ -1,7 +1,23 @@
+import type { PageMetadata } from "@router/index";
+
+/**
+ * Response data structure from server for route data requests
+ */
+export type RouteDataResponse = {
+  props?: Record<string, unknown>;
+  metadata?: PageMetadata | null;
+  theme?: string;
+  redirect?: { destination: string; permanent?: boolean };
+  notFound?: boolean;
+  error?: boolean;
+  message?: string;
+  params?: Record<string, string>;
+};
+
 type RouteData = {
   ok: boolean;
   status: number;
-  json: any;
+  json: RouteDataResponse;
 };
 
 type CacheEntry =

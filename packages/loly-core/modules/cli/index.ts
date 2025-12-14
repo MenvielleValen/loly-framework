@@ -165,7 +165,11 @@ async function run(): Promise<void> {
     }
 
     default: {
-      console.error(`Unknown command: "${command}"\n`);
+      console.error(`\n❌ Unknown command: "${command}"\n`);
+      console.error("💡 Available commands:");
+      console.error("   • dev   - Start development server");
+      console.error("   • build - Build the application for production");
+      console.error("   • start - Start production server\n");
       printHelp();
       process.exit(1);
     }
@@ -173,6 +177,11 @@ async function run(): Promise<void> {
 }
 
 run().catch((err) => {
-  console.error("[loly] CLI error:", err);
+  console.error("\n❌ [loly] CLI error:");
+  console.error(err instanceof Error ? err.message : String(err));
+  if (err instanceof Error && err.stack) {
+    console.error(`\nStack trace:\n${err.stack}`);
+  }
+  console.error("\n💡 Check your command syntax and try again\n");
   process.exit(1);
 });

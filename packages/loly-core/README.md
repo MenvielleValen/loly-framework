@@ -77,6 +77,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     metadata: {
       title: "Home Page",
       description: "Welcome to Loly",
+      // See "SEO & Metadata" section below for full metadata options
     },
   };
 };
@@ -378,6 +379,160 @@ export async function POST(ctx: ApiContext) {
 }
 ```
 
+### 📊 SEO & Metadata
+
+Loly provides comprehensive metadata support for SEO and social sharing. Metadata can be defined at both layout and page levels, with intelligent merging:
+
+**Layout Metadata (Base/Defaults):**
+
+```tsx
+// app/layout.server.hook.ts
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async () => {
+  return {
+    props: { /* ... */ },
+    metadata: {
+      // Site-wide defaults
+      description: "My awesome site",
+      lang: "en",
+      robots: "index, follow",
+      themeColor: "#000000",
+      
+      // Open Graph defaults
+      openGraph: {
+        type: "website",
+        siteName: "My Site",
+        locale: "en_US",
+      },
+      
+      // Twitter Card defaults
+      twitter: {
+        card: "summary_large_image",
+      },
+      
+      // Custom meta tags
+      metaTags: [
+        { name: "author", content: "My Name" },
+      ],
+      
+      // Custom link tags (preconnect, etc.)
+      links: [
+        { rel: "preconnect", href: "https://api.example.com" },
+      ],
+    },
+  };
+};
+```
+
+**Page Metadata (Overrides Layout):**
+
+```tsx
+// app/page.server.hook.ts
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  const post = await getPost(ctx.params.slug);
+  
+  return {
+    props: { post },
+    metadata: {
+      // Page-specific (overrides layout)
+      title: `${post.title} | My Site`,
+      description: post.excerpt,
+      canonical: `https://mysite.com/blog/${post.slug}`,
+      
+      // Open Graph (inherits type, siteName from layout)
+      openGraph: {
+        title: post.title,
+        description: post.excerpt,
+        url: `https://mysite.com/blog/${post.slug}`,
+        image: {
+          url: post.imageUrl,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      },
+      
+      // Twitter Card (inherits card type from layout)
+      twitter: {
+        title: post.title,
+        description: post.excerpt,
+        image: post.imageUrl,
+        imageAlt: post.title,
+      },
+    },
+  };
+};
+```
+
+**Full Metadata API:**
+
+```tsx
+interface PageMetadata {
+  // Basic fields
+  title?: string;
+  description?: string;
+  lang?: string;
+  canonical?: string;
+  robots?: string;
+  themeColor?: string;
+  viewport?: string;
+  
+  // Open Graph
+  openGraph?: {
+    title?: string;
+    description?: string;
+    type?: string;
+    url?: string;
+    image?: string | {
+      url: string;
+      width?: number;
+      height?: number;
+      alt?: string;
+    };
+    siteName?: string;
+    locale?: string;
+  };
+  
+  // Twitter Cards
+  twitter?: {
+    card?: "summary" | "summary_large_image" | "app" | "player";
+    title?: string;
+    description?: string;
+    image?: string;
+    imageAlt?: string;
+    site?: string;
+    creator?: string;
+  };
+  
+  // Custom meta tags
+  metaTags?: Array<{
+    name?: string;
+    property?: string;
+    httpEquiv?: string;
+    content: string;
+  }>;
+  
+  // Custom link tags
+  links?: Array<{
+    rel: string;
+    href: string;
+    as?: string;
+    crossorigin?: string;
+    type?: string;
+  }>;
+}
+```
+
+**Key Features:**
+
+- **Layout + Page Merging**: Layout metadata provides defaults, page metadata overrides specific fields
+- **Automatic Updates**: Metadata updates automatically during SPA navigation
+- **SSR & SSG Support**: Works in both server-side rendering and static generation
+- **Type-Safe**: Full TypeScript support with `PageMetadata` type
+
 ### 🛡️ Built-in Security
 
 **Rate Limiting:**
@@ -513,6 +668,8 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     metadata: {
       title: "Page Title",
       description: "Page description",
+      // See "SEO & Metadata" section above for full metadata options
+      // including Open Graph, Twitter Cards, canonical URLs, etc.
     },
   };
 };

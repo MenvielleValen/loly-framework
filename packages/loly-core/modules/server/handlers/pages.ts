@@ -21,6 +21,58 @@ import { getClientJsPath, getClientCssPath, loadAssetManifest } from "@build/uti
 import { sanitizeParams } from "@security/sanitize";
 import { getRequestLogger } from "@logger/index";
 import path from "path";
+import type { PageMetadata } from "@router/index";
+
+/**
+ * Merges two PageMetadata objects.
+ * The second metadata (newer) overrides the first (older).
+ * For nested objects like openGraph and twitter, we do a shallow merge.
+ * Arrays like metaTags and links are replaced entirely (not merged).
+ * 
+ * @param base - Base metadata (from layout, can be null)
+ * @param override - Override metadata (from page or more specific layout, can be null)
+ * @returns Combined metadata or null if both are null
+ */
+export function mergeMetadata(
+  base: PageMetadata | null,
+  override: PageMetadata | null
+): PageMetadata | null {
+  if (!base && !override) return null;
+  if (!base) return override;
+  if (!override) return base;
+
+  return {
+    // Simple fields: override wins
+    title: override.title ?? base.title,
+    description: override.description ?? base.description,
+    lang: override.lang ?? base.lang,
+    canonical: override.canonical ?? base.canonical,
+    robots: override.robots ?? base.robots,
+    themeColor: override.themeColor ?? base.themeColor,
+    viewport: override.viewport ?? base.viewport,
+    
+    // Nested objects: shallow merge (override wins for each field)
+    openGraph: override.openGraph
+      ? {
+          ...base.openGraph,
+          ...override.openGraph,
+          // For image, if override has image, use it entirely (don't merge)
+          image: override.openGraph.image ?? base.openGraph?.image,
+        }
+      : base.openGraph,
+    
+    twitter: override.twitter
+      ? {
+          ...base.twitter,
+          ...override.twitter,
+        }
+      : base.twitter,
+    
+    // Arrays: override replaces base entirely (not merged)
+    metaTags: override.metaTags ?? base.metaTags,
+    links: override.links ?? base.links,
+  };
+}
 
 export interface HandlePageRequestOptions {
   routes: LoadedRoute[];
@@ -264,8 +316,9 @@ async function handlePageRequestInternal(
     return;
   }
 
-  // 1. Execute layout server hooks (root → specific) and collect props
+  // 1. Execute layout server hooks (root → specific) and collect props + metadata
   const layoutProps: Record<string, any> = {};
+  const layoutMetadata: Array<LoaderResult["metadata"]> = [];
   const reqLogger = getRequestLogger(req);
 
   if (route.layoutServerHooks && route.layoutServerHooks.length > 0) {
@@ -277,6 +330,10 @@ async function handlePageRequestInternal(
           // Merge props (more specific layouts override general ones)
           if (layoutResult.props) {
             Object.assign(layoutProps, layoutResult.props);
+          }
+          // Collect metadata from layouts (will be merged later)
+          if (layoutResult.metadata) {
+            layoutMetadata.push(layoutResult.metadata);
           }
         } catch (error) {
           // Log error but continue (layout server hook failure shouldn't break the page)
@@ -352,10 +409,29 @@ async function handlePageRequestInternal(
     ...(loaderResult.props || {}), // Props from page (overrides layout)
   };
 
-  // Use combined props in loaderResult
+  // 4. Combine metadata: layout metadata (base) + page metadata (page overrides layout)
+  // Layout metadata provides defaults (like site-wide Open Graph, canonical base, etc.)
+  // Page metadata can override specific fields or add page-specific data
+  let combinedMetadata: LoaderResult["metadata"] = null;
+  
+  // Start with layout metadata (most general first, then more specific)
+  // Later layouts override earlier ones, then page overrides all
+  for (const layoutMeta of layoutMetadata) {
+    if (layoutMeta) {
+      combinedMetadata = mergeMetadata(combinedMetadata, layoutMeta);
+    }
+  }
+  
+  // Finally, page metadata overrides everything
+  if (loaderResult.metadata) {
+    combinedMetadata = mergeMetadata(combinedMetadata, loaderResult.metadata);
+  }
+
+  // Use combined props and metadata in loaderResult
   const combinedLoaderResult: LoaderResult = {
     ...loaderResult,
     props: combinedProps,
+    metadata: combinedMetadata,
   };
 
   if (isDataReq) {
@@ -433,7 +509,16 @@ async function handlePageRequestInternal(
     onShellError(err) {
       didError = true;
       const reqLogger = getRequestLogger(req);
-      reqLogger.error("SSR shell error", err, { route: matched?.route?.pattern || "unknown" });
+      const routePattern = matched?.route?.pattern || "unknown";
+      reqLogger.error("SSR shell error", err, { route: routePattern });
+      
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error(`\n❌ [framework][ssr] Shell error for route "${routePattern}":`);
+      console.error(`   ${errorMessage}`);
+      if (err instanceof Error && err.stack) {
+        console.error(`   Stack: ${err.stack.split('\n').slice(0, 3).join('\n   ')}`);
+      }
+      console.error("💡 This usually indicates a React rendering error\n");
 
       if (!res.headersSent && errorPage) {
         renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot, env);
@@ -449,7 +534,12 @@ async function handlePageRequestInternal(
     onError(err) {
       didError = true;
       const reqLogger = getRequestLogger(req);
-      reqLogger.error("SSR error", err, { route: matched?.route?.pattern || "unknown" });
+      const routePattern = matched?.route?.pattern || "unknown";
+      reqLogger.error("SSR error", err, { route: routePattern });
+      
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error(`⚠️  [framework][ssr] Error during streaming for route "${routePattern}":`);
+      console.error(`   ${errorMessage}`);
     },
   });
 

@@ -50,7 +50,13 @@ export function startClientBundler(
 
   compiler.watch({}, (err, stats) => {
       if (err) {
-        console.error("[framework][client] Rspack error:", err);
+        console.error("\n❌ [framework][client] Rspack compilation error:");
+        console.error(err);
+        console.error("\n💡 Suggestions:");
+        console.error("  • Check for syntax errors in your code");
+        console.error("  • Verify all imports are correct");
+        console.error("  • Ensure all dependencies are installed");
+        console.error("  • Try deleting .loly folder and rebuilding\n");
         isBuilding = false;
         lastBuildTime = Date.now();
         // Resolve any waiting promises even on error
@@ -62,18 +68,21 @@ export function startClientBundler(
         return;
       }
       if (!stats) {
+        console.warn("⚠️  [framework][client] Build completed but no stats available");
         isBuilding = false;
         lastBuildTime = Date.now();
         return;
       }
 
       if (stats.hasErrors()) {
-        console.error(
-          "[framework][client] Build with errors:\n",
-          stats.toString("errors-only")
-        );
+        console.error("\n❌ [framework][client] Build failed with errors:\n");
+        console.error(stats.toString("errors-only"));
+        console.error("\n💡 Common fixes:");
+        console.error("  • Fix syntax errors shown above");
+        console.error("  • Check for missing imports or dependencies");
+        console.error("  • Verify TypeScript types are correct\n");
       } else {
-        console.log("[framework][client] ✓ Client bundle rebuilt successfully");
+        console.log("✅ [framework][client] Client bundle rebuilt successfully");
       }
       
       isBuilding = false;
@@ -137,20 +146,30 @@ export function buildClientBundle(
       compiler.close(() => {});
 
       if (err) {
-        console.error("[framework][client] Build error:", err);
+        console.error("\n❌ [framework][client] Production build error:");
+        console.error(err);
+        console.error("\n💡 Suggestions:");
+        console.error("  • Check for syntax errors in your code");
+        console.error("  • Verify all imports are correct");
+        console.error("  • Ensure all dependencies are installed");
+        console.error("  • Review the error details above\n");
         return reject(err);
       }
       if (!stats) {
-        const error = new Error("No stats from Rspack");
-        console.error("[framework][client] Build error:", error);
+        const error = new Error("No stats from Rspack - build may have failed silently");
+        console.error("\n❌ [framework][client] Build error:", error.message);
+        console.error("💡 Try rebuilding or check Rspack configuration\n");
         return reject(error);
       }
       if (stats.hasErrors()) {
-        console.error(
-          "[framework][client] Build with errors:\n",
-          stats.toString("errors-only")
-        );
-        return reject(new Error("Client build failed"));
+        console.error("\n❌ [framework][client] Production build failed:\n");
+        console.error(stats.toString("errors-only"));
+        console.error("\n💡 Common fixes:");
+        console.error("  • Fix syntax errors shown above");
+        console.error("  • Check for missing imports or dependencies");
+        console.error("  • Verify TypeScript types are correct");
+        console.error("  • Review build configuration\n");
+        return reject(new Error("Client build failed - see errors above"));
       }
 
       copyStaticAssets(projectRoot, outDir);

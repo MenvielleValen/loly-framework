@@ -157,9 +157,12 @@ export async function renderStaticRoute(
     entrypointFiles,
     clientJsPath,
     clientCssPath,
+    includeInlineScripts: true, // SSG needs inline scripts (renderToString doesn't support bootstrapScripts)
   });
 
   // Render to HTML (hydratable, same as SSR)
+  // Note: renderToString doesn't support bootstrapScripts like renderToPipeableStream,
+  // so scripts remain in body (acceptable for SSG as it's pre-rendered)
   const html = "<!DOCTYPE html>" + renderToString(documentTree);
 
   // Write files

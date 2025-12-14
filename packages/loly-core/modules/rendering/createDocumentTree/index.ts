@@ -68,6 +68,7 @@ export function createDocumentTree(options: {
   clientJsPath?: string;
   clientCssPath?: string;
   nonce?: string;
+  includeInlineScripts?: boolean; // For SSG: include inline scripts in body (renderToString doesn't support bootstrapScripts)
 }): ReactElement {
   const {
     appTree,
@@ -82,6 +83,7 @@ export function createDocumentTree(options: {
     clientJsPath = "/static/client.js",
     clientCssPath = "/static/client.css",
     nonce,
+    includeInlineScripts = true, // Default true - scripts inline in body for both SSR and SSG
   } = options;
 
   const metaObj = meta ?? {};
@@ -115,6 +117,9 @@ export function createDocumentTree(options: {
     }
   }
 
+  // Serialize data for bootstrap scripts
+  // For SSR: moved to head via bootstrapScripts in renderToPipeableStream
+  // For SSG: included inline in body (renderToString doesn't support bootstrapScripts)
   const serialized = JSON.stringify({
     ...initialData,
     theme,
@@ -123,6 +128,30 @@ export function createDocumentTree(options: {
   const routerSerialized = JSON.stringify({
     ...routerData,
   });
+
+  const bodyChildren: ReactElement[] = [
+    React.createElement("div", { id: APP_CONTAINER_ID }, appTree),
+  ];
+
+  // Add inline scripts for SSG (renderToString doesn't support bootstrapScripts)
+  if (includeInlineScripts) {
+    bodyChildren.push(
+      React.createElement("script", {
+        key: "initial-data",
+        nonce: nonce,
+        dangerouslySetInnerHTML: {
+          __html: `window.${WINDOW_DATA_KEY} = ${serialized};`,
+        },
+      }),
+      React.createElement("script", {
+        key: "router-data",
+        nonce: nonce,
+        dangerouslySetInnerHTML: {
+          __html: `window.${ROUTER_DATA_KEY} = ${routerSerialized};`,
+        },
+      })
+    );
+  }
 
   const documentTree = React.createElement(
     "html",
@@ -193,20 +222,8 @@ export function createDocumentTree(options: {
         className: [initialData.className || "", theme].filter(Boolean).join(" "),
         suppressHydrationWarning: true // Allow theme class to differ between server and client initially
       },
-      React.createElement("div", { id: APP_CONTAINER_ID }, appTree)
-    ),
-    React.createElement("script", {
-      nonce: nonce,
-      dangerouslySetInnerHTML: {
-        __html: `window.${WINDOW_DATA_KEY} = ${serialized};`,
-      },
-    }),
-    React.createElement("script", {
-      nonce: nonce,
-      dangerouslySetInnerHTML: {
-        __html: `window.${ROUTER_DATA_KEY} = ${routerSerialized};`,
-      },
-    })
+      ...bodyChildren
+    )
   );
 
   return documentTree;

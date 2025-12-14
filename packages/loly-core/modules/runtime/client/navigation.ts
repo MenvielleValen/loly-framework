@@ -7,6 +7,7 @@ import type {
   RouteViewState,
   InitialData,
   RouterData,
+  ClientLoadedComponents,
 } from "./types";
 
 export type NavigationHandlers = {
@@ -216,7 +217,14 @@ async function handleNormalRoute(
   };
   setRouterData(routerData);
 
-  const components = await matched.route.load();
+  // Use prefetched route if available, otherwise load it
+  const prefetched = prefetchedRoutes.get(matched.route);
+  const components = prefetched ? await prefetched : await matched.route.load();
+  
+  // Cache the loaded route for future use
+  if (!prefetched) {
+    prefetchedRoutes.set(matched.route, Promise.resolve(components));
+  }
 
   window.scrollTo({
     top: 0,
@@ -302,6 +310,76 @@ export async function navigate(
     console.error("[client] Error fetching FW data:", err);
     window.location.href = nextUrl;
   }
+}
+
+// Cache for prefetched routes to avoid loading twice
+const prefetchedRoutes = new WeakMap<ClientRouteLoaded, Promise<ClientLoadedComponents>>();
+
+/**
+ * Prefetches a route's components when user hovers over a link.
+ * This improves perceived performance by loading the route before the user clicks.
+ */
+function prefetchRoute(
+  url: string,
+  routes: ClientRouteLoaded[],
+  notFoundRoute: ClientRouteLoaded | null
+): void {
+  const [pathname] = url.split("?");
+  const matched = matchRouteClient(pathname, routes);
+  
+  if (!matched) {
+    // If no match, might be not-found route
+    if (notFoundRoute) {
+      const existing = prefetchedRoutes.get(notFoundRoute);
+      if (!existing) {
+        const promise = notFoundRoute.load();
+        prefetchedRoutes.set(notFoundRoute, promise);
+      }
+    }
+    return;
+  }
+
+  // Prefetch the matched route if not already prefetched
+  const existing = prefetchedRoutes.get(matched.route);
+  if (!existing) {
+    const promise = matched.route.load();
+    prefetchedRoutes.set(matched.route, promise);
+  }
+}
+
+/**
+ * Creates a hover handler for prefetching routes on link hover.
+ */
+export function createHoverHandler(
+  routes: ClientRouteLoaded[],
+  notFoundRoute: ClientRouteLoaded | null
+): (ev: MouseEvent) => void {
+  return function handleHover(ev: MouseEvent) {
+    try {
+      const target = ev.target as HTMLElement | null;
+      if (!target) return;
+
+      const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+
+      const href = anchor.getAttribute("href");
+      if (!href) return;
+      if (href.startsWith("#")) return;
+
+      const url = new URL(href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (anchor.target && anchor.target !== "_self") return;
+
+      const nextUrl = url.pathname + url.search;
+      const currentUrl = window.location.pathname + window.location.search;
+      if (nextUrl === currentUrl) return;
+
+      // Prefetch the route
+      prefetchRoute(nextUrl, routes, notFoundRoute);
+    } catch (error) {
+      // Silently fail - prefetch is an optimization, not critical
+    }
+  };
 }
 
 export function createClickHandler(

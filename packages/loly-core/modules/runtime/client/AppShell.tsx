@@ -4,6 +4,7 @@ import {
   navigate,
   createClickHandler,
   createPopStateHandler,
+  createHoverHandler,
   type NavigationHandlers,
 } from "./navigation";
 import { RouterContext } from "./RouterContext";
@@ -89,16 +90,19 @@ export function AppShell({
 
     const handleClick = createClickHandler(handleNavigateInternal);
     const handlePopState = createPopStateHandler(handleNavigateInternal);
+    const handleHover = createHoverHandler(routes, notFoundRoute);
 
     window.addEventListener("click", handleClick, false);
     window.addEventListener("popstate", handlePopState, false);
+    window.addEventListener("mouseover", handleHover, false);
 
     return () => {
       isMounted = false;
       window.removeEventListener("click", handleClick, false);
       window.removeEventListener("popstate", handlePopState, false);
+      window.removeEventListener("mouseover", handleHover, false);
     };
-  }, []);
+  }, [routes, notFoundRoute]);
 
   // Listen for data refresh events and update state when current route is revalidated
   useEffect(() => {

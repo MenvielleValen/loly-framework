@@ -115,6 +115,25 @@ function installDependencies(projectDir, packageManager = "pnpm") {
   }
 }
 
+// Build project
+function buildProject(projectDir, packageManager = "pnpm") {
+  console.log(chalk.blue(`\n🔨 Building project...`));
+  
+  try {
+    execSync(`${packageManager} build`, {
+      cwd: projectDir,
+      stdio: "inherit",
+    });
+    console.log(chalk.green("  ✓ Build completed successfully"));
+  } catch (error) {
+    console.error(chalk.yellow(`\n⚠️  Build failed, but project is still ready to use`));
+    console.log(chalk.gray(`  You can build it manually later by running:`));
+    console.log(chalk.cyan(`  cd ${path.basename(projectDir)}`));
+    console.log(chalk.cyan(`  ${packageManager} build`));
+    // Don't throw - build failure is not critical for project creation
+  }
+}
+
 // Detect package manager
 function detectPackageManager() {
   if (process.env.npm_config_user_agent) {
@@ -343,6 +362,9 @@ async function main() {
 
     // Install dependencies
     installDependencies(projectDir, packageManager);
+
+    // Build project
+    buildProject(projectDir, packageManager);
 
     // Success message
     console.log(chalk.bold.green("\n✅ Project created successfully!\n"));

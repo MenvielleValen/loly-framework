@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { ApiRoute, LoadedRoute, PageComponent, WssRoute, RoutesManifest } from "./index.types";
+import { ApiRoute, LoadedRoute, PageComponent, RouteMiddleware, WssRoute, RoutesManifest } from "./index.types";
 
 import { loadLayoutsForDir } from "./layout";
 import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
@@ -524,12 +524,19 @@ export function loadNotFoundRouteFromFilesystem(
     appDir
   );
 
-  // Load server hooks for each layout
+  // Load server hooks and middlewares for each layout
   // For a layout at app/layout.tsx, we look for app/layout.server.hook.ts (same directory)
   const layoutServerHooks: (typeof serverHook)[] = [];
+  const layoutMiddlewares: RouteMiddleware[][] = [];
   for (const layoutFile of layoutFiles) {
-    const layoutServerHook = loadLayoutServerHook(layoutFile);
-    layoutServerHooks.push(layoutServerHook);
+    const layoutHookData = loadLayoutServerHook(layoutFile);
+    if (layoutHookData) {
+      layoutServerHooks.push(layoutHookData.serverHook);
+      layoutMiddlewares.push(layoutHookData.middlewares);
+    } else {
+      layoutServerHooks.push(null);
+      layoutMiddlewares.push([]);
+    }
   }
 
   const { middlewares, serverHook, dynamic, generateStaticParams } =
@@ -546,6 +553,7 @@ export function loadNotFoundRouteFromFilesystem(
     middlewares,
     loader: serverHook, // Keep 'loader' field name for backward compatibility
     layoutServerHooks, // Server hooks for each layout (same order as layouts)
+    layoutMiddlewares, // Middlewares for each layout (same order as layouts)
     dynamic,
     generateStaticParams,
   };
@@ -593,12 +601,19 @@ export function loadErrorRouteFromFilesystem(
     appDir
   );
 
-  // Load server hooks for each layout
+  // Load server hooks and middlewares for each layout
   // For a layout at app/layout.tsx, we look for app/layout.server.hook.ts (same directory)
   const layoutServerHooks: (typeof serverHook)[] = [];
+  const layoutMiddlewares: RouteMiddleware[][] = [];
   for (const layoutFile of layoutFiles) {
-    const layoutServerHook = loadLayoutServerHook(layoutFile);
-    layoutServerHooks.push(layoutServerHook);
+    const layoutHookData = loadLayoutServerHook(layoutFile);
+    if (layoutHookData) {
+      layoutServerHooks.push(layoutHookData.serverHook);
+      layoutMiddlewares.push(layoutHookData.middlewares);
+    } else {
+      layoutServerHooks.push(null);
+      layoutMiddlewares.push([]);
+    }
   }
 
   const { middlewares, serverHook, dynamic, generateStaticParams } =
@@ -615,6 +630,7 @@ export function loadErrorRouteFromFilesystem(
     middlewares,
     loader: serverHook, // Keep 'loader' field name for backward compatibility
     layoutServerHooks, // Server hooks for each layout (same order as layouts)
+    layoutMiddlewares, // Middlewares for each layout (same order as layouts)
     dynamic,
     generateStaticParams,
   };

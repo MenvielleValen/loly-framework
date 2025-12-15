@@ -195,6 +195,38 @@ async function handlePageRequestInternal(
       if (!skipLayoutHooks && notFoundPage.layoutServerHooks && notFoundPage.layoutServerHooks.length > 0) {
         for (let i = 0; i < notFoundPage.layoutServerHooks.length; i++) {
           const layoutServerHook = notFoundPage.layoutServerHooks[i];
+          const layoutMiddlewares = notFoundPage.layoutMiddlewares?.[i] || [];
+          
+          // Execute layout middlewares before layout hook
+          if (layoutMiddlewares.length > 0) {
+            for (const mw of layoutMiddlewares) {
+              try {
+                await Promise.resolve(
+                  mw(ctx, async () => {
+                    /* no-op */
+                  })
+                );
+              } catch (error) {
+                const reqLogger = getRequestLogger(req);
+                const layoutFile = notFoundPage.layoutFiles[i];
+                const relativeLayoutPath = layoutFile
+                  ? path.relative(projectRoot || process.cwd(), layoutFile)
+                  : "unknown";
+                
+                reqLogger.error("Layout middleware failed for not-found page", error instanceof Error ? error : new Error(String(error)), {
+                  layoutIndex: i,
+                  layoutFile: relativeLayoutPath,
+                });
+                
+                throw error;
+              }
+              
+              if (ctx.res.headersSent) {
+                return;
+              }
+            }
+          }
+          
           if (layoutServerHook) {
             try {
               const layoutResult = await layoutServerHook(ctx);
@@ -342,6 +374,40 @@ async function handlePageRequestInternal(
   if (!skipLayoutHooks && route.layoutServerHooks && route.layoutServerHooks.length > 0) {
     for (let i = 0; i < route.layoutServerHooks.length; i++) {
       const layoutServerHook = route.layoutServerHooks[i];
+      const layoutMiddlewares = route.layoutMiddlewares?.[i] || [];
+      
+      // Execute layout middlewares before layout hook
+      if (layoutMiddlewares.length > 0) {
+        for (const mw of layoutMiddlewares) {
+          try {
+            await Promise.resolve(
+              mw(ctx, async () => {
+                /* no-op */
+              })
+            );
+          } catch (error) {
+            const layoutFile = route.layoutFiles[i];
+            const relativeLayoutPath = layoutFile
+              ? path.relative(projectRoot || process.cwd(), layoutFile)
+              : "unknown";
+            
+            reqLogger.error("Layout middleware failed", error instanceof Error ? error : new Error(String(error)), {
+              route: route.pattern,
+              layoutIndex: i,
+              layoutFile: relativeLayoutPath,
+            });
+            
+            // Re-throw to be handled by the route handler
+            throw error;
+          }
+          
+          // Stop executing if response was sent (e.g., redirect)
+          if (ctx.res.headersSent) {
+            return;
+          }
+        }
+      }
+      
       if (layoutServerHook) {
         try {
           const layoutResult = await layoutServerHook(ctx);
@@ -614,6 +680,37 @@ async function renderErrorPageWithStream(
     if (!skipLayoutHooks && errorPage.layoutServerHooks && errorPage.layoutServerHooks.length > 0) {
       for (let i = 0; i < errorPage.layoutServerHooks.length; i++) {
         const layoutServerHook = errorPage.layoutServerHooks[i];
+        const layoutMiddlewares = errorPage.layoutMiddlewares?.[i] || [];
+        
+        // Execute layout middlewares before layout hook
+        if (layoutMiddlewares.length > 0) {
+          for (const mw of layoutMiddlewares) {
+            try {
+              await Promise.resolve(
+                mw(ctx, async () => {
+                  /* no-op */
+                })
+              );
+            } catch (error) {
+              const layoutFile = errorPage.layoutFiles[i];
+              const relativeLayoutPath = layoutFile
+                ? path.relative(projectRoot || process.cwd(), layoutFile)
+                : "unknown";
+              
+              reqLogger.error("Layout middleware failed for error page", error instanceof Error ? error : new Error(String(error)), {
+                layoutIndex: i,
+                layoutFile: relativeLayoutPath,
+              });
+              
+              throw error;
+            }
+            
+            if (ctx.res.headersSent) {
+              return;
+            }
+          }
+        }
+        
         if (layoutServerHook) {
           try {
             const layoutResult = await layoutServerHook(ctx);

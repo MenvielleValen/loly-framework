@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { LoadedRoute, PageComponent } from "./index.types";
+import { LoadedRoute, PageComponent, RouteMiddleware } from "./index.types";
 import { PAGE_FILE_REGEX } from "./constants";
 import { buildRoutePathFromDir, buildRegexFromRoutePath } from "./path";
 import { loadLayoutsForDir } from "./layout";
@@ -109,12 +109,19 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         appDir
       );
 
-      // Load server hooks for each layout (root → specific, same order as layouts)
+      // Load server hooks and middlewares for each layout (root → specific, same order as layouts)
       // For a layout at app/layout.tsx, we look for app/layout.server.hook.ts (same directory)
       const layoutServerHooks: (typeof serverHook)[] = [];
+      const layoutMiddlewares: RouteMiddleware[][] = [];
       for (const layoutFile of layoutFiles) {
-        const layoutServerHook = loadLayoutServerHook(layoutFile);
-        layoutServerHooks.push(layoutServerHook);
+        const layoutHookData = loadLayoutServerHook(layoutFile);
+        if (layoutHookData) {
+          layoutServerHooks.push(layoutHookData.serverHook);
+          layoutMiddlewares.push(layoutHookData.middlewares);
+        } else {
+          layoutServerHooks.push(null);
+          layoutMiddlewares.push([]);
+        }
       }
 
       const { middlewares, serverHook, dynamic, generateStaticParams } =
@@ -131,6 +138,7 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
         middlewares,
         loader: serverHook, // Keep 'loader' field name for backward compatibility
         layoutServerHooks, // Server hooks for each layout (same order as layouts)
+        layoutMiddlewares, // Middlewares for each layout (same order as layouts)
         dynamic,
         generateStaticParams,
       });

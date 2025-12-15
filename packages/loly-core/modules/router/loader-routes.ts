@@ -3,6 +3,7 @@ import path from "path";
 import {
   ApiRoute,
   LoadedRoute,
+  RouteMiddleware,
   WssRoute,
 } from "./index.types";
 import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
@@ -57,12 +58,19 @@ export function loadRoutesFromManifest(projectRoot: string): {
     );
     const pageDir = path.dirname(pageFile);
     
-    // Load server hooks for each layout (root → specific, same order as layouts)
+    // Load server hooks and middlewares for each layout (root → specific, same order as layouts)
     // For a layout at app/layout.tsx, we look for app/layout.server.hook.ts (same directory)
     const layoutServerHooks: (typeof serverHook)[] = [];
+    const layoutMiddlewares: RouteMiddleware[][] = [];
     for (const layoutFile of layoutFiles) {
-      const layoutServerHook = loadLayoutServerHook(layoutFile);
-      layoutServerHooks.push(layoutServerHook);
+      const layoutHookData = loadLayoutServerHook(layoutFile);
+      if (layoutHookData) {
+        layoutServerHooks.push(layoutHookData.serverHook);
+        layoutMiddlewares.push(layoutHookData.middlewares);
+      } else {
+        layoutServerHooks.push(null);
+        layoutMiddlewares.push([]);
+      }
     }
     
     const { middlewares, serverHook, dynamic, generateStaticParams } =
@@ -79,6 +87,7 @@ export function loadRoutesFromManifest(projectRoot: string): {
       middlewares,
       loader: serverHook, // Keep 'loader' field name for backward compatibility
       layoutServerHooks, // Server hooks for each layout (same order as layouts)
+      layoutMiddlewares, // Middlewares for each layout (same order as layouts)
       dynamic: entry.dynamic ?? dynamic,
       generateStaticParams,
     });

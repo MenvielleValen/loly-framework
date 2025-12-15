@@ -44,6 +44,8 @@ export interface LoadedRoute<
   loader: ServerLoader<TPageProps> | null;
   /** Server hooks (getServerSideProps) from each layout's server.hook.ts file, in same order as layouts array */
   layoutServerHooks?: (ServerLoader<TLayoutProps> | null)[];
+  /** Middlewares (beforeServerData) from each layout's server.hook.ts file, in same order as layouts array */
+  layoutMiddlewares?: RouteMiddleware[][];
   dynamic: DynamicMode;
   generateStaticParams: GenerateStaticParams | null;
 }

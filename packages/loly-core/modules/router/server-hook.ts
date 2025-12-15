@@ -148,17 +148,31 @@ export function loadServerHookForDir(currentDir: string): {
 }
 
 /**
- * Loads server hook for a specific layout file.
+ * Loads server hook and middlewares for a specific layout file.
  * Looks for layout.server.hook.ts in the same directory as the layout file.
  * 
  * @param layoutFile - Full path to the layout file (e.g., app/layout.tsx)
- * @returns Server hook for the layout, or null if not found
+ * @returns Object with server hook and middlewares, or null if not found
  * 
  * @example
  * // app/layout.tsx → looks for app/layout.server.hook.ts
  * // app/blog/layout.tsx → looks for app/blog/layout.server.hook.ts
+ * 
+ * // In layout.server.hook.ts:
+ * export const beforeServerData: RouteMiddleware[] = [
+ *   async (ctx, next) => {
+ *     ctx.locals.layoutData = { theme: 'dark' };
+ *     await next();
+ *   }
+ * ];
+ * export const getServerSideProps: ServerLoader = async (ctx) => {
+ *   return { props: { theme: ctx.locals.layoutData?.theme } };
+ * };
  */
-export function loadLayoutServerHook(layoutFile: string): ServerLoader | null {
+export function loadLayoutServerHook(layoutFile: string): {
+  serverHook: ServerLoader | null;
+  middlewares: RouteMiddleware[];
+} | null {
   const layoutDir = path.dirname(layoutFile);
   const layoutBasename = path.basename(layoutFile, path.extname(layoutFile)); // "layout" without extension
   
@@ -188,11 +202,40 @@ export function loadLayoutServerHook(layoutFile: string): ServerLoader | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require(file);
+    
     const serverHook: ServerLoader | null =
       typeof mod?.getServerSideProps === "function"
         ? mod.getServerSideProps
         : null;
-    return serverHook;
+    
+    // Load middlewares from layout.server.hook.ts (same name as page middlewares: beforeServerData)
+    let middlewares: RouteMiddleware[] = [];
+    const rawMiddlewares = mod?.[NAMING.BEFORE_MIDDLEWARES];
+    
+    if (rawMiddlewares !== undefined) {
+      if (!Array.isArray(rawMiddlewares)) {
+        console.warn(
+          `[framework][server-hook] ${NAMING.BEFORE_MIDDLEWARES} must be an array in ${file}, ignoring invalid value`
+        );
+      } else {
+        // Validate each middleware is a function
+        for (let i = 0; i < rawMiddlewares.length; i++) {
+          const mw = rawMiddlewares[i];
+          if (typeof mw !== "function") {
+            console.warn(
+              `[framework][server-hook] Middleware at index ${i} in ${NAMING.BEFORE_MIDDLEWARES} is not a function in ${file}, skipping`
+            );
+            continue;
+          }
+          middlewares.push(mw);
+        }
+      }
+    }
+    
+    return {
+      serverHook,
+      middlewares,
+    };
   } catch (error) {
     console.error(
       `[framework][server-hook] Error loading layout server hook from ${file}:`,

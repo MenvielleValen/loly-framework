@@ -1,8 +1,25 @@
-import type { ServerLoader } from "@lolyjs/core";
+import type { RouteMiddleware, ServerLoader } from "@lolyjs/core";
 
 // Global counter to track executions (in a real app, this would be in a database or cache)
 // This is just for demonstration purposes
 let layoutHookExecutionCount = 0;
+
+/**
+ * Layout middlewares - executed before layout server hook.
+ * Same name as page middlewares (beforeServerData) for consistency.
+ */
+export const beforeServerData: RouteMiddleware[] = [
+  async (ctx, next) => {
+    // Add test data to locals to verify middleware execution
+    ctx.locals.layoutMiddlewareData = {
+      message: "Layout middleware executed!",
+      timestamp: new Date().toISOString(),
+      pathname: ctx.pathname,
+    };
+
+    await next();
+  },
+];
 
 /**
  * Layout server hook - provides stable data that persists across page navigations.
@@ -22,6 +39,9 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
   // Simulate fetching stable data (like user, app config, navigation, etc.)
   // In a real app, this might come from a database, API, or config
   
+  // Access data from middleware (if it was executed)
+  const middlewareData = ctx.locals.layoutMiddlewareData;
+
   return {
     props: {
       // App name - available in layout and all pages
@@ -35,11 +55,16 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
       { href: "/apod", label: "APOD" },
       { href: "/realtime", label: "Realtime" },
       { href: "/test-hooks", label: "Test Hooks" },
+      { href: "/test-middleware", label: "Test Middleware" },
     ],
       
       // Execution tracking (for testing purposes)
       layoutHookExecutions: layoutHookExecutionCount,
       executionTimestamp,
+      
+      // Middleware data (for testing - shows that middleware executed before hook)
+      layoutMiddlewareExecuted: !!middlewareData,
+      layoutMiddlewareTimestamp: middlewareData?.timestamp,
       
       // Footer data - stable across all pages
       footerLinks: {

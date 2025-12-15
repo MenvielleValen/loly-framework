@@ -15,6 +15,7 @@ const alias: Record<string, string> = {
   "@server": resolve("./modules/server"),
   "@font": resolve("./modules/font"),
   "@cache": resolve("./modules/cache"),
+  "@react": resolve("./modules/react"),
   "@security": resolve("./modules/security"),
   "@validation": resolve("./modules/validation"),
   "@logger": resolve("./modules/logger"),

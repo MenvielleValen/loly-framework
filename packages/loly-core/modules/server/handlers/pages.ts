@@ -159,6 +159,10 @@ async function handlePageRequestInternal(
   const assetManifest = env === "prod" && projectRoot ? loadAssetManifest(projectRoot) : null;
 
   const isDataReq = isDataRequest(req);
+  
+  // Check if client wants to skip layout hooks execution (SPA navigation optimization)
+  // Only skip for data requests, never for HTML requests (initial load)
+  const skipLayoutHooks = isDataReq && req.headers["x-skip-layout-hooks"] === "true";
 
   if (env === "prod" && ssgOutDir) {
     if (isDataReq) {
@@ -186,9 +190,9 @@ async function handlePageRequestInternal(
         locals: {},
       };
 
-      // Execute layout server hooks and combine props
+      // Execute layout server hooks and combine props (skip if header is set)
       const layoutProps: Record<string, any> = {};
-      if (notFoundPage.layoutServerHooks && notFoundPage.layoutServerHooks.length > 0) {
+      if (!skipLayoutHooks && notFoundPage.layoutServerHooks && notFoundPage.layoutServerHooks.length > 0) {
         for (let i = 0; i < notFoundPage.layoutServerHooks.length; i++) {
           const layoutServerHook = notFoundPage.layoutServerHooks[i];
           if (layoutServerHook) {
@@ -231,6 +235,19 @@ async function handlePageRequestInternal(
         ...loaderResult,
         props: combinedProps,
       };
+
+      // Handle data requests for notFound
+      if (isDataReq) {
+        const pagePropsOnly = loaderResult.props || {};
+        handleDataResponse(
+          res,
+          combinedLoaderResult,
+          theme,
+          skipLayoutHooks ? null : (Object.keys(layoutProps).length > 0 ? layoutProps : null),
+          pagePropsOnly
+        );
+        return;
+      }
     
       const initialData = buildInitialData(urlPath, {}, combinedLoaderResult);
       const appTree = buildAppTree(notFoundPage, {}, initialData.props);
@@ -317,11 +334,12 @@ async function handlePageRequestInternal(
   }
 
   // 1. Execute layout server hooks (root → specific) and collect props + metadata
+  // Skip layout hooks if client requested it (SPA navigation optimization)
   const layoutProps: Record<string, any> = {};
   const layoutMetadata: Array<LoaderResult["metadata"]> = [];
   const reqLogger = getRequestLogger(req);
 
-  if (route.layoutServerHooks && route.layoutServerHooks.length > 0) {
+  if (!skipLayoutHooks && route.layoutServerHooks && route.layoutServerHooks.length > 0) {
     for (let i = 0; i < route.layoutServerHooks.length; i++) {
       const layoutServerHook = route.layoutServerHooks[i];
       if (layoutServerHook) {
@@ -435,7 +453,17 @@ async function handlePageRequestInternal(
   };
 
   if (isDataReq) {
-    handleDataResponse(res, combinedLoaderResult, theme);
+    // For data requests, pass separated props:
+    // - layoutProps: only if layout hooks were executed (not skipped)
+    // - pageProps: always (from page.server.hook)
+    const pagePropsOnly = loaderResult.props || {};
+    handleDataResponse(
+      res,
+      combinedLoaderResult,
+      theme,
+      skipLayoutHooks ? null : (Object.keys(layoutProps).length > 0 ? layoutProps : null),
+      pagePropsOnly
+    );
     return;
   }
 
@@ -569,6 +597,8 @@ async function renderErrorPageWithStream(
 ): Promise<void> {
   try {
     const isDataReq = isDataRequest(req);
+    // Check if client wants to skip layout hooks execution (SPA navigation optimization)
+    const skipLayoutHooks = isDataReq && req.headers["x-skip-layout-hooks"] === "true";
     
     const ctx: ServerContext = {
       req,
@@ -578,10 +608,10 @@ async function renderErrorPageWithStream(
       locals: { error },
     };
 
-    // Execute layout server hooks and combine props
+    // Execute layout server hooks and combine props (skip if header is set)
     const layoutProps: Record<string, any> = {};
     const reqLogger = getRequestLogger(req);
-    if (errorPage.layoutServerHooks && errorPage.layoutServerHooks.length > 0) {
+    if (!skipLayoutHooks && errorPage.layoutServerHooks && errorPage.layoutServerHooks.length > 0) {
       for (let i = 0; i < errorPage.layoutServerHooks.length; i++) {
         const layoutServerHook = errorPage.layoutServerHooks[i];
         if (layoutServerHook) {
@@ -630,15 +660,16 @@ async function renderErrorPageWithStream(
     
     // If this is a data request, return JSON instead of HTML
     if (isDataReq) {
-      res.statusCode = 500;
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
-      res.end(JSON.stringify({
-        error: true,
-        message: String(error),
-        props: initialData.props,
-        metadata: combinedLoaderResult.metadata ?? null,
-        theme: combinedLoaderResult.theme ?? theme ?? null,
-      }));
+      const pagePropsOnly = loaderResult.props || {};
+      handleDataResponse(
+        res,
+        combinedLoaderResult,
+        theme,
+        skipLayoutHooks ? null : (Object.keys(layoutProps).length > 0 ? layoutProps : null),
+        pagePropsOnly,
+        true, // error flag
+        String(error) // error message
+      );
       return;
     }
     const appTree = buildAppTree(errorPage, { error: String(error) }, initialData.props);

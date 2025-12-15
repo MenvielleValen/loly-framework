@@ -44,13 +44,6 @@ export default function HomePage(props: HomePageProps) {
   // Page props come from app/page.server.hook.ts
   // Both are combined and available to both layout and page components
   const { appName, navigation } = props || {};
-  
-  // Log to console to see the combined props in action
-  console.log("🏠 HomePage - Combined Props:", {
-    "📄 Page Props (from app/page.server.hook.ts)": { apod, recentLaunches },
-    "📐 Layout Props (from app/layout.server.hook.ts)": { appName, navigation },
-    "🔗 All Props (merged)": props,
-  });
 
   return (
     <main className="min-h-screen bg-background text-foreground">

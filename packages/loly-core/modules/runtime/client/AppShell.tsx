@@ -132,7 +132,7 @@ export function AppShell({
     return () => {
       window.removeEventListener("fw-data-refresh", handleDataRefresh);
     };
-  }, [state.url]);
+  }, []); // Empty deps - only register once, not when state.url changes
 
   const isError = state.route === errorRoute;
   const isNotFound = state.route === notFoundRoute;

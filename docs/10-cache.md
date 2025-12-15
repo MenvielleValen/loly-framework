@@ -58,21 +58,32 @@ export const getServerSideProps = withCache(
 
 ### Revalidación
 
-El framework proporciona funciones para revalidar datos en el cliente:
+El framework proporciona funciones para revalidar datos en el cliente. Estas funciones fuerzan la ejecución de **todos los hooks** (layout + page) para obtener datos frescos del servidor.
 
 ```tsx
 import { revalidate, revalidatePath } from "@lolyjs/core/client-cache";
 
 // Revalidar la ruta actual
-function handleRefresh() {
-  revalidate();
+// Fuerza la ejecución de layout hooks + page hooks
+async function handleRefresh() {
+  await revalidate();
 }
 
-// Revalidar una ruta específica
+// Revalidar una ruta específica (sin navegar a ella)
 function handleRefreshOther() {
   revalidatePath("/other-page");
 }
 ```
+
+**Comportamiento de `revalidate()`:**
+- ✅ Fuerza la ejecución de **todos los hooks** (layout + page)
+- ✅ Actualiza los props del layout y de la página
+- ✅ Actualiza `window.__FW_DATA__` con los nuevos datos
+- ✅ Dispara el evento `fw-data-refresh` para que los componentes se actualicen
+
+**Nota:** Durante la navegación SPA normal, los layout hooks **NO se ejecutan** (se preservan los props del layout). Solo se ejecutan cuando:
+- Carga inicial (SSR)
+- Se llama `revalidate()` o `revalidatePath()`
 
 ### Uso en Componentes
 
@@ -81,13 +92,15 @@ import { revalidate } from "@lolyjs/core/client-cache";
 
 export default function DataPage({ props }) {
   const handleRefresh = async () => {
+    // Fuerza la ejecución de TODOS los hooks (layout + page)
     await revalidate();
     // Los datos se actualizarán automáticamente
+    // Los componentes que escuchan 'fw-data-refresh' se actualizarán
   };
   
   return (
     <div>
-      <button onClick={handleRefresh}>Refresh</button>
+      <button onClick={handleRefresh}>Actualizar Datos</button>
       <div>{props.data}</div>
     </div>
   );

@@ -1,13 +1,35 @@
+import React from "react";
 
-import { useTheme } from "@lolyjs/core/themes"
-import { Moon, Sun } from "lucide-react"
+import { useTheme } from "@lolyjs/core/themes";
+import { Moon, Sun } from "lucide-react";
+import { Button } from "../ui/button";
 
 export const ThemeSwitch = () => {
-  const { theme, handleThemeChange } = useTheme()
+  const { theme, handleThemeChange } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  // Avoid hydration mismatch
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9"
+        aria-label="Toggle theme"
+        disabled
+      >
+        <div className="h-5 w-5" />
+      </Button>
+    );
+  }
 
   const handleSwitch = () => {
-    handleThemeChange(theme === "dark" ? "light" : "dark")
-  }
+    handleThemeChange(theme === "dark" ? "light" : "dark");
+  };
 
   return (
     <button
@@ -51,5 +73,5 @@ export const ThemeSwitch = () => {
         />
       </span>
     </button>
-  )
-}
+  );
+};

@@ -17,6 +17,7 @@
       "@server/*": ["modules/server/*"],
       "@font/*": ["modules/font/*"],
       "@cache/*": ["modules/cache/*"],
+      "@react/*": ["modules/react/*"],
       "@security/*": ["modules/security/*"],
       "@validation/*": ["modules/validation/*"],
       "@logger/*": ["modules/logger/*"],

@@ -2,7 +2,7 @@ import { getRouteData } from "../../react/cache/index";
 import type { RouteDataResponse } from "../../react/cache/client-data-cache";
 import { matchRouteClient } from "./route-matcher";
 import { applyMetadata } from "./metadata";
-import { setWindowData, getCurrentTheme, setRouterData } from "./window-data";
+import { setWindowData, getCurrentTheme, setRouterData, getPreservedLayoutProps, setPreservedLayoutProps } from "./window-data";
 import type {
   ClientRouteLoaded,
   RouteViewState,
@@ -43,10 +43,25 @@ async function handleErrorRoute(
       theme = json.theme;
     }
     
+    // Preserve layout props if not in response (SPA navigation)
+    let layoutProps: Record<string, any> = {};
+    if (json.layoutProps !== undefined && json.layoutProps !== null) {
+      layoutProps = json.layoutProps;
+      setPreservedLayoutProps(layoutProps);
+    } else {
+      const preserved = getPreservedLayoutProps();
+      if (preserved) {
+        layoutProps = preserved;
+      }
+    }
+
+    const pageProps = json.pageProps ?? json.props ?? {
+      error: json.message || "An error occurred",
+    };
+
     const errorProps = {
-      ...(json.props || {
-        error: json.message || "An error occurred",
-      }),
+      ...layoutProps,
+      ...pageProps,
       theme,
     };
 
@@ -116,8 +131,23 @@ async function handleNotFoundRoute(
     theme = json.theme;
   }
   
+  // Preserve layout props if not in response (SPA navigation)
+  let layoutProps: Record<string, any> = {};
+  if (json.layoutProps !== undefined && json.layoutProps !== null) {
+    layoutProps = json.layoutProps;
+    setPreservedLayoutProps(layoutProps);
+  } else {
+    const preserved = getPreservedLayoutProps();
+    if (preserved) {
+      layoutProps = preserved;
+    }
+  }
+
+  const pageProps = json.pageProps ?? json.props ?? {};
+
   const notFoundProps = {
-    ...(json.props ?? {}),
+    ...layoutProps,
+    ...pageProps,
     theme,
   };
 
@@ -189,9 +219,30 @@ async function handleNormalRoute(
     theme = json.theme;
   }
   
-  // Include theme in props so layouts receive it during SPA navigation
-  const newProps = {
-    ...(json.props ?? {}),
+  // Handle layout props preservation:
+  // - If layoutProps are in response, use them and preserve them
+  // - If layoutProps are NOT in response (layout hooks were skipped), use preserved ones
+  let layoutProps: Record<string, any> = {};
+  if (json.layoutProps !== undefined && json.layoutProps !== null) {
+    // Layout hooks were executed, use new layout props and preserve them
+    layoutProps = json.layoutProps;
+    setPreservedLayoutProps(layoutProps);
+  } else {
+    // Layout hooks were skipped, use preserved layout props
+    const preserved = getPreservedLayoutProps();
+    if (preserved) {
+      layoutProps = preserved;
+    }
+  }
+
+  // Get page props (always from response)
+  const pageProps = json.pageProps ?? json.props ?? {};
+
+  // Combine: layout props (preserved or new) + page props (always new)
+  // Page props override layout props if there's a conflict
+  const combinedProps = {
+    ...layoutProps,
+    ...pageProps,
     theme, // Always include theme
   };
 
@@ -205,7 +256,7 @@ async function handleNormalRoute(
   const windowData: InitialData = {
     pathname: nextUrl,
     params: matched.params,
-    props: newProps,
+    props: combinedProps,
     metadata: json.metadata ?? null,
     theme,
     notFound: false,
@@ -242,7 +293,7 @@ async function handleNormalRoute(
     route: matched.route,
     params: matched.params,
     components,
-    props: newProps,
+    props: combinedProps,
   });
 
   return true;

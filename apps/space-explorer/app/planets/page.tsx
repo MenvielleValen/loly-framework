@@ -33,14 +33,6 @@ export default function PlanetsPage(props: PlanetsPageProps) {
   
   // Props from root layout server.hook.ts
   const { appName } = props || {};
-  
-  // Log to see all combined props
-  console.log("🪐 PlanetsPage - Combined Props:", {
-    "📄 Page Props (from app/planets/page.server.hook.ts or app/planets/server.hook.ts)": { planets },
-    "📐 Planets Layout Props (from app/planets/layout.server.hook.ts)": { sectionTitle, sectionDescription, sectionConfig },
-    "📐 Root Layout Props (from app/layout.server.hook.ts)": { appName },
-    "🔗 All Props (merged)": props,
-  });
 
   // Use layout props if available, otherwise use defaults
   const title = sectionTitle || "Planets of the Solar System";

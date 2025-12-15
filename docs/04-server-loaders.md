@@ -80,11 +80,49 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 };
 ```
 
+### Comportamiento de Ejecución
+
+**Layout Hooks:**
+- ✅ Se ejecutan en la **carga inicial** (SSR)
+- ❌ **NO se ejecutan** durante la navegación SPA (client-side routing)
+- ✅ Se ejecutan cuando se llama `revalidate()` o `revalidatePath()`
+- Los props del layout se **preservan** entre navegaciones SPA
+
+**Page Hooks:**
+- ✅ Se ejecutan en la **carga inicial** (SSR)
+- ✅ Se ejecutan en **cada navegación SPA**
+- ✅ Se ejecutan cuando se llama `revalidate()` o `revalidatePath()`
+
+Esta optimización mejora el rendimiento al evitar ejecutar hooks costosos del layout en cada navegación, ya que los datos del layout suelen ser estables (navegación, configuración de la app, etc.).
+
+### Revalidación Manual
+
+Para forzar la ejecución de todos los hooks (layout + page) y actualizar los datos:
+
+```tsx
+import { revalidate } from "@lolyjs/core/client-cache";
+
+export default function MyPage({ props }) {
+  const handleRefresh = async () => {
+    // Fuerza la ejecución de TODOS los hooks (layout + page)
+    await revalidate();
+  };
+  
+  return (
+    <div>
+      <button onClick={handleRefresh}>Actualizar Datos</button>
+      {/* ... */}
+    </div>
+  );
+}
+```
+
 ### Combinación de Props
 
 - **Layout props** (de `layout.server.hook.ts`) son estables y disponibles tanto en el layout como en todas las páginas
 - **Page props** (de `page.server.hook.ts`) son específicos de cada página y sobrescriben layout props si hay conflicto
 - **Props combinados** están disponibles tanto en layouts como en páginas
+- Los **layout props se preservan** entre navegaciones SPA, mientras que los **page props se actualizan** en cada navegación
 
 ```tsx
 // app/layout.tsx

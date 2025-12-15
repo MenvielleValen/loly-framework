@@ -1,6 +1,6 @@
 import { hydrateRoot } from "react-dom/client";
 import { APP_CONTAINER_ID } from "./constants";
-import { getWindowData, getRouterData, setRouterData } from "./window-data";
+import { getWindowData, getRouterData, setRouterData, setPreservedLayoutProps } from "./window-data";
 import { matchRouteClient } from "./route-matcher";
 import { applyMetadata } from "./metadata";
 import { AppShell } from "./AppShell";
@@ -167,6 +167,16 @@ export function bootstrapClient(
 
       const initialData = getWindowData();
       const initialUrl = window.location.pathname + window.location.search;
+
+      // Preserve layout props from initial load (they come combined in initialData.props)
+      // In SSR, layout hooks are always executed, so we need to extract layout props
+      // For now, we'll preserve all props as layout props since they're combined
+      // This ensures navigation items are available even in SPA navigation
+      if (initialData?.props) {
+        // In SSR, props are combined (layout + page), so we preserve them all as layout props
+        // This is not perfect but ensures layout props are available in SPA navigation
+        setPreservedLayoutProps(initialData.props);
+      }
 
       // 3. Initialize router data
       initializeRouterData(initialUrl, initialData);

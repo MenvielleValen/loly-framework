@@ -4,7 +4,12 @@ import type { PageMetadata } from "@router/index";
  * Response data structure from server for route data requests
  */
 export type RouteDataResponse = {
+  /** Combined props (layout + page) - kept for backward compatibility */
   props?: Record<string, unknown>;
+  /** Layout props (from layout.server.hook.ts) - only present when layout hooks were executed */
+  layoutProps?: Record<string, unknown>;
+  /** Page props (from page.server.hook.ts) - always present in data requests */
+  pageProps?: Record<string, unknown>;
   metadata?: PageMetadata | null;
   theme?: string;
   redirect?: { destination: string; permanent?: boolean };
@@ -159,15 +164,25 @@ function buildDataUrl(url: string): string {
   return url + (url.includes("?") ? "&" : "?") + "__fw_data=1";
 }
 
-async function fetchRouteDataOnce(url: string): Promise<RouteData> {
+async function fetchRouteDataOnce(
+  url: string,
+  skipLayoutHooks: boolean = true
+): Promise<RouteData> {
   const dataUrl = buildDataUrl(url);
 
-  const res = await fetch(dataUrl, {
-    headers: {
-      "x-fw-data": "1",
-      Accept: "application/json",
-    },
-  });
+  const headers: Record<string, string> = {
+    "x-fw-data": "1",
+    Accept: "application/json",
+  };
+
+  // Send header to skip layout hooks execution in SPA navigation
+  // Only skip if skipLayoutHooks is true (normal SPA navigation)
+  // If false (revalidate), don't send header to force execution of all hooks
+  if (skipLayoutHooks) {
+    headers["x-skip-layout-hooks"] = "true";
+  }
+
+  const res = await fetch(dataUrl, { headers });
 
   let json: any = {};
 
@@ -210,7 +225,7 @@ async function fetchRouteDataOnce(url: string): Promise<RouteData> {
  * revalidatePath('/posts?page=2');
  * ```
  */
-export function revalidatePath(path: string): void {
+export function revalidatePath(path: string, skipAutoRevalidate: boolean = false): void {
   // Normalize the base path (without query params)
   const normalizedPath = path.split("?")[0];
   const hasQueryParams = path.includes("?");
@@ -261,7 +276,8 @@ export function revalidatePath(path: string): void {
   });
   
   // If the revalidated path matches the current route, automatically refresh data
-  if (typeof window !== "undefined") {
+  // UNLESS skipAutoRevalidate is true (to prevent recursive calls from revalidate())
+  if (!skipAutoRevalidate && typeof window !== "undefined") {
     const currentPathname = window.location.pathname;
     const currentSearch = window.location.search;
     const matchesCurrentPath = normalizedPath === currentPathname;
@@ -313,39 +329,85 @@ export function revalidatePath(path: string): void {
  * await revalidate();
  * ```
  */
+// Flag to prevent recursive calls to revalidate()
+let isRevalidating = false;
+
 export async function revalidate(): Promise<RouteData> {
   if (typeof window === "undefined") {
     throw new Error("revalidate() can only be called on the client");
   }
 
-  const pathname = window.location.pathname + window.location.search;
-  
-  // Revalidate the path (remove from cache)
-  revalidatePath(pathname);
-  
-  // Fetch fresh data
-  const freshData = await getRouteData(pathname, { revalidate: true });
-  
-  // Update window.__FW_DATA__ if it exists
-  if ((window as any).__FW_DATA__ && freshData.ok && freshData.json) {
-    const currentData = (window as any).__FW_DATA__;
-    (window as any).__FW_DATA__ = {
-      ...currentData,
-      pathname: pathname.split("?")[0],
-      params: freshData.json.params || currentData.params || {},
-      props: freshData.json.props || currentData.props || {},
-      metadata: freshData.json.metadata ?? currentData.metadata ?? null,
-      notFound: freshData.json.notFound ?? false,
-      error: freshData.json.error ?? false,
-    };
-    
-    // Dispatch event for components to listen to
-    window.dispatchEvent(new CustomEvent("fw-data-refresh", {
-      detail: { data: freshData },
-    }));
+  // Prevent multiple simultaneous revalidations
+  if (isRevalidating) {
+    // Wait for the current revalidation to complete
+    const key = buildDataUrl(window.location.pathname + window.location.search);
+    const entry = dataCache.get(key);
+    if (entry && entry.status === "pending") {
+      return entry.promise;
+    }
+    // If no pending entry, something went wrong, allow the call
   }
-  
-  return freshData;
+
+  isRevalidating = true;
+  try {
+    const pathname = window.location.pathname + window.location.search;
+    
+    // Revalidate the path (remove from cache)
+    // Pass a flag to prevent revalidatePath from calling revalidate() again (recursive call)
+    revalidatePath(pathname, true); // true = skip auto-revalidate
+    
+    // Fetch fresh data
+    const freshData = await getRouteData(pathname, { revalidate: true });
+    
+    // Update window.__FW_DATA__ if it exists
+    if ((window as any).__FW_DATA__ && freshData.ok && freshData.json) {
+      const currentData = (window as any).__FW_DATA__;
+      
+      // Update preserved layout props if new ones were returned
+      if (freshData.json.layoutProps !== undefined && freshData.json.layoutProps !== null) {
+        (window as any).__FW_LAYOUT_PROPS__ = freshData.json.layoutProps;
+      }
+      
+      // Combine layout props (new or preserved) + page props
+      let combinedProps = currentData.props || {};
+      if (freshData.json.layoutProps !== undefined && freshData.json.layoutProps !== null) {
+        // Use new layout props
+        combinedProps = {
+          ...freshData.json.layoutProps,
+          ...(freshData.json.pageProps ?? freshData.json.props ?? {}),
+        };
+      } else if (freshData.json.pageProps !== undefined) {
+        // Use preserved layout props + new page props
+        const preservedLayoutProps = (window as any).__FW_LAYOUT_PROPS__ || {};
+        combinedProps = {
+          ...preservedLayoutProps,
+          ...freshData.json.pageProps,
+        };
+      } else if (freshData.json.props) {
+        // Fallback to combined props
+        combinedProps = freshData.json.props;
+      }
+      
+      (window as any).__FW_DATA__ = {
+        ...currentData,
+        pathname: pathname.split("?")[0],
+        params: freshData.json.params || currentData.params || {},
+        props: combinedProps,
+        metadata: freshData.json.metadata ?? currentData.metadata ?? null,
+        notFound: freshData.json.notFound ?? false,
+        error: freshData.json.error ?? false,
+      };
+      
+      // Dispatch event for components to listen to
+      window.dispatchEvent(new CustomEvent("fw-data-refresh", {
+        detail: { data: freshData },
+      }));
+    }
+    
+    return freshData;
+  } finally {
+    isRevalidating = false;
+  }
 }
 
 /**
@@ -368,7 +430,8 @@ export function prefetchRouteData(url: string): void {
     return;
   }
 
-  const promise = fetchRouteDataOnce(url)
+  // Prefetch uses skipLayoutHooks: true (normal navigation behavior)
+  const promise = fetchRouteDataOnce(url, true)
     .then((value) => {
       setCacheEntry(key, { status: "fulfilled", value });
       return value;
@@ -398,35 +461,64 @@ export async function getRouteData(
   const key = buildDataUrl(url);
 
   // If revalidation is requested, remove the entry from cache
+  // This ensures we don't reuse pending or fulfilled entries
   if (options?.revalidate) {
     deleteCacheEntry(key);
   }
 
   const entry = dataCache.get(key);
 
-  if (entry) {
+  if (entry && !options?.revalidate) {
+    // Only use cached entry if not revalidating
     if (entry.status === "fulfilled") {
       // Update LRU: mark as recently used
       updateLRU(key);
       return entry.value;
     }
     if (entry.status === "pending") {
+      // Return existing pending promise to avoid duplicate requests
       return entry.promise;
     }
   }
 
-  // No entry in cache, fetch it
-  const promise = fetchRouteDataOnce(url)
+  // No entry in cache (or revalidating), fetch it
+  // skipLayoutHooks: true for normal SPA navigation, false when revalidating
+  const skipLayoutHooks = !options?.revalidate;
+  
+  // Check again if an entry was added while we were processing (race condition)
+  const currentEntry = dataCache.get(key);
+  if (currentEntry && !options?.revalidate) {
+    if (currentEntry.status === "fulfilled") {
+      updateLRU(key);
+      return currentEntry.value;
+    }
+    if (currentEntry.status === "pending") {
+      return currentEntry.promise;
+    }
+  }
+  
+  // Create a new promise for this fetch
+  const promise = fetchRouteDataOnce(url, skipLayoutHooks)
     .then((value) => {
-      setCacheEntry(key, { status: "fulfilled", value });
+      // Only set cache entry if this is still the current fetch for this key
+      // This prevents race conditions where multiple revalidations happen simultaneously
+      const entryAfterFetch = dataCache.get(key);
+      if (!entryAfterFetch || entryAfterFetch.status === "pending") {
+        setCacheEntry(key, { status: "fulfilled", value });
+      }
       return value;
     })
     .catch((error) => {
       console.error("[client][cache] Error fetching route data:", error);
-      dataCache.set(key, { status: "rejected", error });
+      const entryAfterFetch = dataCache.get(key);
+      if (!entryAfterFetch || entryAfterFetch.status === "pending") {
+        dataCache.set(key, { status: "rejected", error });
+      }
       throw error;
     });
 
+  // Set pending entry - if revalidating, we already deleted it, so this is safe
   dataCache.set(key, { status: "pending", promise });
+  
   return promise;
 }

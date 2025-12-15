@@ -7,11 +7,19 @@ import { LoaderResult } from "@router/index";
  * @param res - Express response object
  * @param loaderResult - Loader result
  * @param theme - Optional theme value to include in response
+ * @param layoutProps - Optional layout props (only included when layout hooks were executed)
+ * @param pageProps - Optional page props (always included in data requests)
+ * @param error - Optional error flag to include in response
+ * @param message - Optional error message to include in response
  */
 export function handleDataResponse(
   res: Response,
   loaderResult: LoaderResult,
-  theme?: string
+  theme?: string,
+  layoutProps?: Record<string, unknown> | null,
+  pageProps?: Record<string, unknown> | null,
+  error?: boolean,
+  message?: string
 ): void {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
 
@@ -27,14 +35,32 @@ export function handleDataResponse(
     return;
   }
 
-  res.statusCode = 200;
-  res.end(
-    JSON.stringify({
-      props: loaderResult.props ?? {},
-      metadata: loaderResult.metadata ?? null,
-      theme: loaderResult.theme ?? theme ?? null,
-    })
-  );
+  // Build response with separated props if provided, otherwise use combined props
+  const response: Record<string, unknown> = {
+    // Combined props for backward compatibility
+    props: loaderResult.props ?? {},
+    metadata: loaderResult.metadata ?? null,
+    theme: loaderResult.theme ?? theme ?? null,
+  };
+
+  // Include separated props if provided (layoutProps only when layout hooks were executed)
+  if (layoutProps !== undefined && layoutProps !== null) {
+    response.layoutProps = layoutProps;
+  }
+  if (pageProps !== undefined && pageProps !== null) {
+    response.pageProps = pageProps;
+  }
+
+  // Include error information if provided
+  if (error !== undefined) {
+    response.error = error;
+  }
+  if (message !== undefined) {
+    response.message = message;
+  }
+
+  res.statusCode = error ? 500 : 200;
+  res.end(JSON.stringify(response));
 }
 
 /**

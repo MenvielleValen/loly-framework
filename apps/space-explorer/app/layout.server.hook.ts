@@ -1,5 +1,9 @@
 import type { ServerLoader } from "@lolyjs/core";
 
+// Global counter to track executions (in a real app, this would be in a database or cache)
+// This is just for demonstration purposes
+let layoutHookExecutionCount = 0;
+
 /**
  * Layout server hook - provides stable data that persists across page navigations.
  * This data is available to both the layout and all pages.
@@ -9,7 +13,12 @@ import type { ServerLoader } from "@lolyjs/core";
  * NOTE: Metadata defined here acts as BASE/fallback for all pages.
  * Pages can override specific fields, but layout metadata provides defaults.
  */
-export const getServerSideProps: ServerLoader = async () => {
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  // Increment execution counter
+  layoutHookExecutionCount++;
+  
+  const executionTimestamp = new Date().toISOString();
+
   // Simulate fetching stable data (like user, app config, navigation, etc.)
   // In a real app, this might come from a database, API, or config
   
@@ -25,7 +34,12 @@ export const getServerSideProps: ServerLoader = async () => {
       { href: "/astronauts", label: "Astronauts" },
       { href: "/apod", label: "APOD" },
       { href: "/realtime", label: "Realtime" },
+      { href: "/test-hooks", label: "Test Hooks" },
     ],
+      
+      // Execution tracking (for testing purposes)
+      layoutHookExecutions: layoutHookExecutionCount,
+      executionTimestamp,
       
       // Footer data - stable across all pages
       footerLinks: {

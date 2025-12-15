@@ -150,9 +150,9 @@ function isGitAvailable() {
 
 // Download template from git repository
 async function downloadTemplateFromGit() {
-  const repoUrl = process.env.LOLY_TEMPLATE_REPO || "https://github.com/MenvielleValen/template-loly.git";
-  const branch = process.env.LOLY_TEMPLATE_BRANCH || "master";
-  const templatePath = "";
+  const repoUrl = process.env.LOLY_TEMPLATE_REPO || "https://github.com/MenvielleValen/loly-framework";
+  const branch = process.env.LOLY_TEMPLATE_BRANCH || "main";
+  const templatePath = "/apps/template";
   
   console.log(chalk.blue(`📥 Downloading template from ${repoUrl} (${branch})...`));
   

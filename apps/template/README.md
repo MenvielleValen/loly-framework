@@ -206,11 +206,11 @@ Create files in `app/api/`:
 
 ```typescript
 // app/api/hello/route.ts
-import type { ApiHandler } from "@lolyjs/core";
+import type { ApiContext } from "@lolyjs/core";
 
-export const GET: ApiHandler = async (ctx) => {
-  return ctx.json({ message: "Hello from API!" });
-};
+export async function GET(ctx: ApiContext) {
+  return ctx.Response({ message: "Hello from API!" });
+}
 ```
 
 ### Adding WebSocket Routes

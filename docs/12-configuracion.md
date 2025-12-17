@@ -6,8 +6,25 @@ Loly Framework se configura mediante `loly.config.ts` (o `.js`, `.json`) en la r
 
 ### loly.config.ts
 
+Loly Framework acepta **configuración parcial** - solo necesitas especificar lo que quieres cambiar de los valores por defecto. El framework fusiona tu configuración con los defaults.
+
+**Opción 1: Objeto parcial (recomendado para la mayoría de casos)**
+
 ```typescript
-import { FrameworkConfig } from "@lolyjs/core";
+import type { FrameworkConfig } from "@lolyjs/core";
+
+// Solo especifica lo que quieres cambiar
+export default {
+  directories: {
+    static: "public",  // Cambiar solo el directorio de archivos estáticos
+  },
+} satisfies Partial<FrameworkConfig>;
+```
+
+**Opción 2: Objeto completo (para validación estricta)**
+
+```typescript
+import type { FrameworkConfig } from "@lolyjs/core";
 
 export default {
   directories: {
@@ -46,21 +63,24 @@ export default {
 } satisfies FrameworkConfig;
 ```
 
-### Configuración por Entorno
+**Opción 3: Función (para configuración dinámica por entorno)**
 
 ```typescript
-export default (env: string): FrameworkConfig => {
+import type { FrameworkConfig } from "@lolyjs/core";
+
+export default (env: string): Partial<FrameworkConfig> => {
   const isDev = env === "development";
   
   return {
     server: {
-      port: isDev ? 3000 : process.env.PORT || 3000,
+      port: isDev ? 3000 : (process.env.PORT ? parseInt(process.env.PORT) : 3000),
       host: isDev ? "localhost" : "0.0.0.0",
     },
-    // ...
   };
 };
 ```
+
+**Nota importante**: Si no especificas un campo, el framework usa los valores por defecto. Solo necesitas configurar lo que quieres cambiar.
 
 ## Opciones de Configuración
 
@@ -142,23 +162,23 @@ Puedes configurar el servidor (CORS, rate limiting, etc.) exportando una funció
 
 ```typescript
 // loly.config.ts
-import { FrameworkConfig, ServerConfig } from "@lolyjs/core";
+import type { FrameworkConfig } from "@lolyjs/core";
+import { ServerConfig } from "@lolyjs/core";
 
-// Framework configuration
+// Framework configuration (opcional, solo si quieres cambiar algo)
 export default {
   directories: {
-    app: "app",
-    build: ".loly",
     static: "public",
   },
-  // ...
-} satisfies FrameworkConfig;
+} satisfies Partial<FrameworkConfig>;
 
-// Server configuration
+// Server configuration (para CORS, rate limiting, etc.)
 export const config = (env: string): ServerConfig => {
+  const isDev = env === "development";
+  
   return {
     bodyLimit: "1mb",
-    corsOrigin: "*",
+    corsOrigin: isDev ? "*" : ["https://yourdomain.com"],
     rateLimit: {
       windowMs: 15 * 60 * 1000, // 15 minutos
       max: 1000,                // Máximo de requests
@@ -171,6 +191,8 @@ export const config = (env: string): ServerConfig => {
   };
 };
 ```
+
+**Nota**: El `export default` para `FrameworkConfig` es opcional. Si no lo incluyes, el framework usa todos los valores por defecto. Solo necesitas exportarlo si quieres cambiar alguna configuración del framework (directorios, convenciones, routing, etc.).
 
 ## Inicialización del Servidor
 
@@ -241,40 +263,24 @@ const dbUrl = process.env.DATABASE_URL;
 
 ## Configuración por Entorno
 
-### Desarrollo
+Puedes usar una función para configurar el framework basado en el entorno:
 
 ```typescript
-// loly.config.ts
-export default (env: string) => {
-  if (env === "development") {
-    return {
-      server: {
-        port: 3000,
-        host: "localhost",
-      },
-      // ...
-    };
-  }
-  // ...
+import type { FrameworkConfig } from "@lolyjs/core";
+
+export default (env: string): Partial<FrameworkConfig> => {
+  const isDev = env === "development";
+  
+  return {
+    server: {
+      port: isDev ? 3000 : (process.env.PORT ? parseInt(process.env.PORT) : 3000),
+      host: isDev ? "localhost" : "0.0.0.0",
+    },
+  };
 };
 ```
 
-### Producción
-
-```typescript
-export default (env: string) => {
-  if (env === "production") {
-    return {
-      server: {
-        port: process.env.PORT || 3000,
-        host: "0.0.0.0",
-      },
-      // ...
-    };
-  }
-  // ...
-};
-```
+**Nota**: Para la configuración del servidor (rate limiting, CORS, etc.), usa la función `config` exportada separadamente (ver sección "ServerConfig" arriba).
 
 ## Configuración de TypeScript
 

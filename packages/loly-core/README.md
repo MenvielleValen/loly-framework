@@ -443,11 +443,13 @@ Both files will be automatically available at `/sitemap.xml` and `/robots.txt` r
 **Configuration:**
 The static directory can be customized in `loly.config.ts`:
 ```tsx
+import type { FrameworkConfig } from "@lolyjs/core";
+
 export default {
   directories: {
     static: "public",  // Default: "public"
   },
-} satisfies FrameworkConfig;
+} satisfies Partial<FrameworkConfig>;
 ```
 
 ### 🔌 API Routes
@@ -913,30 +915,24 @@ export default function Navigation() {
 Create `loly.config.ts` in your project root to configure the framework:
 
 ```tsx
-import { FrameworkConfig } from "@lolyjs/core";
+import type { FrameworkConfig } from "@lolyjs/core";
 
+// Option 1: Partial config (only specify what you want to change)
 export default {
   directories: {
-    app: "app",
-    build: ".loly",
     static: "public",
   },
-  server: {
-    port: 3000,
-    host: "localhost",
-  },
-  routing: {
-    trailingSlash: "ignore",
-    caseSensitive: false,
-    basePath: "",
-  },
-  rendering: {
-    framework: "react",
-    streaming: true,
-    ssr: true,
-    ssg: true,
-  },
-} satisfies FrameworkConfig;
+} satisfies Partial<FrameworkConfig>;
+
+// Option 2: Full config (for strict validation)
+// export default {
+//   directories: { app: "app", build: ".loly", static: "public" },
+//   conventions: { /* ... */ },
+//   routing: { /* ... */ },
+//   build: { /* ... */ },
+//   server: { adapter: "express", port: 3000, host: "localhost" },
+//   rendering: { framework: "react", streaming: true, ssr: true, ssg: true },
+// } satisfies FrameworkConfig;
 ```
 
 ### Server Configuration

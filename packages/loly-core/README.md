@@ -408,12 +408,20 @@ Loly serves static files from the `public/` directory at the root of your applic
 public/
 ├── sitemap.xml      # Available at /sitemap.xml
 ├── robots.txt       # Available at /robots.txt
-├── favicon.ico      # Available at /favicon.ico
+├── favicon.ico      # Available at /favicon.ico (or favicon.png)
+├── favicon.png      # Available at /favicon.png (alternative to .ico)
 └── assets/
     ├── logo.png     # Available at /assets/logo.png
     └── images/      # Available at /assets/images/*
         └── hero.jpg
 ```
+
+**Favicon:**
+Place your favicon in the `public/` directory as either `favicon.ico` or `favicon.png`. The framework automatically detects and includes it in the HTML head with the correct MIME type:
+- `public/favicon.ico` → `/favicon.ico` (type: `image/x-icon`)
+- `public/favicon.png` → `/favicon.png` (type: `image/png`)
+
+If both exist, `favicon.ico` takes priority (checked first).
 
 **SEO Example:**
 
@@ -439,6 +447,12 @@ Sitemap: https://example.com/sitemap.xml
 ```
 
 Both files will be automatically available at `/sitemap.xml` and `/robots.txt` respectively, and search engines will find them at the standard locations.
+
+**Important Notes:**
+- **All static files** (including favicons) must be placed in the `public/` directory
+- The framework **only** looks for favicons in `public/` (not in the root or `app/` directory)
+- Favicons are automatically detected and included in the HTML `<head>` with the correct MIME type
+- Static files have **priority over dynamic routes** - perfect for SEO files
 
 **Configuration:**
 The static directory can be customized in `loly.config.ts`:

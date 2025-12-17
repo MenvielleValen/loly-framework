@@ -70,9 +70,16 @@ export default (env: string): FrameworkConfig => {
 directories: {
   app: "app",        // Directorio de la aplicación
   build: ".loly",    // Directorio de build output
-  static: "public",  // Directorio de archivos estáticos
+  static: "public",  // Directorio de archivos estáticos (por defecto: "public")
 }
 ```
+
+**Nota sobre `static`**: Los archivos en este directorio se sirven en la raíz de la URL. Por ejemplo:
+- `public/sitemap.xml` → disponible en `/sitemap.xml`
+- `public/robots.txt` → disponible en `/robots.txt`
+- `public/assets/logo.png` → disponible en `/assets/logo.png`
+
+Los archivos estáticos tienen **prioridad sobre las rutas dinámicas**, lo cual es importante para SEO ya que permite que Google y otros motores de búsqueda encuentren archivos como `sitemap.xml` y `robots.txt` en las rutas estándar.
 
 ### conventions
 

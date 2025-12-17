@@ -89,31 +89,38 @@ Utilidades React:
 ### 1. Request HTTP Llega al Servidor
 
 ```
-HTTP Request → Express App → Middleware Global → Route Matcher
+HTTP Request → Express App → Middleware Global → Static Files Check → Route Matcher
 ```
 
-### 2. Matching de Ruta
+### 2. Verificación de Archivos Estáticos
+
+Antes de buscar rutas dinámicas, el servidor verifica si existe un archivo estático en `public/`:
+- Si existe `public/sitemap.xml`, se sirve en `/sitemap.xml`
+- Los archivos estáticos tienen **prioridad sobre las rutas dinámicas**
+- Si no se encuentra un archivo estático, continúa con el matching de rutas
+
+### 3. Matching de Ruta
 
 El router busca la ruta que coincide con el path:
 - Compara el path con los patrones de ruta
 - Extrae parámetros dinámicos
 - Sanitiza los parámetros
 
-### 3. Ejecución de Middlewares
+### 4. Ejecución de Middlewares
 
 Si la ruta tiene middlewares:
 - Se ejecutan en orden
 - Pueden modificar `ctx.locals`
 - Pueden terminar la request (redirect, error)
 
-### 4. Ejecución del Loader
+### 5. Ejecución del Loader
 
 Para páginas:
 - Se ejecuta `getServerSideProps` o `loader`
 - Puede hacer fetch de datos
 - Retorna `props`, `metadata`, `redirect`, etc.
 
-### 5. Renderizado
+### 6. Renderizado
 
 **Para páginas HTML:**
 - Se construye el árbol de componentes (layouts + page)
@@ -129,7 +136,7 @@ Para páginas:
 - Se maneja la conexión Socket.IO
 - Se registran los event handlers
 
-### 6. Hydratación en el Cliente
+### 7. Hydratación en el Cliente
 
 - El cliente recibe el HTML con `initialData`
 - Se carga el bundle JavaScript

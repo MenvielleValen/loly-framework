@@ -392,6 +392,64 @@ export default function Dashboard() {
 }
 ```
 
+### 📄 Static Files & Assets
+
+Loly serves static files from the `public/` directory at the root of your application. This is perfect for SEO files like `sitemap.xml`, `robots.txt`, favicons, and other static assets.
+
+**How it works:**
+- Files in `public/` are served at the root URL (e.g., `public/sitemap.xml` → `/sitemap.xml`)
+- Static files have **priority over dynamic routes** - if a file exists in `public/`, it will be served instead of matching a route
+- Perfect for SEO: Google automatically finds `sitemap.xml` and `robots.txt` at the root
+- Works in both development and production environments
+- Subdirectories are supported: `public/assets/logo.png` → `/assets/logo.png`
+
+**Directory Structure:**
+```
+public/
+├── sitemap.xml      # Available at /sitemap.xml
+├── robots.txt       # Available at /robots.txt
+├── favicon.ico      # Available at /favicon.ico
+└── assets/
+    ├── logo.png     # Available at /assets/logo.png
+    └── images/      # Available at /assets/images/*
+        └── hero.jpg
+```
+
+**SEO Example:**
+
+Create `public/sitemap.xml`:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
+```
+
+Create `public/robots.txt`:
+```
+User-agent: *
+Allow: /
+
+Sitemap: https://example.com/sitemap.xml
+```
+
+Both files will be automatically available at `/sitemap.xml` and `/robots.txt` respectively, and search engines will find them at the standard locations.
+
+**Configuration:**
+The static directory can be customized in `loly.config.ts`:
+```tsx
+export default {
+  directories: {
+    static: "public",  // Default: "public"
+  },
+} satisfies FrameworkConfig;
+```
+
 ### 🔌 API Routes
 
 Create RESTful APIs with flexible middleware support:
@@ -667,7 +725,7 @@ your-app/
 │           └── events.ts       # WebSocket namespace /chat
 ├── components/                 # React components
 ├── lib/                        # Utilities
-├── public/                     # Static files
+├── public/                     # Static files (served at root: /sitemap.xml, /robots.txt, etc.)
 ├── loly.config.ts              # Framework configuration
 ├── init.server.ts              # Server initialization (DB, services, etc.)
 └── package.json

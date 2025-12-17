@@ -55,6 +55,13 @@ Validación de datos integrada usando Zod:
 - Optimización de assets
 - Hot Module Replacement en desarrollo
 
+### 📄 Archivos Estáticos
+Loly sirve archivos estáticos desde la carpeta `public/` en la raíz de la aplicación:
+- Archivos en `public/` se sirven en la raíz de la URL (ej: `public/sitemap.xml` → `/sitemap.xml`)
+- **Prioridad sobre rutas dinámicas**: Si un archivo existe en `public/`, se sirve en lugar de coincidir con una ruta
+- Perfecto para SEO: Google encuentra automáticamente `sitemap.xml` y `robots.txt` en la raíz
+- Soporte para subdirectorios: `public/assets/logo.png` → `/assets/logo.png`
+
 ### 🎨 Temas
 Soporte para temas (dark/light mode) con persistencia
 
@@ -86,7 +93,10 @@ mi-proyecto/
 │           └── page.tsx  # /blog/[slug]
 ├── components/            # Componentes React
 ├── lib/                   # Utilidades y helpers
-├── public/                # Archivos estáticos
+├── public/                # Archivos estáticos (sitemap.xml, robots.txt, favicon.ico, etc.)
+│   ├── sitemap.xml        # Disponible en /sitemap.xml
+│   ├── robots.txt         # Disponible en /robots.txt
+│   └── assets/            # Disponibles en /assets/*
 ├── loly.config.ts         # Configuración del framework
 ├── init.server.ts         # Inicialización de servicios (DB, etc.)
 └── package.json

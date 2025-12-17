@@ -38,93 +38,147 @@ function createPathAliasPlugin(
     }
   }
 
-  return {
-    name: "path-alias-resolver",
-    setup(build) {
-      // Intercept all import paths
-      build.onResolve({ filter: /.*/ }, (args) => {
-        // Skip relative paths, absolute paths, and node_modules
-        if (
-          args.path.startsWith(".") ||
-          args.path.startsWith("/") ||
-          path.isAbsolute(args.path) ||
-          args.path.includes("node_modules")
-        ) {
-          return null; // Let esbuild handle it normally
-        }
+  // Helper function to resolve alias to relative path
+  function resolveAliasToRelative(importPath: string, sourceFile: string): string | null {
+    // Skip relative paths, absolute paths, and node_modules
+    if (
+      importPath.startsWith(".") ||
+      importPath.startsWith("/") ||
+      path.isAbsolute(importPath) ||
+      importPath.includes("node_modules")
+    ) {
+      return null;
+    }
 
-        // Check if the path starts with any alias
-        for (const [aliasKey, aliasPath] of Object.entries(aliases)) {
-          if (args.path.startsWith(aliasKey + "/") || args.path === aliasKey) {
-            // Extract the path after the alias
-            const restPath = args.path.startsWith(aliasKey + "/")
-              ? args.path.slice(aliasKey.length + 1)
-              : "";
-            
-            // Resolve to absolute path
-            const resolvedPath = restPath
-              ? path.join(aliasPath, restPath)
-              : aliasPath;
+    // Check if the path starts with any alias
+    for (const [aliasKey, aliasPath] of Object.entries(aliases)) {
+      if (importPath.startsWith(aliasKey + "/") || importPath === aliasKey) {
+        // Extract the path after the alias
+        const restPath = importPath.startsWith(aliasKey + "/")
+          ? importPath.slice(aliasKey.length + 1)
+          : "";
+        
+        // Resolve to absolute path
+        const resolvedPath = restPath
+          ? path.join(aliasPath, restPath)
+          : aliasPath;
 
-            // Try to find the actual file (with extensions)
-            let actualPath: string | null = null;
-            const extensions = [".ts", ".tsx", ".js", ".jsx", ".json"];
-            
-            // Check if it's a directory with index file
-            if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isDirectory()) {
-              for (const ext of extensions) {
-                const indexPath = path.join(resolvedPath, `index${ext}`);
-                if (fs.existsSync(indexPath)) {
-                  actualPath = indexPath;
-                  break;
-                }
-              }
-            } else {
-              // Check if file exists with any extension
-              for (const ext of extensions) {
-                const filePath = resolvedPath + ext;
-                if (fs.existsSync(filePath)) {
-                  actualPath = filePath;
-                  break;
-                }
-              }
-              
-              // If no extension match, check if the path itself exists
-              if (!actualPath && fs.existsSync(resolvedPath)) {
-                actualPath = resolvedPath;
-              }
+        // Try to find the actual file (with extensions)
+        let actualPath: string | null = null;
+        const extensions = [".ts", ".tsx", ".js", ".jsx", ".json"];
+        
+        // Check if it's a directory with index file
+        if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isDirectory()) {
+          for (const ext of extensions) {
+            const indexPath = path.join(resolvedPath, `index${ext}`);
+            if (fs.existsSync(indexPath)) {
+              actualPath = indexPath;
+              break;
             }
-
-            if (actualPath) {
-              // Calculate relative path from output directory to the resolved file
-              // This is needed because when bundle: false, esbuild doesn't transform
-              // absolute paths to relative paths automatically
-              const relativePath = path.relative(outDir, actualPath);
-              
-              // Normalize to use forward slashes (works on Windows too)
-              const normalizedPath = relativePath.replace(/\\/g, "/");
-              
-              // Ensure it starts with ./ for relative imports
-              const finalPath = normalizedPath.startsWith(".")
-                ? normalizedPath
-                : `./${normalizedPath}`;
-
-              // Remove file extension for CommonJS imports (Node.js will resolve it)
-              // But keep .json extension as it's required
-              const ext = path.extname(finalPath);
-              const pathWithoutExt = ext === ".json" 
-                ? finalPath 
-                : finalPath.slice(0, -ext.length);
-
-              return {
-                path: pathWithoutExt,
-                namespace: "file",
-              };
+          }
+        } else {
+          // Check if file exists with any extension
+          for (const ext of extensions) {
+            const filePath = resolvedPath + ext;
+            if (fs.existsSync(filePath)) {
+              actualPath = filePath;
+              break;
             }
+          }
+          
+          // If no extension match, check if the path itself exists
+          if (!actualPath && fs.existsSync(resolvedPath)) {
+            actualPath = resolvedPath;
           }
         }
 
-        return null; // Let esbuild handle it normally
+        if (actualPath) {
+          // Calculate relative path from output directory to the resolved file
+          const relativePath = path.relative(outDir, actualPath);
+          
+          // Normalize to use forward slashes (works on Windows too)
+          const normalizedPath = relativePath.replace(/\\/g, "/");
+          
+          // Ensure it starts with ./ for relative imports
+          const finalPath = normalizedPath.startsWith(".")
+            ? normalizedPath
+            : `./${normalizedPath}`;
+
+          // Remove file extension for CommonJS imports (Node.js will resolve it)
+          // But keep .json extension as it's required
+          const ext = path.extname(finalPath);
+          const pathWithoutExt = ext === ".json" 
+            ? finalPath 
+            : finalPath.slice(0, -ext.length);
+
+          return pathWithoutExt;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  return {
+    name: "path-alias-resolver",
+    setup(build) {
+      // Transform the source code to replace path aliases with relative paths
+      // This works for both static and dynamic imports
+      build.onLoad({ filter: /\.(ts|tsx|js|jsx)$/ }, (args) => {
+        // Only process server files (init.server.ts, config.server.ts) in the project root
+        const fileName = path.basename(args.path);
+        const isServerFile = SERVER_FILES.some(f => fileName === `${f}.ts` || fileName === `${f}.tsx` || fileName === `${f}.js` || fileName === `${f}.jsx`);
+        const isInProjectRoot = path.dirname(args.path) === projectRoot;
+        
+        if (!isServerFile || !isInProjectRoot) {
+          return null; // Let esbuild handle it normally
+        }
+
+        const contents = fs.readFileSync(args.path, "utf-8");
+        let transformed = contents;
+
+        // Replace path aliases in import/require statements
+        // Match: import ... from "@/lib/..." or require("@/lib/...")
+        // Also match: await import("@/lib/...")
+        const aliasPatterns = Object.keys(aliases).sort((a, b) => b.length - a.length); // Sort by length (longest first) to avoid partial matches
+        
+        for (const aliasKey of aliasPatterns) {
+          // Escape special regex characters in alias
+          const escapedAlias = aliasKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          
+          // Pattern to match the alias in quotes (works for both static and dynamic imports)
+          // Matches: "@/lib/..." inside single, double, or backtick quotes
+          const aliasInQuotesPattern = new RegExp(
+            `(['"\`])${escapedAlias}(/[^'"\`\\s]*)?(['"\`])`,
+            "g"
+          );
+
+          transformed = transformed.replace(aliasInQuotesPattern, (match, quote1, rest, quote2) => {
+            const fullPath = aliasKey + (rest || "");
+            const resolved = resolveAliasToRelative(fullPath, args.path);
+            if (resolved) {
+              return `${quote1}${resolved}${quote2}`;
+            }
+            return match;
+          });
+        }
+
+        return {
+          contents: transformed,
+          loader: path.extname(args.path).slice(1) as "ts" | "tsx" | "js" | "jsx",
+        };
+      });
+
+      // Also handle onResolve as a fallback for cases where onLoad doesn't catch it
+      build.onResolve({ filter: /.*/ }, (args) => {
+        const resolved = resolveAliasToRelative(args.path, args.importer || "");
+        if (resolved) {
+          return {
+            path: resolved,
+            namespace: "file",
+          };
+        }
+        return null;
       });
     },
   };

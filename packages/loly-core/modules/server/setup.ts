@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import {
   FilesystemRouteLoader,
   ManifestRouteLoader,
@@ -11,7 +12,7 @@ import { setupHotReload } from "@dev/hot-reload-client";
 import { clearAppRequireCache } from "@dev/hot-reload-server";
 import { LoadedRoute, ApiRoute, WssRoute } from "@router/index.types";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
-import { getBuildDir } from "@src/config";
+import { getBuildDir, getStaticDir } from "@src/config";
 
 export { RouteLoader };
 
@@ -37,6 +38,37 @@ export interface ServerSetupResult {
 }
 
 /**
+ * Sets up static files middleware from public directory.
+ * Files are served from the root URL (e.g., public/sitemap.xml -> /sitemap.xml).
+ *
+ * @param app - Express application instance
+ * @param projectRoot - Project root directory
+ * @param config - Framework configuration
+ */
+function setupStaticFiles(
+  app: express.Application,
+  projectRoot: string,
+  config?: FrameworkConfig
+): void {
+  if (!config) return;
+
+  const staticDir = getStaticDir(projectRoot, config);
+
+  // Only register middleware if the static directory exists
+  if (fs.existsSync(staticDir)) {
+    // Serve static files from public/ directory at the root URL
+    // This must be registered BEFORE /static and route handlers to have priority
+    app.use(
+      express.static(staticDir, {
+        // In production, add caching headers for better performance
+        maxAge: process.env.NODE_ENV === "production" ? "1y" : 0,
+        immutable: process.env.NODE_ENV === "production",
+      })
+    );
+  }
+}
+
+/**
  * Sets up routes and bundler based on environment (dev/prod).
  *
  * @param app - Express application instance
@@ -48,6 +80,10 @@ export function setupServer(
   options: ServerSetupOptions
 ): ServerSetupResult {
   const { projectRoot, appDir, isDev, config } = options;
+
+  // Set up static files from public/ directory FIRST (before /static and routes)
+  // This ensures files like sitemap.xml and robots.txt are served with priority
+  setupStaticFiles(app, projectRoot, config);
 
   const routeLoader: RouteLoader = isDev
     ? new FilesystemRouteLoader(appDir, projectRoot)

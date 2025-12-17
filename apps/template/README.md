@@ -65,6 +65,10 @@ template/
 │   └── shared/             # Shared components (ThemeSwitch, etc.)
 ├── lib/                    # Utility functions
 │   └── utils.ts            # Helper functions (cn, etc.)
+├── public/                 # Static files (SEO, assets)
+│   ├── sitemap.xml         # Sitemap for search engines
+│   ├── robots.txt          # Robots.txt for crawlers
+│   └── README.md           # Static files guide
 ├── loly.config.ts          # Loly Framework server configuration
 ├── tailwind.config.js      # Tailwind CSS configuration
 ├── postcss.config.js       # PostCSS configuration
@@ -227,6 +231,23 @@ export default defineWssRoute({
   },
 });
 ```
+
+### Static Files (SEO & Assets)
+
+Files in the `public/` directory are served at the root URL. This is perfect for SEO files and static assets:
+
+- `public/sitemap.xml` → `/sitemap.xml`
+- `public/robots.txt` → `/robots.txt`
+- `public/favicon.ico` → `/favicon.ico`
+- `public/assets/logo.png` → `/assets/logo.png`
+
+**Important:** Static files have **priority over dynamic routes**. If a file exists in `public/`, it will be served instead of matching a route.
+
+**Example files included:**
+- `public/sitemap.xml` - Update with your site URLs
+- `public/robots.txt` - Configure for search engines
+
+See `public/README.md` for more details.
 
 ## Available Scripts
 

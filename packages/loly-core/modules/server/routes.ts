@@ -99,6 +99,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
       ssgOutDir,
       theme: req.cookies?.theme || "light",
       projectRoot,
+      config,
     });
   });
 }

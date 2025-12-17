@@ -9,7 +9,8 @@ import {
   createDocumentTree,
 } from "@rendering/index";
 import { pathToOutDir } from "./path";
-import { ensureDir, getClientJsPath, getClientCssPath, loadAssetManifest } from "../utils";
+import { ensureDir, getClientJsPath, getClientCssPath, loadAssetManifest, getFaviconInfo } from "../utils";
+import { type FrameworkConfig } from "@src/config";
 import { STATIC_PATH } from "@constants/globals";
 import { mergeMetadata } from "../../server/handlers/pages";
 
@@ -39,12 +40,18 @@ export async function renderStaticRoute(
   ssgOutDir: string,
   route: LoadedRoute,
   urlPath: string,
-  params: Record<string, string>
+  params: Record<string, string>,
+  config?: FrameworkConfig
 ): Promise<void> {
   const routeChunks = loadChunksFromManifest(projectRoot);
   const assetManifest = loadAssetManifest(projectRoot);
   const clientJsPath = getClientJsPath(projectRoot);
   const clientCssPath = getClientCssPath(projectRoot);
+  
+  // Detect favicon (in production, favicons should be in /static after build)
+  const faviconInfo = config
+    ? getFaviconInfo(projectRoot, config.directories.static, false)
+    : null;
   
   // Get chunk href with hash if available
   const chunkName = routeChunks[route.pattern];
@@ -189,6 +196,8 @@ export async function renderStaticRoute(
     clientJsPath,
     clientCssPath,
     includeInlineScripts: true, // SSG needs inline scripts (renderToString doesn't support bootstrapScripts)
+    faviconPath: faviconInfo?.path || null,
+    faviconType: faviconInfo?.type || null,
   });
 
   // Render to HTML (hydratable, same as SSR)

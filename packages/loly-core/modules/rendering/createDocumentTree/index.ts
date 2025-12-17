@@ -69,6 +69,8 @@ export function createDocumentTree(options: {
   clientCssPath?: string;
   nonce?: string;
   includeInlineScripts?: boolean; // For SSG: include inline scripts in body (renderToString doesn't support bootstrapScripts)
+  faviconPath?: string | null; // Favicon path (e.g., "/favicon.ico" or "/static/favicon.png")
+  faviconType?: string | null; // Favicon MIME type (e.g., "image/x-icon" or "image/png")
 }): ReactElement {
   const {
     appTree,
@@ -84,6 +86,8 @@ export function createDocumentTree(options: {
     clientCssPath = "/static/client.css",
     nonce,
     includeInlineScripts = true, // Default true - scripts inline in body for both SSR and SSG
+    faviconPath = FAVICON_PATH, // Default to /static/favicon.png for backward compatibility
+    faviconType = "image/png", // Default to PNG for backward compatibility
   } = options;
 
   // Type-safe metadata access
@@ -437,11 +441,13 @@ export function createDocumentTree(options: {
           href: chunkHref,
           as: "script",
         }),
-      React.createElement("link", {
-        rel: "icon",
-        href: FAVICON_PATH,
-        type: "image/png",
-      }),
+      faviconPath &&
+        React.createElement("link", {
+          key: "favicon",
+          rel: "icon",
+          href: faviconPath,
+          type: faviconType || (faviconPath.endsWith(".ico") ? "image/x-icon" : "image/png"),
+        }),
       React.createElement("link", {
         rel: "stylesheet",
         href: clientCssPath,

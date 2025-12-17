@@ -115,7 +115,7 @@ export function copyDirRecursive(srcDir: string, destDir: string): void {
  * 
  * Copies:
  * 1. `assets/` directory (if exists) → `outDir/assets/`
- * 2. Favicon files (`favicon.ico` or `favicon.png`) from `app/` or project root
+ * 2. Favicon files (`favicon.ico` or `favicon.png`) from `public/` directory
  * 
  * @param projectRoot - Root directory of the project
  * @param outDir - Output directory to copy assets to
@@ -130,25 +130,58 @@ export function copyStaticAssets(projectRoot: string, outDir: string): void {
   const assetsDest = path.join(outDir, "assets");
   copyDirRecursive(assetsSrc, assetsDest);
 
-  // 2) Find and copy favicon from app/ or project root
-  const appDir = path.join(projectRoot, "app");
+  // 2) Find and copy favicon from public/ directory only
+  // Favicons should be placed in public/ and are served directly at root
+  const publicDir = path.join(projectRoot, "public");
   const candidates = ["favicon.ico", "favicon.png"];
 
   for (const name of candidates) {
-    const fromApp = path.join(appDir, name);
-    const fromRoot = path.join(projectRoot, name);
+    const fromPublic = path.join(publicDir, name);
 
-    let src: string | null = null;
-    if (fs.existsSync(fromApp)) src = fromApp;
-    else if (fs.existsSync(fromRoot)) src = fromRoot;
-
-    if (src) {
-      const dest = path.join(outDir, name); // Will be served as ${STATIC_PATH}/favicon.*
+    if (fs.existsSync(fromPublic)) {
+      // Note: Files in public/ are served directly, so we don't copy them to /static
+      // But we still copy them during build for consistency (though they're served from public/)
+      const dest = path.join(outDir, name);
       ensureDir(path.dirname(dest));
-      fs.copyFileSync(src, dest);
+      fs.copyFileSync(fromPublic, dest);
       break; // Use the first one found
     }
   }
+}
+
+/**
+ * Detects and returns the favicon path and type.
+ * Only checks in the public/ directory (static directory).
+ * Favicons should be placed in public/favicon.ico or public/favicon.png.
+ * 
+ * @param projectRoot - Root directory of the project
+ * @param staticDir - Static directory name (default: "public")
+ * @param isDev - Whether in development mode (unused, kept for API compatibility)
+ * @returns Object with favicon path and type, or null if not found
+ */
+export function getFaviconInfo(
+  projectRoot: string,
+  staticDir: string = "public",
+  isDev: boolean = false
+): { path: string; type: string } | null {
+  const candidates = [
+    { name: "favicon.ico", type: "image/x-icon" },
+    { name: "favicon.png", type: "image/png" },
+  ];
+
+  // Only check in public/ directory (served at root)
+  const publicDir = path.join(projectRoot, staticDir);
+  for (const candidate of candidates) {
+    const publicPath = path.join(publicDir, candidate.name);
+    if (fs.existsSync(publicPath)) {
+      return {
+        path: `/${candidate.name}`, // Served at root from public/
+        type: candidate.type,
+      };
+    }
+  }
+
+  return null;
 }
 
 /**

@@ -17,7 +17,8 @@ import { runRouteServerHook } from "./server-hook";
 import { handleDataResponse, handleRedirect, handleNotFound } from "./response";
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
-import { getClientJsPath, getClientCssPath, loadAssetManifest } from "@build/utils";
+import { getClientJsPath, getClientCssPath, loadAssetManifest, getFaviconInfo } from "@build/utils";
+import { getStaticDir, type FrameworkConfig } from "@src/config";
 import { sanitizeParams } from "@security/sanitize";
 import { getRequestLogger } from "@logger/index";
 import path from "path";
@@ -86,6 +87,7 @@ export interface HandlePageRequestOptions {
   ssgOutDir?: string;
   theme?: string;
   projectRoot?: string;
+  config?: FrameworkConfig;
 }
 
 /**
@@ -117,7 +119,7 @@ export async function handlePageRequest(
     const reqLogger = getRequestLogger(req);
     
     if (errorPage) {
-      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme, projectRoot, options.env);
+      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme, projectRoot, options.env, options.config);
     } else {
       reqLogger.error("Unhandled error in page request", error, {
         urlPath: options.urlPath,
@@ -147,6 +149,7 @@ async function handlePageRequestInternal(
     ssgOutDir,
     theme,
     projectRoot,
+    config,
   } = options;
 
   // Get asset paths - in dev, always use non-hashed names; in prod, use manifest if available
@@ -157,6 +160,11 @@ async function handlePageRequestInternal(
     ? "/static/client.css"
     : (projectRoot ? getClientCssPath(projectRoot) : "/static/client.css");
   const assetManifest = env === "prod" && projectRoot ? loadAssetManifest(projectRoot) : null;
+
+  // Detect favicon
+  const faviconInfo = projectRoot && config
+    ? getFaviconInfo(projectRoot, config.directories.static, env === "dev")
+    : null;
 
   const isDataReq = isDataRequest(req);
   
@@ -307,6 +315,8 @@ async function handlePageRequestInternal(
         clientJsPath,
         clientCssPath,
         nonce,
+        faviconPath: faviconInfo?.path || null,
+        faviconType: faviconInfo?.type || null,
       });
     
       let didError = false;
@@ -324,7 +334,7 @@ async function handlePageRequestInternal(
           const reqLogger = getRequestLogger(req);
           reqLogger.error("SSR shell error", err, { route: "not-found" });
           if (!res.headersSent && errorPage) {
-            renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot, env);
+            renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot, env, config);
           } else if (!res.headersSent) {
             res.statusCode = 500;
             res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -478,7 +488,7 @@ async function handlePageRequestInternal(
     } else {
       // For HTML requests, render error page
       if (errorPage) {
-        await renderErrorPageWithStream(errorPage, req, res, error, routeChunks, theme, projectRoot, env);
+        await renderErrorPageWithStream(errorPage, req, res, error, routeChunks, theme, projectRoot, env, config);
         return;
       } else {
         throw error; // Re-throw to be caught by outer try-catch
@@ -585,6 +595,8 @@ async function handlePageRequestInternal(
     clientJsPath,
     clientCssPath,
     nonce,
+    faviconPath: faviconInfo?.path || null,
+    faviconType: faviconInfo?.type || null,
   });
 
   let didError = false;
@@ -660,6 +672,7 @@ async function renderErrorPageWithStream(
   theme?: string,
   projectRoot?: string,
   env: "dev" | "prod" = "dev",
+  config?: FrameworkConfig,
 ): Promise<void> {
   try {
     const isDataReq = isDataRequest(req);
@@ -673,6 +686,11 @@ async function renderErrorPageWithStream(
       pathname: req.path,
       locals: { error },
     };
+
+    // Detect favicon
+    const faviconInfo = projectRoot && config
+      ? getFaviconInfo(projectRoot, config.directories.static, env === "dev")
+      : null;
 
     // Execute layout server hooks and combine props (skip if header is set)
     const layoutProps: Record<string, any> = {};
@@ -812,6 +830,8 @@ async function renderErrorPageWithStream(
       clientJsPath,
       clientCssPath,
       nonce,
+      faviconPath: faviconInfo?.path || null,
+      faviconType: faviconInfo?.type || null,
     });
 
     let didError = false;

@@ -4,6 +4,7 @@ import { buildPathFromPattern } from "./path";
 import { renderStaticRoute } from "./renderer";
 import { ensureDir } from "../utils";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
+import { type FrameworkConfig } from "@src/config";
 
 /**
  * Builds static pages for routes marked with `dynamic: "force-static"`.
@@ -22,7 +23,8 @@ import { BUILD_FOLDER_NAME } from "@constants/globals";
  */
 export async function buildStaticPages(
   projectRoot: string,
-  routes: LoadedRoute[]
+  routes: LoadedRoute[],
+  config?: FrameworkConfig
 ): Promise<void> {
   const ssgOutDir = path.join(projectRoot, BUILD_FOLDER_NAME, "ssg");
   ensureDir(ssgOutDir);
@@ -80,7 +82,7 @@ export async function buildStaticPages(
     }
     for (const params of allParams) {
       const urlPath = buildPathFromPattern(route.pattern, params);
-      await renderStaticRoute(projectRoot, ssgOutDir, route, urlPath, params);
+      await renderStaticRoute(projectRoot, ssgOutDir, route, urlPath, params, config);
     }
   }
   

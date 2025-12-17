@@ -77,7 +77,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
 
   await buildClientBundle(projectRoot);
 
-  await buildStaticPages(projectRoot, routes);
+  await buildStaticPages(projectRoot, routes, config);
 
   delete process.env.LOLY_BUILD;
 

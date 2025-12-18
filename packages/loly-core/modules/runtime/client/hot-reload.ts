@@ -12,10 +12,8 @@ export function setupHotReload(): void {
   const nodeEnv: string = process.env.NODE_ENV || "production";
   const isDev = nodeEnv === "development";
   
-  console.log(`[hot-reload] NODE_ENV: ${nodeEnv}, isDev: ${isDev}`);
-  
   if (!isDev) {
-    console.log("[hot-reload] Skipping hot reload setup (not in development mode)");
+    // Silently skip in production - no logging
     return;
   }
   

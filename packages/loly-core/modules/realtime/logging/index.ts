@@ -2,12 +2,25 @@ import type { RealtimeLogger } from "../types";
 import type { Socket } from "socket.io";
 
 /**
+ * Log levels hierarchy
+ */
+const LOG_LEVELS = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+} as const;
+
+type LogLevel = keyof typeof LOG_LEVELS;
+
+/**
  * Creates a logger with WSS context.
  */
 export function createWssLogger(
   namespace: string,
   socket: Socket,
-  baseLogger?: any
+  baseLogger?: any,
+  minLevel: LogLevel = "info"
 ): RealtimeLogger {
   const context = {
     namespace,
@@ -15,7 +28,16 @@ export function createWssLogger(
     userId: (socket as any).data?.user?.id || null,
   };
 
+  const minLevelNum = LOG_LEVELS[minLevel] ?? LOG_LEVELS.info;
+
   const log = (level: string, message: string, meta?: Record<string, any>) => {
+    const levelNum = LOG_LEVELS[level as LogLevel] ?? LOG_LEVELS.info;
+    
+    // Skip if level is below minimum
+    if (levelNum < minLevelNum) {
+      return;
+    }
+
     const fullMeta = {
       ...context,
       ...meta,

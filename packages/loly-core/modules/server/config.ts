@@ -93,7 +93,7 @@ const DEFAULT_REALTIME_CONFIG: RealtimeConfig = {
         burst: 60,
     },
     logging: {
-        level: "info",
+        level: process.env.NODE_ENV === "production" ? "warn" : "info",
         pretty: process.env.NODE_ENV !== "production",
     },
 };

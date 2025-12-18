@@ -277,7 +277,8 @@ export async function setupWssEvents(options: SetupWssEventsOptions): Promise<vo
       (socket as any).requestId = requestId;
 
       // Create logger for this socket
-      const log = createWssLogger(namespacePath, socket);
+      const logLevel = realtimeConfig.logging?.level || (process.env.NODE_ENV === "production" ? "warn" : "info");
+      const log = createWssLogger(namespacePath, socket, undefined, logLevel);
 
       try {
         // Execute auth hook
@@ -327,7 +328,8 @@ export async function setupWssEvents(options: SetupWssEventsOptions): Promise<vo
             const eventRequestId = generateRequestId();
             (socket as any).requestId = eventRequestId;
 
-            const eventLog = createWssLogger(namespacePath, socket);
+            const eventLogLevel = realtimeConfig.logging?.level || (process.env.NODE_ENV === "production" ? "warn" : "info");
+            const eventLog = createWssLogger(namespacePath, socket, undefined, eventLogLevel);
             eventLog.debug(`Event received: ${eventName}`, { data });
 
             try {
@@ -398,7 +400,8 @@ export async function setupWssEvents(options: SetupWssEventsOptions): Promise<vo
               await eventDef.handler(ctx);
               eventLog.debug(`Event handled: ${eventName}`);
             } catch (error) {
-              const errorLog = createWssLogger(namespacePath, socket);
+              const errorLogLevel = realtimeConfig.logging?.level || (process.env.NODE_ENV === "production" ? "warn" : "info");
+              const errorLog = createWssLogger(namespacePath, socket, undefined, errorLogLevel);
               errorLog.error(`Error handling event ${eventName}`, {
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
@@ -426,9 +429,10 @@ export async function setupWssEvents(options: SetupWssEventsOptions): Promise<vo
           // Execute onDisconnect hook
           if (normalized.onDisconnect) {
             try {
+              const disconnectLogLevel = realtimeConfig.logging?.level || (process.env.NODE_ENV === "production" ? "warn" : "info");
               const disconnectCtx: WssContext = {
                 ...baseCtx,
-                log: createWssLogger(namespacePath, socket),
+                log: createWssLogger(namespacePath, socket, undefined, disconnectLogLevel),
               } as WssContext;
               await normalized.onDisconnect(disconnectCtx, reason);
             } catch (error) {

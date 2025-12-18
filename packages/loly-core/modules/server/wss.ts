@@ -85,10 +85,6 @@ const generateActions = (
       return {
         emit: async (event: string, payload?: any) => {
           if (!presence) {
-            console.warn(
-              "[loly:realtime] toUser() requires presence manager. " +
-              "Make sure realtime is properly configured."
-            );
             return;
           }
 
@@ -247,10 +243,6 @@ export async function setupWssEvents(options: SetupWssEventsOptions): Promise<vo
 
       io.adapter(createAdapter(pubClient, subClient));
     } catch (error) {
-      console.error(
-        "[loly:realtime] Failed to setup Redis adapter:",
-        error instanceof Error ? error.message : String(error)
-      );
       throw error;
     }
   }
@@ -262,9 +254,6 @@ export async function setupWssEvents(options: SetupWssEventsOptions): Promise<vo
     
     if (!normalized) {
       // Legacy format - skip for now (should not happen with new loader)
-      console.warn(
-        `[loly:realtime] Skipping route ${wssRoute.pattern}: No normalized route definition`
-      );
       continue;
     }
 
@@ -280,12 +269,9 @@ export async function setupWssEvents(options: SetupWssEventsOptions): Promise<vo
     }
 
     const namespace = io.of(namespacePath);
-    
-    console.log(`[loly:realtime] Registered namespace: ${namespacePath} (from pattern: ${wssRoute.pattern})`);
 
     // Set up connection handler for this namespace
     namespace.on('connection', async (socket: Socket) => {
-      console.log(`[loly:realtime] Client connected to namespace ${namespacePath}, socket: ${socket.id}`);
       // Generate request ID for this connection
       const requestId = generateRequestId();
       (socket as any).requestId = requestId;
@@ -308,8 +294,6 @@ export async function setupWssEvents(options: SetupWssEventsOptions): Promise<vo
 
         // Build base context
         const baseCtx: Partial<WssContext> = {
-          socket,
-          io: namespace.server,
           req: {
             headers: socket.handshake.headers as Record<string, string | string[] | undefined>,
             ip: socket.handshake.address,

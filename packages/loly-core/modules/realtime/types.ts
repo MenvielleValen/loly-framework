@@ -34,7 +34,6 @@ export interface RateLimitCfg {
 export type GuardFn<TUser = any> = (ctx: {
   user: TUser | null;
   req: AuthContext["req"];
-  socket: Socket;
   namespace: string;
 }) => boolean | Promise<boolean>;
 
@@ -189,12 +188,6 @@ export interface WssActions {
  * Extended WssContext with full RFC support.
  */
 export interface WssContext<TData = any, TUser = any> {
-  /** Socket.IO server instance */
-  io: Server;
-
-  /** Socket.IO socket instance */
-  socket: Socket;
-
   /** Request metadata */
   req: {
     headers: Record<string, string | string[] | undefined>;

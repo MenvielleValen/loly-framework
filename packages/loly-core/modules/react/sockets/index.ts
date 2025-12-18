@@ -42,24 +42,12 @@ export const lolySocket = (
   // Socket.IO usa window.location.origin automáticamente
   // El path '/wss' es el endpoint del engine de Socket.IO
   // El namespace se maneja en el handshake
-  
-  console.log("[loly:socket] Connecting to namespace:", normalizedNamespace, "path:", "/wss");
 
   const socket = io(normalizedNamespace, {
     path: "/wss",
     transports: ["websocket", "polling"],
     autoConnect: true,
     ...opts,
-  });
-
-  // Add connection error logging
-  socket.on("connect_error", (error) => {
-    console.error("[loly:socket] Connection error:", error.message);
-    console.error("[loly:socket] Namespace:", normalizedNamespace);
-  });
-  
-  socket.on("connect", () => {
-    console.log("[loly:socket] ✅ Connected to namespace:", normalizedNamespace);
   });
 
   return socket;

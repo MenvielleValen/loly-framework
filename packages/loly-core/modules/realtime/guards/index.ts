@@ -18,7 +18,6 @@ export async function executeGuard(
   const guardCtx = {
     user: ctx.user,
     req: ctx.req,
-    socket: ctx.socket,
     namespace: ctx.pathname,
   };
 

@@ -1,6 +1,6 @@
 {
   "name": "@lolyjs/core",
-  "version": "0.2.0-alpha.26",
+  "version": "0.2.0-alpha.27",
   "author": {
     "name": "Valentin Menvielle Candia",
     "url": "https://github.com/MenvielleValen"
@@ -143,5 +143,5 @@
     "type": "git",
     "url": "https://github.com/MenvielleValen/loly-framework"
   },
-  "homepage": "https://loly-framework.onrender.com"
+  "homepage": "https://loly.dev"
 }

@@ -7,6 +7,8 @@ import {
   matchRoute,
   RewriteLoader,
   processRewrites,
+  RedirectResponse,
+  NotFoundResponse,
 } from "@router/index";
 import {
   buildAppTree,
@@ -107,6 +109,210 @@ export function isDataRequest(req: Request): boolean {
 }
 
 /**
+ * Renders the not-found page (_not-found.tsx) with proper SSR.
+ * Used both when a route doesn't match and when ctx.NotFound() is called.
+ */
+async function renderNotFoundPage(
+  notFoundPage: LoadedRoute,
+  req: Request,
+  res: Response,
+  urlPath: string,
+  finalUrlPath: string,
+  routerData: any,
+  assetManifest: any,
+  theme: string | undefined,
+  clientJsPath: string,
+  clientCssPath: string,
+  faviconInfo: { path: string; type: string } | null,
+  projectRoot: string | undefined,
+  skipLayoutHooks: boolean,
+  errorPage: LoadedRoute | null,
+  routeChunks: Record<string, string> | undefined,
+  env: "dev" | "prod",
+  config: FrameworkConfig | undefined
+): Promise<void> {
+  const ctx: ServerContext & { theme?: string } = {
+    req,
+    res,
+    params: {},
+    pathname: urlPath,
+    locals: {},
+    Redirect: (destination: string, permanent = false) => new RedirectResponse(destination, permanent),
+    NotFound: () => new NotFoundResponse(),
+  };
+
+  // Execute layout server hooks and combine props (skip if header is set)
+  const layoutProps: Record<string, any> = {};
+  if (!skipLayoutHooks && notFoundPage.layoutServerHooks && notFoundPage.layoutServerHooks.length > 0) {
+    for (let i = 0; i < notFoundPage.layoutServerHooks.length; i++) {
+      const layoutServerHook = notFoundPage.layoutServerHooks[i];
+      const layoutMiddlewares = notFoundPage.layoutMiddlewares?.[i] || [];
+      
+      // Execute layout middlewares before layout hook
+      if (layoutMiddlewares.length > 0) {
+        for (const mw of layoutMiddlewares) {
+          try {
+            await Promise.resolve(
+              mw(ctx, async () => {
+                /* no-op */
+              })
+            );
+          } catch (error) {
+            const reqLogger = getRequestLogger(req);
+            const layoutFile = notFoundPage.layoutFiles[i];
+            const relativeLayoutPath = layoutFile
+              ? path.relative(projectRoot || process.cwd(), layoutFile)
+              : "unknown";
+            
+            reqLogger.error("Layout middleware failed for not-found page", error instanceof Error ? error : new Error(String(error)), {
+              layoutIndex: i,
+              layoutFile: relativeLayoutPath,
+            });
+            
+            throw error;
+          }
+          
+          if (ctx.res.headersSent) {
+            return;
+          }
+        }
+      }
+      
+      if (layoutServerHook) {
+        try {
+          const layoutResult = await layoutServerHook(ctx);
+          
+          // Check for RedirectResponse or NotFoundResponse in layout hooks
+          if (layoutResult instanceof RedirectResponse) {
+            handleRedirect(res, { destination: layoutResult.destination, permanent: layoutResult.permanent });
+            return;
+          }
+          
+          if (layoutResult instanceof NotFoundResponse) {
+            // If not-found page itself returns NotFound, fall back to simple HTML
+            handleNotFound(res, urlPath);
+            return;
+          }
+          
+          if (layoutResult.props) {
+            Object.assign(layoutProps, layoutResult.props);
+          }
+        } catch (error) {
+          // Log but continue
+          const reqLogger = getRequestLogger(req);
+          const layoutFile = notFoundPage.layoutFiles[i];
+          const relativeLayoutPath = layoutFile
+            ? path.relative(projectRoot || process.cwd(), layoutFile)
+            : "unknown";
+          
+          reqLogger.warn("Layout server hook failed for not-found page", {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            layoutFile: relativeLayoutPath,
+            layoutIndex: i,
+          });
+        }
+      }
+    }
+  }
+
+  let loaderResult = await runRouteServerHook(notFoundPage, ctx);
+  
+  // Check for RedirectResponse or NotFoundResponse
+  if (loaderResult instanceof RedirectResponse) {
+    handleRedirect(res, { destination: loaderResult.destination, permanent: loaderResult.permanent });
+    return;
+  }
+  
+  if (loaderResult instanceof NotFoundResponse) {
+    // If not-found page itself returns NotFound, fall back to simple HTML
+    handleNotFound(res, urlPath);
+    return;
+  }
+  
+  // At this point, loaderResult is definitely a LoaderResult
+  const notFoundLoaderResult = loaderResult as LoaderResult;
+  
+  // Automatically inject theme from server into loaderResult if not already set
+  if (!notFoundLoaderResult.theme) {
+    notFoundLoaderResult.theme = theme;
+  }
+
+  // Combine props: layout props + page props
+  const combinedProps = {
+    ...layoutProps,
+    ...(notFoundLoaderResult.props || {}),
+  };
+  const combinedLoaderResult: LoaderResult = {
+    ...notFoundLoaderResult,
+    props: combinedProps,
+  };
+
+  // Use finalUrlPath (rewritten) for initialData so client can match correctly
+  const initialData = buildInitialData(finalUrlPath, {}, combinedLoaderResult);
+  const appTree = buildAppTree(notFoundPage, {}, initialData.props);
+  initialData.notFound = true;
+
+  // Get nonce from res.locals (set by Helmet for CSP)
+  const nonce = (res.locals as any).nonce || undefined;
+
+  // Get entrypoint files in order for preload
+  const entrypointFiles: string[] = [];
+  if (assetManifest?.entrypoints?.client) {
+    entrypointFiles.push(...assetManifest.entrypoints.client.map((file: string) => `${STATIC_PATH}/${file}`));
+  }
+
+  const documentTree = createDocumentTree({
+    appTree,
+    initialData,
+    routerData,
+    meta: combinedLoaderResult.metadata ?? null,
+    titleFallback: "Not found",
+    descriptionFallback: "Loly demo",
+    chunkHref: null,
+    entrypointFiles,
+    theme,
+    clientJsPath,
+    clientCssPath,
+    nonce,
+    faviconPath: faviconInfo?.path || null,
+    faviconType: faviconInfo?.type || null,
+  });
+
+  let didError = false;
+
+  const { pipe, abort } = renderToPipeableStream(documentTree, {
+    onShellReady() {
+      if (didError || res.headersSent) return;
+
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      pipe(res);
+    },
+    onShellError(err) {
+      didError = true;
+      const reqLogger = getRequestLogger(req);
+      reqLogger.error("SSR shell error", err, { route: "not-found" });
+          if (!res.headersSent && errorPage) {
+            renderErrorPageWithStream(errorPage, req, res, err, routeChunks || {}, theme, projectRoot, env, config, notFoundPage);
+      } else if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.end("<!doctype html><h1>Internal Server Error</h1>");
+      }
+      abort();
+    },
+    onError(err) {
+      didError = true;
+      const reqLogger = getRequestLogger(req);
+      reqLogger.error("SSR error", err, { route: "not-found" });
+    },
+  });
+
+  req.on("close", () => abort());
+}
+
+/**
  * Handles a page route request.
  * Unifies logic between dev and prod (with SSG support in prod).
  *
@@ -122,7 +328,7 @@ export async function handlePageRequest(
     const reqLogger = getRequestLogger(req);
     
     if (errorPage) {
-      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme, projectRoot, options.env, options.config);
+      await renderErrorPageWithStream(errorPage, req, res, error, routeChunks || {}, theme, projectRoot, options.env, options.config, options.notFoundPage);
     } else {
       reqLogger.error("Unhandled error in page request", error, {
         urlPath: options.urlPath,
@@ -277,167 +483,25 @@ async function handlePageRequestInternal(
     }
     
     if (notFoundPage) {
-      const ctx: ServerContext & { theme?: string } = {
+      await renderNotFoundPage(
+        notFoundPage,
         req,
         res,
-        params: {},
-        pathname: urlPath,
-        locals: {},
-      };
-
-      // Execute layout server hooks and combine props (skip if header is set)
-      const layoutProps: Record<string, any> = {};
-      if (!skipLayoutHooks && notFoundPage.layoutServerHooks && notFoundPage.layoutServerHooks.length > 0) {
-        for (let i = 0; i < notFoundPage.layoutServerHooks.length; i++) {
-          const layoutServerHook = notFoundPage.layoutServerHooks[i];
-          const layoutMiddlewares = notFoundPage.layoutMiddlewares?.[i] || [];
-          
-          // Execute layout middlewares before layout hook
-          if (layoutMiddlewares.length > 0) {
-            for (const mw of layoutMiddlewares) {
-              try {
-                await Promise.resolve(
-                  mw(ctx, async () => {
-                    /* no-op */
-                  })
-                );
-              } catch (error) {
-                const reqLogger = getRequestLogger(req);
-                const layoutFile = notFoundPage.layoutFiles[i];
-                const relativeLayoutPath = layoutFile
-                  ? path.relative(projectRoot || process.cwd(), layoutFile)
-                  : "unknown";
-                
-                reqLogger.error("Layout middleware failed for not-found page", error instanceof Error ? error : new Error(String(error)), {
-                  layoutIndex: i,
-                  layoutFile: relativeLayoutPath,
-                });
-                
-                throw error;
-              }
-              
-              if (ctx.res.headersSent) {
-                return;
-              }
-            }
-          }
-          
-          if (layoutServerHook) {
-            try {
-              const layoutResult = await layoutServerHook(ctx);
-              if (layoutResult.props) {
-                Object.assign(layoutProps, layoutResult.props);
-              }
-            } catch (error) {
-              // Log but continue
-              const reqLogger = getRequestLogger(req);
-            const layoutFile = notFoundPage.layoutFiles[i];
-            const relativeLayoutPath = layoutFile
-              ? path.relative(projectRoot || process.cwd(), layoutFile)
-              : "unknown";
-            
-            reqLogger.warn("Layout server hook failed for not-found page", {
-              error: error instanceof Error ? error.message : String(error),
-              stack: error instanceof Error ? error.stack : undefined,
-              layoutFile: relativeLayoutPath,
-              layoutIndex: i,
-            });
-            }
-          }
-        }
-      }
-
-      let loaderResult = await runRouteServerHook(notFoundPage, ctx);
-      // Automatically inject theme from server into loaderResult if not already set
-      if (!loaderResult.theme) {
-        loaderResult.theme = theme;
-      }
-    
-      // Combine props: layout props + page props
-      const combinedProps = {
-        ...layoutProps,
-        ...(loaderResult.props || {}),
-      };
-      const combinedLoaderResult: LoaderResult = {
-        ...loaderResult,
-        props: combinedProps,
-      };
-
-      // Handle data requests for notFound
-      if (isDataReq) {
-        const pagePropsOnly = loaderResult.props || {};
-        handleDataResponse(
-          res,
-          combinedLoaderResult,
-          theme,
-          skipLayoutHooks ? null : (Object.keys(layoutProps).length > 0 ? layoutProps : null),
-          pagePropsOnly
-        );
-        return;
-      }
-    
-      // Use finalUrlPath (rewritten) for initialData so client can match correctly
-      const initialData = buildInitialData(finalUrlPath, {}, combinedLoaderResult);
-      const appTree = buildAppTree(notFoundPage, {}, initialData.props);
-      initialData.notFound = true;
-    
-      // Get nonce from res.locals (set by Helmet for CSP)
-      const nonce = (res.locals as any).nonce || undefined;
-
-      // Get entrypoint files in order for preload
-      const entrypointFiles: string[] = [];
-      if (assetManifest?.entrypoints?.client) {
-        entrypointFiles.push(...assetManifest.entrypoints.client.map(file => `${STATIC_PATH}/${file}`));
-      }
-
-      const documentTree = createDocumentTree({
-        appTree,
-        initialData,
+        urlPath,
+        finalUrlPath,
         routerData,
-        meta: combinedLoaderResult.metadata ?? null,
-        titleFallback: "Not found",
-        descriptionFallback: "Loly demo",
-        chunkHref: null,
-        entrypointFiles,
+        assetManifest,
         theme,
         clientJsPath,
         clientCssPath,
-        nonce,
-        faviconPath: faviconInfo?.path || null,
-        faviconType: faviconInfo?.type || null,
-      });
-    
-      let didError = false;
-    
-      const { pipe, abort } = renderToPipeableStream(documentTree, {
-        onShellReady() {
-          if (didError || res.headersSent) return;
-    
-          res.statusCode = 404;
-          res.setHeader("Content-Type", "text/html; charset=utf-8");
-          pipe(res);
-        },
-        onShellError(err) {
-          didError = true;
-          const reqLogger = getRequestLogger(req);
-          reqLogger.error("SSR shell error", err, { route: "not-found" });
-          if (!res.headersSent && errorPage) {
-            renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot, env, config);
-          } else if (!res.headersSent) {
-            res.statusCode = 500;
-            res.setHeader("Content-Type", "text/html; charset=utf-8");
-            res.end("<!doctype html><h1>Internal Server Error</h1>");
-          }
-          abort();
-        },
-        onError(err) {
-          didError = true;
-          const reqLogger = getRequestLogger(req);
-          reqLogger.error("SSR error", err, { route: "not-found" });
-        },
-      });
-    
-      req.on("close", () => abort());
+        faviconInfo,
+        projectRoot,
+        skipLayoutHooks,
+        errorPage,
+        routeChunks,
+        env,
+        config
+      );
       return;
     }
 
@@ -456,6 +520,8 @@ async function handlePageRequestInternal(
     params: sanitizedParams,
     pathname: urlPath,
     locals: {},
+    Redirect: (destination: string, permanent = false) => new RedirectResponse(destination, permanent),
+    NotFound: () => new NotFoundResponse(),
   };
 
   await runRouteMiddlewares(route, ctx);
@@ -509,6 +575,53 @@ async function handlePageRequestInternal(
       if (layoutServerHook) {
         try {
           const layoutResult = await layoutServerHook(ctx);
+          
+          // Check for RedirectResponse or NotFoundResponse in layout hooks
+          if (layoutResult instanceof RedirectResponse) {
+            if (isDataReq) {
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(JSON.stringify({ redirect: { destination: layoutResult.destination, permanent: layoutResult.permanent } }));
+            } else {
+              handleRedirect(res, { destination: layoutResult.destination, permanent: layoutResult.permanent });
+            }
+            return;
+          }
+          
+          if (layoutResult instanceof NotFoundResponse) {
+            if (isDataReq) {
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(JSON.stringify({ notFound: true }));
+            } else {
+              // Render the not-found page instead of simple HTML
+              if (notFoundPage) {
+                await renderNotFoundPage(
+                  notFoundPage,
+                  req,
+                  res,
+                  urlPath,
+                  finalUrlPath,
+                  routerData,
+                  assetManifest,
+                  theme,
+                  clientJsPath,
+                  clientCssPath,
+                  faviconInfo,
+                  projectRoot,
+                  skipLayoutHooks,
+                  errorPage,
+                  routeChunks,
+                  env,
+                  config
+                );
+              } else {
+                handleNotFound(res, urlPath);
+              }
+            }
+            return;
+          }
+          
           // Merge props (more specific layouts override general ones)
           if (layoutResult.props) {
             Object.assign(layoutProps, layoutResult.props);
@@ -538,12 +651,62 @@ async function handlePageRequestInternal(
   }
 
   // 2. Execute page server hook (getServerSideProps)
-  let loaderResult: LoaderResult;
+  let loaderResult: LoaderResult | RedirectResponse | NotFoundResponse;
   try {
     loaderResult = await runRouteServerHook(route, ctx);
+    
+    // Check for RedirectResponse or NotFoundResponse BEFORE combining props/metadata
+    if (loaderResult instanceof RedirectResponse) {
+      if (isDataReq) {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify({ redirect: { destination: loaderResult.destination, permanent: loaderResult.permanent } }));
+      } else {
+        handleRedirect(res, { destination: loaderResult.destination, permanent: loaderResult.permanent });
+      }
+      return;
+    }
+    
+    if (loaderResult instanceof NotFoundResponse) {
+      if (isDataReq) {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify({ notFound: true }));
+      } else {
+        // Render the not-found page instead of simple HTML
+        if (notFoundPage) {
+          await renderNotFoundPage(
+            notFoundPage,
+            req,
+            res,
+            urlPath,
+            finalUrlPath,
+            routerData,
+            assetManifest,
+            theme,
+            clientJsPath,
+            clientCssPath,
+            faviconInfo,
+            projectRoot,
+            skipLayoutHooks,
+            errorPage,
+            routeChunks,
+            env,
+            config
+          );
+        } else {
+          handleNotFound(res, urlPath);
+        }
+      }
+      return;
+    }
+    
+    // At this point, loaderResult is definitely a LoaderResult (not RedirectResponse or NotFoundResponse)
+    const pageLoaderResult = loaderResult as LoaderResult;
+    
     // Automatically inject theme from server into loaderResult if not already set
-    if (!loaderResult.theme) {
-      loaderResult.theme = theme;
+    if (!pageLoaderResult.theme) {
+      pageLoaderResult.theme = theme;
     }
   } catch (error) {
     // Log detailed error information
@@ -576,7 +739,7 @@ async function handlePageRequestInternal(
     } else {
       // For HTML requests, render error page
       if (errorPage) {
-        await renderErrorPageWithStream(errorPage, req, res, error, routeChunks, theme, projectRoot, env, config);
+        await renderErrorPageWithStream(errorPage, req, res, error, routeChunks, theme, projectRoot, env, config, notFoundPage);
         return;
       } else {
         throw error; // Re-throw to be caught by outer try-catch
@@ -585,10 +748,10 @@ async function handlePageRequestInternal(
   }
 
   // 3. Combine props: layout props (stable) + page props (page overrides layout)
-  // This must be done before checking for redirect/notFound to ensure data requests get combined props
+  const pageLoaderResult = loaderResult as LoaderResult; // We already checked it's not RedirectResponse/NotFoundResponse
   const combinedProps = {
     ...layoutProps, // Props from layouts (stable)
-    ...(loaderResult.props || {}), // Props from page (overrides layout)
+    ...(pageLoaderResult.props || {}), // Props from page (overrides layout)
   };
 
   // 4. Combine metadata: layout metadata (base) + page metadata (page overrides layout)
@@ -605,14 +768,14 @@ async function handlePageRequestInternal(
   }
   
   // Finally, page metadata overrides everything
-  if (loaderResult.metadata) {
-    combinedMetadata = mergeMetadata(combinedMetadata, loaderResult.metadata);
+  if (pageLoaderResult.metadata) {
+    combinedMetadata = mergeMetadata(combinedMetadata, pageLoaderResult.metadata);
   }
 
   // Use combined props and metadata in loaderResult
   // Include rewritten pathname so client can match correctly
   const combinedLoaderResult: LoaderResult = {
-    ...loaderResult,
+    ...pageLoaderResult,
     props: combinedProps,
     metadata: combinedMetadata,
     pathname: finalUrlPath, // Include rewritten pathname for client-side matching
@@ -622,7 +785,7 @@ async function handlePageRequestInternal(
     // For data requests, pass separated props:
     // - layoutProps: only if layout hooks were executed (not skipped)
     // - pageProps: always (from page.server.hook)
-    const pagePropsOnly = loaderResult.props || {};
+    const pagePropsOnly = pageLoaderResult.props || {};
     handleDataResponse(
       res,
       combinedLoaderResult,
@@ -630,20 +793,6 @@ async function handlePageRequestInternal(
       skipLayoutHooks ? null : (Object.keys(layoutProps).length > 0 ? layoutProps : null),
       pagePropsOnly
     );
-    return;
-  }
-
-  if (loaderResult.redirect) {
-    handleRedirect(res, loaderResult.redirect);
-    return;
-  }
-
-  if (loaderResult.notFound) {
-    if (isDataReq) {
-      res.status(200).json({ notFound: true });
-    } else {
-      handleNotFound(res, urlPath);
-    }
     return;
   }
 
@@ -719,7 +868,7 @@ async function handlePageRequestInternal(
       console.error("💡 This usually indicates a React rendering error\n");
 
       if (!res.headersSent && errorPage) {
-        renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot, env);
+        renderErrorPageWithStream(errorPage, req, res, err, routeChunks, theme, projectRoot, env, config, notFoundPage);
       } else if (!res.headersSent) {
         res.statusCode = 500;
         res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -765,6 +914,7 @@ async function renderErrorPageWithStream(
   projectRoot?: string,
   env: "dev" | "prod" = "dev",
   config?: FrameworkConfig,
+  notFoundPage?: LoadedRoute | null,
 ): Promise<void> {
   try {
     const isDataReq = isDataRequest(req);
@@ -777,6 +927,8 @@ async function renderErrorPageWithStream(
       params: { error: String(error) },
       pathname: req.path,
       locals: { error },
+      Redirect: (destination: string, permanent = false) => new RedirectResponse(destination, permanent),
+      NotFound: () => new NotFoundResponse(),
     };
 
     // Detect favicon
@@ -824,6 +976,34 @@ async function renderErrorPageWithStream(
         if (layoutServerHook) {
           try {
             const layoutResult = await layoutServerHook(ctx);
+            
+            // Check for RedirectResponse or NotFoundResponse in layout hooks
+            if (layoutResult instanceof RedirectResponse) {
+              if (isDataReq) {
+                res.statusCode = 200;
+                res.setHeader("Content-Type", "application/json; charset=utf-8");
+                res.end(JSON.stringify({ redirect: { destination: layoutResult.destination, permanent: layoutResult.permanent } }));
+              } else {
+                handleRedirect(res, { destination: layoutResult.destination, permanent: layoutResult.permanent });
+              }
+              return;
+            }
+            
+            if (layoutResult instanceof NotFoundResponse) {
+              if (isDataReq) {
+                res.statusCode = 200;
+                res.setHeader("Content-Type", "application/json; charset=utf-8");
+                res.end(JSON.stringify({ notFound: true }));
+              } else {
+                // Render the not-found page instead of simple HTML
+                // Access notFoundPage from outer scope - need to check if it's available
+                // For error page handler, notFoundPage might not be in scope, so we need to pass it
+                // Actually, for error page, we should use handleNotFound as fallback
+                handleNotFound(res, req.path);
+              }
+              return;
+            }
+            
             if (layoutResult.props) {
               Object.assign(layoutProps, layoutResult.props);
             }
@@ -846,18 +1026,79 @@ async function renderErrorPageWithStream(
     }
 
     let loaderResult = await runRouteServerHook(errorPage, ctx);
+    
+    // Check for RedirectResponse or NotFoundResponse
+    if (loaderResult instanceof RedirectResponse) {
+      if (isDataReq) {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify({ redirect: { destination: loaderResult.destination, permanent: loaderResult.permanent } }));
+      } else {
+        handleRedirect(res, { destination: loaderResult.destination, permanent: loaderResult.permanent });
+      }
+      return;
+    }
+    
+    if (loaderResult instanceof NotFoundResponse) {
+      if (isDataReq) {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify({ notFound: true }));
+      } else {
+        // Render the not-found page instead of simple HTML
+        if (notFoundPage) {
+          const notFoundAssetManifest = env === "prod" && projectRoot ? loadAssetManifest(projectRoot) : null;
+          const notFoundClientJsPath = env === "dev" 
+            ? "/static/client.js" 
+            : (projectRoot ? getClientJsPath(projectRoot) : "/static/client.js");
+          const notFoundClientCssPath = env === "dev"
+            ? "/static/client.css"
+            : (projectRoot ? getClientCssPath(projectRoot) : "/static/client.css");
+          const notFoundFaviconInfo = projectRoot && config
+            ? getFaviconInfo(projectRoot, config.directories.static, env === "dev")
+            : null;
+          
+          await renderNotFoundPage(
+            notFoundPage,
+            req,
+            res,
+            req.path,
+            req.path,
+            buildRouterData(req),
+            notFoundAssetManifest,
+            theme,
+            notFoundClientJsPath,
+            notFoundClientCssPath,
+            notFoundFaviconInfo,
+            projectRoot,
+            false,
+            errorPage,
+            routeChunks,
+            env,
+            config
+          );
+        } else {
+          handleNotFound(res, req.path);
+        }
+      }
+      return;
+    }
+    
+    // At this point, loaderResult is definitely a LoaderResult
+    const errorLoaderResult = loaderResult as LoaderResult;
+    
     // Automatically inject theme from server into loaderResult if not already set
-    if (!loaderResult.theme && theme) {
-      loaderResult.theme = theme;
+    if (!errorLoaderResult.theme && theme) {
+      errorLoaderResult.theme = theme;
     }
 
     // Combine props: layout props + page props
     const combinedProps = {
       ...layoutProps,
-      ...(loaderResult.props || {}),
+      ...(errorLoaderResult.props || {}),
     };
     const combinedLoaderResult: LoaderResult = {
-      ...loaderResult,
+      ...errorLoaderResult,
       props: combinedProps,
     };
 
@@ -867,7 +1108,7 @@ async function renderErrorPageWithStream(
     
     // If this is a data request, return JSON instead of HTML
     if (isDataReq) {
-      const pagePropsOnly = loaderResult.props || {};
+      const pagePropsOnly = errorLoaderResult.props || {};
       handleDataResponse(
         res,
         combinedLoaderResult,

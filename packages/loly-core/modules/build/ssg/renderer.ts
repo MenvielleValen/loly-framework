@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { renderToString } from "react-dom/server";
-import { loadChunksFromManifest, type LoadedRoute, type LoaderResult, type ServerContext } from "@router/index";
+import { loadChunksFromManifest, type LoadedRoute, type LoaderResult, type ServerContext, RedirectResponse, NotFoundResponse } from "@router/index";
 import {
   buildAppTree,
   buildInitialData,
@@ -95,6 +95,8 @@ export async function renderStaticRoute(
     params,
     pathname: urlPath,
     locals: {},
+    Redirect: (destination: string, permanent = false) => new RedirectResponse(destination, permanent),
+    NotFound: () => new NotFoundResponse(),
   };
 
   // Execute middlewares
@@ -116,6 +118,16 @@ export async function renderStaticRoute(
       if (layoutServerHook) {
         try {
           const layoutResult = await layoutServerHook(ctx);
+          
+          // Check for RedirectResponse or NotFoundResponse in layout hooks (not allowed in SSG)
+          if (layoutResult instanceof RedirectResponse || layoutResult instanceof NotFoundResponse) {
+            console.warn(
+              `⚠️  [framework][ssg] Layout server hook ${i} returned redirect/notFound for route ${route.pattern}. ` +
+              `Redirect/NotFound is not supported in SSG (Static Site Generation). Skipping this route.`
+            );
+            return; // Skip this route
+          }
+          
           // Merge props (more specific layouts override general ones)
           if (layoutResult.props) {
             Object.assign(layoutProps, layoutResult.props);
@@ -139,16 +151,28 @@ export async function renderStaticRoute(
   }
 
   // 2. Execute page server hook (getServerSideProps)
-  let loaderResult: LoaderResult = { props: {} };
+  let loaderResult: LoaderResult | RedirectResponse | NotFoundResponse = { props: {} };
 
   if (route.loader) {
     loaderResult = await route.loader(ctx);
+    
+    // Check for RedirectResponse or NotFoundResponse (not allowed in SSG)
+    if (loaderResult instanceof RedirectResponse || loaderResult instanceof NotFoundResponse) {
+      console.warn(
+        `⚠️  [framework][ssg] Page server hook returned redirect/notFound for route ${route.pattern} (${urlPath}). ` +
+        `Redirect/NotFound is not supported in SSG (Static Site Generation). Skipping this route.`
+      );
+      return; // Skip this route
+    }
   }
+
+  // At this point, loaderResult is definitely a LoaderResult
+  const pageLoaderResult = loaderResult as LoaderResult;
 
   // 3. Combine props: layout props (stable) + page props (page overrides layout)
   const combinedProps = {
     ...layoutProps,
-    ...(loaderResult.props || {}),
+    ...(pageLoaderResult.props || {}),
   };
 
   // 4. Combine metadata: layout metadata (base) + page metadata (page overrides layout)
@@ -165,20 +189,16 @@ export async function renderStaticRoute(
   }
   
   // Finally, page metadata overrides everything
-  if (loaderResult.metadata) {
-    combinedMetadata = mergeMetadata(combinedMetadata, loaderResult.metadata);
+  if (pageLoaderResult.metadata) {
+    combinedMetadata = mergeMetadata(combinedMetadata, pageLoaderResult.metadata);
   }
 
   // Create combined loader result with merged props and metadata
   const combinedLoaderResult: LoaderResult = {
-    ...loaderResult,
+    ...pageLoaderResult,
     props: combinedProps,
     metadata: combinedMetadata,
   };
-
-  if (combinedLoaderResult.redirect || combinedLoaderResult.notFound) {
-    return;
-  }
 
   // Build React component tree with combined props
   const initialData = buildInitialData(urlPath, params, combinedLoaderResult);

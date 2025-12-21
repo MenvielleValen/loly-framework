@@ -1,4 +1,4 @@
-import { ServerContext, LoadedRoute, LoaderResult } from "@router/index";
+import { ServerContext, LoadedRoute, LoaderResult, RedirectResponse, NotFoundResponse } from "@router/index";
 import path from "path";
 
 /**
@@ -45,13 +45,13 @@ function createServerHookErrorMessage(
  *
  * @param route - Route definition
  * @param ctx - Server context
- * @returns Loader result
+ * @returns Loader result, RedirectResponse, or NotFoundResponse
  * @throws Error with detailed context if server hook fails
  */
 export async function runRouteServerHook(
   route: LoadedRoute<any, any>,
   ctx: ServerContext
-): Promise<LoaderResult<any>> {
+): Promise<LoaderResult<any> | RedirectResponse | NotFoundResponse> {
   if (!route.loader) {
     return { props: {} };
   }

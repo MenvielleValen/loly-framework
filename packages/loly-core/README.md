@@ -1087,15 +1087,14 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
   const data = await fetchData();
 
   // Redirect
-  return {
-    redirect: {
-      destination: "/new-path",
-      permanent: true,
-    },
-  };
+  if (someCondition) {
+    return ctx.Redirect("/new-path", true); // permanent redirect
+  }
 
   // Not found
-  return { notFound: true };
+  if (!data) {
+    return ctx.NotFound();
+  }
 
   // Return props
   return {

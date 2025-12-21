@@ -254,9 +254,38 @@ function buildProject(projectDir, packageManager = "pnpm") {
   if (!fs.existsSync(nodeModulesPath)) {
     console.warn(
       chalk.yellow(
-        `⚠️  Warning: node_modules not found. Dependencies may not be installed.`
+        `⚠️  Warning: node_modules not found. Skipping build. Dependencies may not be installed.`
       )
     );
+    const projectBasename = path.basename(projectDir);
+    const buildCommand = packageManager === "npm" 
+      ? `${packageManager} run build` 
+      : `${packageManager} build`;
+    const devCommand = packageManager === "npm" 
+      ? `${packageManager} run dev` 
+      : `${packageManager} dev`;
+    console.log(chalk.gray(`\nTo fix this, run:`));
+    console.log(chalk.cyan(`  cd ${projectBasename}`));
+    console.log(chalk.cyan(`  ${packageManager} install`));
+    console.log(chalk.cyan(`  ${buildCommand}`));
+    console.log(chalk.cyan(`  ${devCommand}`));
+    return;
+  }
+  
+  // Verify loly binary exists (required for build)
+  const lolyBinaryPath = path.join(nodeModulesPath, ".bin", "loly" + (process.platform === "win32" ? ".cmd" : ""));
+  if (!fs.existsSync(lolyBinaryPath)) {
+    // Also check without .cmd extension for Windows
+    const lolyBinaryPathAlt = path.join(nodeModulesPath, ".bin", "loly");
+    if (!fs.existsSync(lolyBinaryPathAlt)) {
+      console.warn(
+        chalk.yellow(
+          `⚠️  Warning: loly binary not found in node_modules/.bin. Build may fail.`
+        )
+      );
+      console.log(chalk.gray(`  This usually means @lolyjs/core wasn't installed correctly.`));
+      console.log(chalk.gray(`  Try running: ${packageManager} install`));
+    }
   }
   
   // Verify tsconfig.json exists (required for TypeScript builds)
@@ -279,6 +308,7 @@ function buildProject(projectDir, packageManager = "pnpm") {
     }
 
     // Build command differs by package manager
+    // pnpm/npm/yarn automatically resolve binaries from node_modules/.bin when running scripts
     const buildCommand = packageManager === "npm" 
       ? `${packageManager} run build` 
       : `${packageManager} build`;
@@ -315,12 +345,17 @@ function buildProject(projectDir, packageManager = "pnpm") {
       console.log(chalk.gray(`Build exited with code: ${error.status}`));
     }
     
-    console.log(chalk.gray(`\nYou can build it manually later by running:`));
-    console.log(chalk.cyan(`  cd ${path.basename(projectDir)}`));
-    const manualBuildCommand = packageManager === "npm" 
+    const projectBasename = path.basename(projectDir);
+    const buildCommand = packageManager === "npm" 
       ? `${packageManager} run build` 
       : `${packageManager} build`;
-    console.log(chalk.cyan(`  ${manualBuildCommand}`));
+    const devCommand = packageManager === "npm" 
+      ? `${packageManager} run dev` 
+      : `${packageManager} dev`;
+    console.log(chalk.gray(`\nTo fix this, run:`));
+    console.log(chalk.cyan(`  cd ${projectBasename}`));
+    console.log(chalk.cyan(`  ${buildCommand}`));
+    console.log(chalk.cyan(`  ${devCommand}`));
     // Don't throw - build failure is not critical for project creation
   }
 }

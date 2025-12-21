@@ -171,7 +171,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
   const post = await getPostBySlug(params.slug);
   
   if (!post) {
-    return { notFound: true };
+    return ctx.NotFound();
   }
   
   return {
@@ -219,23 +219,30 @@ return {
 ```
 
 ### Redirect
-Redirigir a otra página:
+Redirigir a otra página usando `ctx.Redirect()`:
 
 ```tsx
-return {
-  redirect: {
-    destination: "/login",
-    permanent: false,  // true para 308, false para 307
-  },
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  if (!user) {
+    return ctx.Redirect("/login", false);  // permanent: false (307), true (301)
+  }
+  
+  return { props: { user } };
 };
 ```
 
 ### Not Found
-Marcar la página como 404:
+Marcar la página como 404 usando `ctx.NotFound()`:
 
 ```tsx
-return {
-  notFound: true,
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  const post = await getPost(ctx.params.id);
+  
+  if (!post) {
+    return ctx.NotFound();
+  }
+  
+  return { props: { post } };
 };
 ```
 
@@ -551,7 +558,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     const product = await getProduct(id);
     
     if (!product) {
-      return { notFound: true };
+      return ctx.NotFound();
     }
     
     return {
@@ -561,7 +568,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
       },
     };
   } catch (error) {
-    return { notFound: true };
+    return ctx.NotFound();
   }
 };
 ```

@@ -23,18 +23,6 @@ export function handleDataResponse(
 ): void {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
 
-  if (loaderResult.redirect) {
-    res.statusCode = 200;
-    res.end(JSON.stringify({ redirect: loaderResult.redirect }));
-    return;
-  }
-
-  if (loaderResult.notFound) {
-    res.statusCode = 404;
-    res.end(JSON.stringify({ notFound: true }));
-    return;
-  }
-
   // Build response with separated props if provided, otherwise use combined props
   const response: Record<string, unknown> = {
     // Combined props for backward compatibility

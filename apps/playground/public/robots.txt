@@ -1,0 +1,10 @@
+# robots.txt for search engines
+# This file is served at /robots.txt
+# For more information, see: https://www.robotstxt.org/
+
+User-agent: *
+Allow: /
+
+# Update the sitemap URL with your actual domain
+Sitemap: https://example.com/sitemap.xml
+

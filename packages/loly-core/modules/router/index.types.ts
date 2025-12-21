@@ -57,12 +57,59 @@ export type GenerateStaticParams = () =>
   | Array<Record<string, string>>
   | Promise<Array<Record<string, string>>>;
 
-export interface ServerContext {
+/**
+ * Response class for redirects in server loaders.
+ * Use ctx.Redirect() to return this from getServerSideProps.
+ */
+export class RedirectResponse {
+  constructor(
+    public destination: string,
+    public permanent: boolean = false
+  ) {}
+}
+
+/**
+ * Response class for not found in server loaders.
+ * Use ctx.NotFound() to return this from getServerSideProps.
+ */
+export class NotFoundResponse {
+  constructor() {}
+}
+
+/**
+ * Base context interface with common fields shared by ServerContext and ApiContext.
+ * This reduces duplication and ensures consistency across context types.
+ */
+interface BaseContext {
+  /** Express request object */
   req: Request;
+  /** Express response object */
   res: Response;
+  /** Route parameters extracted from the URL pattern */
   params: Record<string, string>;
+  /** Current pathname (may be rewritten path for rewrites) */
   pathname: string;
+  /** Local storage for passing data between middlewares and handlers */
   locals: Record<string, any>;
+}
+
+export interface ServerContext extends BaseContext {
+  /**
+   * Redirect helper method. Returns a RedirectResponse that will be handled automatically.
+   * @example
+   * if (!user) {
+   *   return ctx.Redirect("/login");
+   * }
+   */
+  Redirect: (destination: string, permanent?: boolean) => RedirectResponse;
+  /**
+   * Not found helper method. Returns a NotFoundResponse that will be handled automatically.
+   * @example
+   * if (!post) {
+   *   return ctx.NotFound();
+   * }
+   */
+  NotFound: () => NotFoundResponse;
 }
 
 export interface WssActions {
@@ -170,8 +217,6 @@ export interface LoaderResult<TProps extends Record<string, any> = Record<string
   // Optional pathname (used for rewrites - server can indicate the rewritten path)
   pathname?: string;
   props?: TProps;
-  redirect?: { destination: string; permanent?: boolean };
-  notFound?: boolean;
 
   metadata?: PageMetadata | null;
   className?: string;
@@ -198,7 +243,7 @@ export interface LoaderResult<TProps extends Record<string, any> = Record<string
  */
 export type ServerLoader<TProps extends Record<string, any> = Record<string, any>> = (
   ctx: ServerContext
-) => Promise<LoaderResult<TProps>>;
+) => Promise<LoaderResult<TProps> | RedirectResponse | NotFoundResponse>;
 
 export interface ClientRoute {
   pattern: string;
@@ -284,14 +329,20 @@ export type MetadataLoader = (
   ctx: ServerContext
 ) => PageMetadata | Promise<PageMetadata>;
 
-export interface ApiContext {
-  req: Request;
-  res: Response;
+export interface ApiContext extends BaseContext {
+  /**
+   * Response helper method. Sends a JSON response with optional status code.
+   * @example
+   * return ctx.Response({ user }, 200);
+   * return ctx.Response({ error: "Not found" }, 404);
+   */
   Response: (body?: any, status?: number) => Response<any, Record<string, any>>;
-  NotFound: (body?: any) => Response<any, Record<string, any>>
-  params: Record<string, string>;
-  pathname: string;
-  locals: Record<string, any>;
+  /**
+   * Not found helper method. Sends a 404 JSON response.
+   * @example
+   * return ctx.NotFound({ error: "Resource not found" });
+   */
+  NotFound: (body?: any) => Response<any, Record<string, any>>;
 }
 
 /**

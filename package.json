@@ -5,9 +5,9 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter template dev",
+    "dev": "pnpm --filter playground dev",
     "full-dev": "pnpm build & pnpm dev",
-    "start": "pnpm --filter template start",
+    "start": "pnpm --filter playground start",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "dev-app": "node init-example dev",

@@ -5,9 +5,9 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter space-explorer dev",
+    "dev": "pnpm --filter template dev",
     "full-dev": "pnpm build & pnpm dev",
-    "start": "pnpm --filter space-explorer start",
+    "start": "pnpm --filter template start",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "dev-app": "node init-example dev",

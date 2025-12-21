@@ -22,7 +22,7 @@ _Built with React 19, Express, Rspack, Socket.IO, and TypeScript_
 Create a new Loly application in seconds:
 
 ```bash
-npx create-loly-app mi-app
+npx @lolyjs/cli@latest my-app
 ```
 
 This will create a new project with all the necessary files and dependencies. For more information about the CLI, visit the [@lolyjs/cli package](https://www.npmjs.com/package/@lolyjs/cli).

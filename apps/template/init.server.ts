@@ -1,14 +1,14 @@
-import { InitServerData } from "@lolyjs/core";
-import { createModuleLogger } from "@lolyjs/core";
-
-const logger = createModuleLogger("template-init");
-
-export async function init({
-  serverContext,
-}: {
-  serverContext: InitServerData;
-}) {
-  logger.info("🚀 Template app initialized", {
-    timestamp: new Date().toISOString(),
-  });
+/**
+ * Server initialization hook
+ * This runs once when the server starts.
+ * Use this to initialize databases, services, or other setup tasks.
+ */
+export async function init() {
+  // Example: Initialize database connection
+  // await db.connect();
+  
+  // Example: Initialize external services
+  // await externalService.init();
+  
+  console.log("🚀 Application initialized");
 }

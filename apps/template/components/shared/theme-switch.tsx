@@ -2,7 +2,6 @@ import React from "react";
 
 import { useTheme } from "@lolyjs/core/themes";
 import { Moon, Sun } from "lucide-react";
-import { Button } from "../ui/button";
 
 export const ThemeSwitch = () => {
   const { theme, handleThemeChange } = useTheme();
@@ -15,15 +14,7 @@ export const ThemeSwitch = () => {
 
   if (!mounted) {
     return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9"
-        aria-label="Toggle theme"
-        disabled
-      >
-        <div className="h-5 w-5" />
-      </Button>
+      <div className="h-9 w-16 rounded-full bg-muted" aria-label="Toggle theme" />
     );
   }
 
@@ -41,8 +32,8 @@ export const ThemeSwitch = () => {
       <span
         className={`absolute inset-0 rounded-full transition-all duration-300 ${
           theme === "dark"
-            ? "bg-gradient-to-r from-indigo-500 to-purple-600"
-            : "bg-gradient-to-r from-amber-400 to-orange-500"
+            ? "bg-linear-to-r from-indigo-500 to-purple-600"
+            : "bg-linear-to-r from-amber-400 to-orange-500"
         }`}
       />
 

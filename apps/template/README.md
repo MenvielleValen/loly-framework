@@ -61,10 +61,7 @@ template/
 │   ├── _error.tsx          # Error page
 │   └── _not-found.tsx      # 404 page
 ├── components/             # React components
-│   ├── ui/                 # UI components (Button, Card, etc.)
 │   └── shared/             # Shared components (ThemeSwitch, etc.)
-├── lib/                    # Utility functions
-│   └── utils.ts            # Helper functions (cn, etc.)
 ├── public/                 # Static files (SEO, assets)
 │   ├── sitemap.xml         # Sitemap for search engines
 │   ├── robots.txt          # Robots.txt for crawlers
@@ -118,40 +115,13 @@ This template uses **Tailwind CSS v4** with a custom theme system. Important rul
 
 - ❌ **DO NOT** use inline styles in components
 - ✅ **DO** use Tailwind utility classes
-- ✅ **DO** use the `cn()` utility for conditional classes
 - ✅ **DO** define custom styles in `app/styles.css`
-
-Example:
-
-```tsx
-import { cn } from "@/lib/utils";
-
-function MyComponent({ className, isActive }: Props) {
-  return (
-    <div className={cn(
-      "base-classes",
-      isActive && "active-classes",
-      className
-    )}>
-      Content
-    </div>
-  );
-}
-```
 
 ### Components
 
-Components are organized in `components/`:
+Components are organized in `components/shared/`:
 
-- `components/ui/` - Reusable UI components (Button, Card, etc.)
-- `components/shared/` - Shared application components
-
-All UI components follow these patterns:
-
-- Use `class-variance-authority` for variants
-- Use `cn()` for className merging
-- Accept `className` prop for customization
-- Use `data-slot` attributes for styling hooks
+- Shared application components (ThemeSwitch, etc.)
 
 ### Theme System
 
@@ -265,14 +235,7 @@ See `public/README.md` for more details.
 ### UI
 
 - `tailwindcss` - Utility-first CSS framework
-- `class-variance-authority` - Component variants
-- `clsx` & `tailwind-merge` - Class name utilities
 - `lucide-react` - Icon library
-
-### UI Primitives
-
-- `@radix-ui/react-slot` - Slot component
-- `@radix-ui/react-switch` - Switch component
 
 ## Learn More
 

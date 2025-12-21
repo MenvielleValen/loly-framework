@@ -1,6 +1,0 @@
-User-agent: *
-Allow: /
-
-# Sitemap
-Sitemap: https://space-explorer.example.com/sitemap.xml
-

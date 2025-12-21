@@ -172,6 +172,8 @@ interface ServerContext {
   params: Record<string, string>; // Parámetros de ruta
   pathname: string;               // Path de la request
   locals: Record<string, any>;    // Datos locales (middleware)
+  Redirect: (destination: string, permanent?: boolean) => RedirectResponse;
+  NotFound: () => NotFoundResponse;
 }
 ```
 
@@ -180,16 +182,14 @@ interface ServerContext {
 ```typescript
 interface LoaderResult {
   props?: Record<string, any>;    // Props para el componente
-  redirect?: {                    // Redirección
-    destination: string;
-    permanent?: boolean;
-  };
-  notFound?: boolean;             // Marcar como 404
   metadata?: PageMetadata;       // Metadata de la página
   className?: string;            // Clase CSS para body
   theme?: string;                 // Tema (dark/light)
+  pathname?: string;             // Pathname opcional (para rewrites)
 }
 ```
+
+**Nota:** Para redirecciones y 404, usa `ctx.Redirect()` y `ctx.NotFound()` que retornan `RedirectResponse` y `NotFoundResponse` respectivamente. Estos no forman parte de `LoaderResult`.
 
 ## Modos de Renderizado
 

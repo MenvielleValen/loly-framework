@@ -159,8 +159,12 @@ interface ServerContext {
   params: Record<string, string>; // Parámetros de ruta
   pathname: string;               // Path de la request
   locals: Record<string, any>;    // Datos locales (de middlewares)
+  Redirect: (destination: string, permanent?: boolean) => RedirectResponse;
+  NotFound: () => NotFoundResponse;
 }
 ```
+
+Los métodos `Redirect()` y `NotFound()` son helpers que permiten redirigir o retornar 404 de manera explícita desde el loader.
 
 ### Ejemplo con Parámetros
 
@@ -667,7 +671,7 @@ app/
 
 ## Mejores Prácticas
 
-1. **Manejo de Errores**: Siempre maneja errores y retorna `notFound` cuando corresponda
+1. **Manejo de Errores**: Siempre maneja errores y usa `ctx.NotFound()` cuando corresponda
 2. **Validación**: Valida parámetros y queries con Zod
 3. **Cache**: Usa `withCache` para operaciones costosas
 4. **Metadata**: Siempre proporciona metadata para SEO

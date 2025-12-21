@@ -51,7 +51,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     return { props: { product } };
   } catch (error) {
     if (error instanceof ValidationError) {
-      return { notFound: true };
+      return ctx.NotFound();
     }
     throw error;
   }

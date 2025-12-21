@@ -78,7 +78,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
     return { props: { post } };
   } catch (error) {
     logger.error("Failed to load post", error, { slug: ctx.params.slug });
-    return { notFound: true };
+    return ctx.NotFound();
   }
 };
 ```

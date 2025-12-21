@@ -330,7 +330,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
   const post = await getPost(ctx.params.slug);
   
   if (!post) {
-    return { notFound: true };
+    return ctx.NotFound();
   }
   
   return {

@@ -1,6 +1,6 @@
 {
   "name": "@lolyjs/cli",
-  "version": "0.3.0-alpha.1",
+  "version": "1.0.0-alpha.0",
   "description": "Create a new Loly application",
   "type": "module",
   "bin": {
@@ -15,9 +15,12 @@
     "create-app",
     "scaffold"
   ],
-  "scripts": {
-    "copy-template": "node copy-template.js"
+  "homepage": "https://loly.dev/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MenvielleValen/loly-framework/tree/main/packages/create-loly-app"
   },
+  "scripts": {},
   "author": "",
   "license": "ISC",
   "dependencies": {

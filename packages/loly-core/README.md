@@ -647,10 +647,10 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
 - Rewrites are applied **before** route matching
 - The original URL is preserved in the browser (not a redirect)
 - Query parameters are preserved and can be extended
-- Rewrites work for both pages and API routes (like Next.js)
+- Rewrites work for both pages and API routes
 - Functions in rewrite destinations cannot be serialized in production builds (only static rewrites are included in manifest)
 - Rewrites are evaluated in order - the first match wins
-- **Behavior (like Next.js)**: Rewrites are applied ALWAYS if the source pattern matches, regardless of whether the destination route exists
+- **Behavior**: Rewrites are applied ALWAYS if the source pattern matches, regardless of whether the destination route exists
 - If a rewritten route doesn't exist, a 404 will be returned (strict behavior, no fallback to original route)
 - Catch-all patterns (`/:path*`) are fully supported and recommended for multitenancy scenarios
 - **API Routes**: Can be rewritten. If rewritten route starts with `/api/`, it's handled as API route. Otherwise, it's handled as a page route

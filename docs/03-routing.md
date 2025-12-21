@@ -1,6 +1,6 @@
 # Sistema de Routing
 
-El sistema de routing de Loly está basado en archivos, similar a Next.js App Router. Las rutas se definen mediante la estructura de archivos en el directorio `app/`.
+El sistema de routing de Loly está basado en archivos. Las rutas se definen mediante la estructura de archivos en el directorio `app/`.
 
 ## Conceptos Básicos
 
@@ -400,12 +400,12 @@ export default async function rewrites(): Promise<RewriteConfig> {
 - URL visible en navegador: `tenant1.localhost:3000/dashboard` (sin cambios)
 - La ruta `/project/[tenantId]/dashboard` recibe `params.tenantId = "tenant1"`
 
-### Comportamiento (como Next.js)
+### Comportamiento
 
 - Los rewrites se aplican **SIEMPRE** si el patrón source coincide
 - Si la ruta reescrita no existe, se devuelve 404 (comportamiento estricto, sin fallback)
 - Los catch-all (`/:path*`) están completamente soportados y recomendados para multitenancy
-- Las rutas de API pueden reescribirse (como Next.js)
+- Las rutas de API pueden reescribirse
 - Las rutas WSS (`/wss/*`) se excluyen automáticamente (manejadas por Socket.IO)
 - Las rutas del sistema (`/static/*`, `/__fw/*`, `/favicon.ico`) se excluyen automáticamente
 

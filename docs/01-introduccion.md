@@ -2,7 +2,7 @@
 
 ## ¿Qué es Loly?
 
-Loly es un framework full-stack para React que combina las mejores características de frameworks modernos como Next.js y Remix, con un enfoque en simplicidad, rendimiento y experiencia de desarrollador.
+Loly es un framework full-stack para React con un enfoque en simplicidad, rendimiento y experiencia de desarrollador.
 
 ## Características Principales
 
@@ -190,7 +190,7 @@ Componentes que envuelven páginas:
 
 ## ¿Qué hace diferente a Loly?
 
-Loly Framework comparte similitudes con frameworks modernos como Next.js, pero incluye características únicas que lo distinguen:
+Loly Framework incluye características únicas que lo distinguen:
 
 ### 🎯 Middlewares en Rutas
 A diferencia de otros frameworks, Loly permite definir middlewares directamente en tus rutas:

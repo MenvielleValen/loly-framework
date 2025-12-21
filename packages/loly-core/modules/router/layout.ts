@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { LayoutComponent } from "./index.types";
 import { LAYOUT_FILE_BASENAME } from "./constants";
+import { isRouteGroup } from "./path";
 
 /**
  * Finds a layout file in the given directory.
@@ -26,7 +27,16 @@ export function findLayoutFileInDir(dir: string): string | null {
 /**
  * Loads all layout components for a page directory.
  * Walks up from the page directory to the app root, collecting layouts at each level.
- * Returns layouts in order from root to most specific.
+ * Includes layouts from route groups (directories in parentheses).
+ * Returns layouts in order from root to most specific: root → route group → nested → page.
+ * 
+ * @param pageDir - Directory containing the page file
+ * @param appDir - Root app directory
+ * @returns Object with layout components and files in order from root to most specific
+ * 
+ * @example
+ * // For app/(dashboard)/settings/page.tsx:
+ * // Returns layouts from: app/layout.tsx, app/(dashboard)/layout.tsx, app/(dashboard)/settings/layout.tsx (if exists)
  */
 export function loadLayoutsForDir(
   pageDir: string,
@@ -59,6 +69,7 @@ export function loadLayoutsForDir(
   }
 
   // Reverse to get root → most specific order
+  // This ensures: root layout → route group layouts → nested layouts → page-specific layouts
   return {
     components: componentsBottomUp.reverse(),
     files: filesBottomUp.reverse(),

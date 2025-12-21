@@ -53,6 +53,8 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
       { href: "/launches", label: "Launches" },
       { href: "/astronauts", label: "Astronauts" },
       { href: "/apod", label: "APOD" },
+      { href: "/about", label: "About" },
+      { href: "/contact", label: "Contact" },
       { href: "/realtime", label: "Realtime" },
       { href: "/test-hooks", label: "Test Hooks" },
       { href: "/test-middleware", label: "Test Middleware" },
@@ -73,6 +75,8 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
           { href: "/launches", label: "Launches" },
           { href: "/astronauts", label: "Astronauts" },
           { href: "/apod", label: "Picture of the Day" },
+          { href: "/about", label: "About" },
+          { href: "/contact", label: "Contact" },
         ],
         apis: [
           { href: "https://api.nasa.gov", label: "NASA API", external: true },

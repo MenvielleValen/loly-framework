@@ -342,6 +342,104 @@ Layouts can have their own server hooks that provide stable data across all page
 - Layout server hooks: `app/layout.server.hook.ts` (same directory as `layout.tsx`)
 - Page server hooks: `app/page.server.hook.ts` (preferred) or `app/server.hook.ts` (legacy, backward compatible)
 
+### 📦 Route Groups
+
+Route groups allow you to organize routes without affecting the URL structure. Directories wrapped in parentheses like `(dashboard)` or `(landing)` are treated as route groups and don't appear in the URL.
+
+**Key Features:**
+- Route groups don't appear in URLs
+- Each route group can have its own layout
+- Route groups help organize large applications
+- Layouts are applied in order: root → route group → nested → page
+
+**Example Structure:**
+
+```
+app/
+├── layout.tsx                    # Root layout (applies to all routes)
+├── layout.server.hook.ts         # Root layout server hook
+├── (dashboard)/
+│   ├── layout.tsx                # Dashboard layout (applies to /settings, /profile)
+│   ├── layout.server.hook.ts     # Dashboard layout server hook
+│   ├── settings/
+│   │   └── page.tsx              # → /settings (NOT /dashboard/settings)
+│   └── profile/
+│       └── page.tsx              # → /profile (NOT /dashboard/profile)
+├── (landing)/
+│   ├── layout.tsx                # Landing layout (applies to /about, /contact)
+│   ├── layout.server.hook.ts     # Landing layout server hook
+│   ├── about/
+│   │   └── page.tsx              # → /about (NOT /landing/about)
+│   └── contact/
+│       └── page.tsx              # → /contact (NOT /landing/contact)
+└── page.tsx                       # → / (root page)
+```
+
+**Layout Order:**
+
+For a page at `app/(dashboard)/settings/page.tsx`, layouts are applied in this order:
+
+1. `app/layout.tsx` (root layout)
+2. `app/(dashboard)/layout.tsx` (route group layout)
+3. `app/(dashboard)/settings/layout.tsx` (if exists, nested layout)
+
+**Server Hooks:**
+
+Server hooks work the same way with route groups. The execution order is:
+
+1. Root layout hook (`app/layout.server.hook.ts`)
+2. Route group layout hook (`app/(dashboard)/layout.server.hook.ts`)
+3. Nested layout hooks (if any)
+4. Page hook (`app/(dashboard)/settings/page.server.hook.ts`)
+
+**Example:**
+
+```tsx
+// app/(dashboard)/layout.tsx
+export default function DashboardLayout({ children, user }) {
+  return (
+    <div className="dashboard">
+      <nav>Dashboard Navigation</nav>
+      {children}
+    </div>
+  );
+}
+```
+
+```tsx
+// app/(dashboard)/layout.server.hook.ts
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  const user = await getCurrentUser(ctx.req);
+  return {
+    props: {
+      user, // Available to all pages in (dashboard) group
+    },
+  };
+};
+```
+
+```tsx
+// app/(dashboard)/settings/page.tsx
+export default function SettingsPage({ user, settings }) {
+  // user comes from (dashboard)/layout.server.hook.ts
+  // settings comes from page.server.hook.ts
+  return <div>Settings for {user.name}</div>;
+}
+```
+
+**Important Notes:**
+- Route groups are purely organizational - they don't affect URLs
+- You cannot have duplicate routes that would result from ignoring route groups
+  - ❌ Invalid: `app/(dashboard)/settings/page.tsx` and `app/settings/page.tsx` (both map to `/settings`)
+  - ✅ Valid: `app/(dashboard)/settings/page.tsx` and `app/(landing)/settings/page.tsx` (both map to `/settings` - conflict!)
+- Route groups work seamlessly with SPA navigation and preloading
+
+**Future: Parallel Routes**
+
+The architecture is prepared for future parallel routes support (e.g., `(modal)`). Route groups can be extended to support special types that render in parallel slots.
+
 ### 🚀 Hybrid Rendering
 
 Choose the best rendering strategy for each page:

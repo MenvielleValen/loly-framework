@@ -2,12 +2,13 @@ import fs from "fs";
 import path from "path";
 import { LoadedRoute, PageComponent, RouteMiddleware } from "./index.types";
 import { PAGE_FILE_REGEX } from "./constants";
-import { buildRoutePathFromDir, buildRegexFromRoutePath } from "./path";
+import { buildRoutePathFromDir, buildRegexFromRoutePath, isRouteGroup } from "./path";
 import { loadLayoutsForDir } from "./layout";
 import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
 
 /**
  * Validates loaded routes and warns about common issues.
+ * Detects duplicate route patterns, including those that result from ignoring route groups.
  */
 function validateRoutes(routes: LoadedRoute[], appDir: string): void {
   const routePatterns = new Map<string, LoadedRoute[]>();
@@ -15,6 +16,7 @@ function validateRoutes(routes: LoadedRoute[], appDir: string): void {
   const warnings: string[] = [];
 
   // Check for duplicate route patterns
+  // This will catch conflicts from route groups (e.g., app/(dashboard)/settings and app/settings)
   for (const route of routes) {
     const existing = routePatterns.get(route.pattern) || [];
     existing.push(route);
@@ -23,13 +25,19 @@ function validateRoutes(routes: LoadedRoute[], appDir: string): void {
 
   for (const [pattern, duplicateRoutes] of routePatterns.entries()) {
     if (duplicateRoutes.length > 1) {
-      const files = duplicateRoutes.map(r => 
-        r.pageFile ? path.relative(appDir, r.pageFile) : 'unknown'
-      ).join(', ');
+      const files = duplicateRoutes.map(r => {
+        const relPath = r.pageFile ? path.relative(appDir, r.pageFile) : 'unknown';
+        // Check if the route is inside a route group
+        const segments = relPath.split(path.sep);
+        const hasRouteGroup = segments.some(seg => isRouteGroup(seg));
+        return hasRouteGroup ? `${relPath} (inside route group)` : relPath;
+      }).join(', ');
+      
       errors.push(
         `Duplicate route pattern "${pattern}" found in multiple files:\n` +
         `  ${files}\n` +
-        `  💡 Suggestion: Ensure each route has a unique path pattern`
+        `  💡 Suggestion: Route groups (directories in parentheses) don't appear in URLs.\n` +
+        `     Ensure each route has a unique path pattern after route groups are ignored.`
       );
     }
   }

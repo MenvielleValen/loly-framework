@@ -3,20 +3,79 @@
  */
 
 /**
- * Builds a route path from a relative directory path.
+ * Checks if a directory name is a route group.
+ * Route groups are directories wrapped in parentheses like (dashboard) or (landing).
+ * They organize routes without appearing in the URL.
  * 
- * @param relDir - Relative directory path (e.g., '', 'about', 'blog\\[slug]')
- * @returns Route path (e.g., '/', '/about', '/blog/[slug]')
+ * @param dirName - Directory name to check
+ * @returns true if the directory is a route group
+ * 
+ * @example
+ * isRouteGroup('(dashboard)') // true
+ * isRouteGroup('(landing)') // true
+ * isRouteGroup('dashboard') // false
+ * isRouteGroup('settings') // false
+ * 
+ * @future
+ * This function can be extended to support special route group types like (modal)
+ * for parallel routes. For example:
+ * - isRouteGroup('(modal)') could return a special type indicating it's a parallel route
+ * - The routing system could handle parallel routes differently from regular route groups
+ */
+export function isRouteGroup(dirName: string): boolean {
+  return dirName.startsWith('(') && dirName.endsWith(')');
+}
+
+/**
+ * Gets the route group name from a directory name.
+ * Extracts the name inside parentheses, e.g., "(dashboard)" -> "dashboard".
+ * 
+ * @param dirName - Directory name (should be a route group)
+ * @returns The route group name without parentheses, or null if not a route group
+ * 
+ * @example
+ * getRouteGroupName('(dashboard)') // 'dashboard'
+ * getRouteGroupName('(landing)') // 'landing'
+ * getRouteGroupName('dashboard') // null
+ * 
+ * @future
+ * This function can be used to identify special route group types:
+ * - getRouteGroupName('(modal)') -> 'modal' (for parallel routes)
+ * - The routing system can then handle 'modal' as a special case
+ */
+export function getRouteGroupName(dirName: string): string | null {
+  if (!isRouteGroup(dirName)) return null;
+  return dirName.slice(1, -1); // Remove parentheses
+}
+
+/**
+ * Builds a route path from a relative directory path.
+ * Route groups (directories in parentheses) are filtered out and don't appear in the URL.
+ * 
+ * @param relDir - Relative directory path (e.g., '', 'about', 'blog\\[slug]', '(dashboard)\\settings')
+ * @returns Route path (e.g., '/', '/about', '/blog/[slug]', '/settings')
  * 
  * @example
  * buildRoutePathFromDir('') // '/'
  * buildRoutePathFromDir('about') // '/about'
  * buildRoutePathFromDir('blog\\[slug]') // '/blog/[slug]'
+ * buildRoutePathFromDir('(dashboard)\\settings') // '/settings' (route group filtered out)
+ * buildRoutePathFromDir('(dashboard)\\(landing)\\about') // '/about' (both route groups filtered out)
  */
 export function buildRoutePathFromDir(relDir: string): string {
   if (!relDir || relDir === ".") return "/";
   const clean = relDir.replace(/\\/g, "/");
-  return "/" + clean;
+  
+  // Split into segments and filter out route groups
+  const segments = clean.split("/").filter(seg => {
+    // Filter out route groups (directories in parentheses)
+    return !isRouteGroup(seg);
+  });
+  
+  // If no segments remain after filtering, return root
+  if (segments.length === 0) return "/";
+  
+  return "/" + segments.join("/");
 }
 
 /**

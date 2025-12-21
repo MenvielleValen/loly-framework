@@ -246,15 +246,33 @@ async function handleNormalRoute(
     theme, // Always include theme
   };
 
-  const matched = matchRouteClient(nextUrl, routes);
+  // Use pathname from server response if available (for rewrites)
+  // Otherwise use the original nextUrl
+  // Try to match with rewritten pathname first, then fall back to original URL
+  const pathnameForMatch = json.pathname || nextUrl;
+  let matched = matchRouteClient(pathnameForMatch, routes);
+  
+  // If no match with rewritten pathname, try with original URL
+  // (some routes might not need rewrite, or rewrite might not apply)
+  if (!matched) {
+    matched = matchRouteClient(nextUrl, routes);
+  }
 
   if (!matched) {
+    // Server returned data but no route match - this shouldn't happen normally
+    // But if it does, do full page reload to let server handle it
+    console.warn(
+      `[client] Server returned data for ${nextUrl} but no route match found. Available routes:`,
+      routes.map((r) => r.pattern)
+    );
     window.location.href = nextUrl;
     return false;
   }
 
+  // Use pathname from server if available (rewritten), otherwise use nextUrl
+  const finalPathname = json.pathname || nextUrl;
   const windowData: InitialData = {
-    pathname: nextUrl,
+    pathname: finalPathname,
     params: matched.params,
     props: combinedProps,
     metadata: json.metadata ?? null,

@@ -5,6 +5,8 @@ import {
   LoadedRoute,
   LoaderResult,
   matchRoute,
+  RewriteLoader,
+  processRewrites,
 } from "@router/index";
 import {
   buildAppTree,
@@ -88,6 +90,7 @@ export interface HandlePageRequestOptions {
   theme?: string;
   projectRoot?: string;
   config?: FrameworkConfig;
+  rewriteLoader?: RewriteLoader;
 }
 
 /**
@@ -150,7 +153,62 @@ async function handlePageRequestInternal(
     theme,
     projectRoot,
     config,
+    rewriteLoader,
   } = options;
+
+  // Apply rewrites BEFORE route matching
+  let finalUrlPath = urlPath;
+  let extractedParams: Record<string, string> = {};
+  
+  if (rewriteLoader) {
+    try {
+      const compiledRewrites = await rewriteLoader.loadRewrites();
+      const rewriteResult = await processRewrites(urlPath, compiledRewrites, req);
+      
+      if (rewriteResult) {
+        finalUrlPath = rewriteResult.rewrittenPath;
+        extractedParams = rewriteResult.extractedParams;
+        
+        // Normalize the rewritten path (ensure proper format for matching)
+        // Remove trailing slash, ensure it starts with /, remove double slashes
+        finalUrlPath = finalUrlPath
+          .replace(/\/+/g, "/") // Replace multiple slashes with single slash
+          .replace(/^([^/])/, "/$1") // Ensure it starts with /
+          .replace(/\/$/, "") || "/"; // Remove trailing slash, but keep "/" for root
+        
+        // Debug logging (can be removed in production)
+        if (env === "dev") {
+          const reqLogger = getRequestLogger(req);
+          reqLogger.debug("Rewrite applied", {
+            originalPath: urlPath,
+            rewrittenPath: finalUrlPath,
+            extractedParams,
+            host: req.get("host"),
+          });
+        }
+        
+        // Inject extracted params into req.query for server hooks to access
+        // Preserve existing query params
+        Object.assign(req.query, extractedParams);
+        
+        // Also store in locals for easier access
+        if (!(req as any).locals) {
+          (req as any).locals = {};
+        }
+        Object.assign((req as any).locals, extractedParams);
+      }
+    } catch (error) {
+      const reqLogger = getRequestLogger(req);
+      reqLogger.error("Error processing rewrites", error, {
+        urlPath,
+        host: req.get("host"),
+      });
+      // Continue with original path if rewrite fails
+    }
+  }
+  
+  // Normalize finalUrlPath before matching (in case no rewrite was applied)
+  finalUrlPath = finalUrlPath.replace(/\/$/, "") || "/";
 
   // Get asset paths - in dev, always use non-hashed names; in prod, use manifest if available
   const clientJsPath = env === "dev" 
@@ -174,21 +232,50 @@ async function handlePageRequestInternal(
 
   if (env === "prod" && ssgOutDir) {
     if (isDataReq) {
-      if (tryServeSsgData(res, ssgOutDir, urlPath)) {
+      if (tryServeSsgData(res, ssgOutDir, finalUrlPath)) {
         return;
       }
     } else {
-      if (tryServeSsgHtml(res, ssgOutDir, urlPath)) {
+      if (tryServeSsgHtml(res, ssgOutDir, finalUrlPath)) {
         return;
       }
     }
   }
 
-  const matched = matchRoute(routes, urlPath);
+  const matched = matchRoute(routes, finalUrlPath);
+
+  // Debug logging for rewrites (can be removed in production)
+  if (env === "dev") {
+    const reqLogger = getRequestLogger(req);
+    if (finalUrlPath !== urlPath) {
+      reqLogger.debug("Route matching after rewrite", {
+        originalPath: urlPath,
+        rewrittenPath: finalUrlPath,
+        matched: !!matched,
+        matchedRoute: matched?.route.pattern,
+        matchedParams: matched?.params,
+        availableRoutes: routes.slice(0, 10).map((r) => r.pattern), // Show first 10 routes
+      });
+    } else if (!matched) {
+      // Log when no match found
+      reqLogger.debug("No route match found", {
+        path: finalUrlPath,
+        availableRoutes: routes.slice(0, 10).map((r) => r.pattern),
+      });
+    }
+  }
 
   const routerData = buildRouterData(req);
 
   if (!matched) {
+    // For data requests, return JSON 404 instead of HTML
+    if (isDataReq) {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify({ notFound: true, pathname: finalUrlPath }));
+      return;
+    }
+    
     if (notFoundPage) {
       const ctx: ServerContext & { theme?: string } = {
         req,
@@ -289,7 +376,8 @@ async function handlePageRequestInternal(
         return;
       }
     
-      const initialData = buildInitialData(urlPath, {}, combinedLoaderResult);
+      // Use finalUrlPath (rewritten) for initialData so client can match correctly
+      const initialData = buildInitialData(finalUrlPath, {}, combinedLoaderResult);
       const appTree = buildAppTree(notFoundPage, {}, initialData.props);
       initialData.notFound = true;
     
@@ -522,10 +610,12 @@ async function handlePageRequestInternal(
   }
 
   // Use combined props and metadata in loaderResult
+  // Include rewritten pathname so client can match correctly
   const combinedLoaderResult: LoaderResult = {
     ...loaderResult,
     props: combinedProps,
     metadata: combinedMetadata,
+    pathname: finalUrlPath, // Include rewritten pathname for client-side matching
   };
 
   if (isDataReq) {
@@ -557,7 +647,9 @@ async function handlePageRequestInternal(
     return;
   }
 
-  const initialData = buildInitialData(urlPath, params, combinedLoaderResult);
+  // Use finalUrlPath (rewritten) for initialData so client can match correctly
+  // The original urlPath is preserved in the browser, but the client needs the rewritten path to match routes
+  const initialData = buildInitialData(finalUrlPath, params, combinedLoaderResult);
   const appTree = buildAppTree(route, params, initialData.props);
 
   // Get chunk href with hash if available

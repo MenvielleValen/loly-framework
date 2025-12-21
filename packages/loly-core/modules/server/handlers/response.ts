@@ -41,6 +41,8 @@ export function handleDataResponse(
     props: loaderResult.props ?? {},
     metadata: loaderResult.metadata ?? null,
     theme: loaderResult.theme ?? theme ?? null,
+    // Include pathname if provided (for rewrites - client needs to know the rewritten path)
+    ...(loaderResult.pathname ? { pathname: loaderResult.pathname } : {}),
   };
 
   // Include separated props if provided (layoutProps only when layout hooks were executed)

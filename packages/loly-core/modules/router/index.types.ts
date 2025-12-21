@@ -167,6 +167,8 @@ export type RouteMiddleware = (
  * @template TProps - Type of props that will be passed to the component (defaults to Record<string, any>)
  */
 export interface LoaderResult<TProps extends Record<string, any> = Record<string, any>> {
+  // Optional pathname (used for rewrites - server can indicate the rewritten path)
+  pathname?: string;
   props?: TProps;
   redirect?: { destination: string; permanent?: boolean };
   notFound?: boolean;

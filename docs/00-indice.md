@@ -26,6 +26,7 @@ Bienvenido a la documentación técnica completa de Loly Framework. Esta documen
    - Layouts
    - Parámetros de ruta
    - Navegación
+   - URL Rewrites (multitenancy)
 
 4. **[Server Loaders](./04-server-loaders.md)**
    - Data fetching en el servidor

@@ -9,6 +9,7 @@ import {
   loadNotFoundRouteFromFilesystem,
   loadErrorRouteFromFilesystem,
 } from "@router/index";
+import { writeRewritesManifest } from "@router/rewrites-manifest";
 import { buildClientBundle } from "./bundler/client";
 import { buildStaticPages } from "./ssg";
 import { buildServerApp } from "./bundler/server";
@@ -74,6 +75,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
   writeClientBoostrapManifest(projectRoot);
 
   writeClientRoutesManifest(routes, projectRoot);
+
+  // Generate rewrites manifest
+  await writeRewritesManifest(projectRoot);
 
   await buildClientBundle(projectRoot);
 

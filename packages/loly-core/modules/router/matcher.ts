@@ -16,13 +16,16 @@ export function matchRoute(
   routes: LoadedRoute[],
   urlPath: string
 ): { route: LoadedRoute; params: Record<string, string> } | null {
+  // Normalize the path before matching (remove trailing slash, ensure it starts with /)
+  const normalizedPath = urlPath.replace(/\/$/, "") || "/";
+  
   for (const route of routes) {
-    const match = route.regex.exec(urlPath);
+    const match = route.regex.exec(normalizedPath);
     if (!match) continue;
 
     const params: Record<string, string> = {};
     route.paramNames.forEach((name, idx) => {
-      params[name] = match[idx + 1];
+      params[name] = decodeURIComponent(match[idx + 1] || "");
     });
 
     return { route, params };

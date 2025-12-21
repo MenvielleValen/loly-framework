@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ApiContext, ApiRoute, matchApiRoute } from "@router/index";
+import { ApiContext, ApiRoute, matchApiRoute, RewriteLoader, processRewrites } from "@router/index";
 import { sanitizeParams, sanitizeQuery } from "@security/sanitize";
 import { getAutoRateLimiter } from "@server/middleware/auto-rate-limit";
 import { getRequestLogger, createModuleLogger } from "@logger/index";
@@ -12,6 +12,7 @@ export interface HandleApiRequestOptions {
   env?: "dev" | "prod";
   strictRateLimitPatterns?: string[];
   rateLimitConfig?: { windowMs?: number; strictMax?: number };
+  rewriteLoader?: RewriteLoader;
 }
 
 /**
@@ -23,9 +24,47 @@ export interface HandleApiRequestOptions {
 export async function handleApiRequest(
   options: HandleApiRequestOptions
 ): Promise<void> {
-  const { apiRoutes, urlPath, req, res, env = "dev" } = options;
+  const { apiRoutes, urlPath, req, res, env = "dev", rewriteLoader } = options;
 
-  const matched = matchApiRoute(apiRoutes, urlPath);
+  // Apply rewrites BEFORE route matching
+  // NOTE: API routes CAN be rewritten (like Next.js)
+  // If rewritten route starts with /api/, it will still be handled as an API route
+  // If rewritten route doesn't start with /api/, it won't match here (will be handled by page routes)
+  let finalUrlPath = urlPath;
+  let extractedParams: Record<string, string> = {};
+  
+  if (rewriteLoader) {
+    try {
+      const compiledRewrites = await rewriteLoader.loadRewrites();
+      const rewriteResult = await processRewrites(urlPath, compiledRewrites, req);
+      
+      if (rewriteResult) {
+        finalUrlPath = rewriteResult.rewrittenPath;
+        extractedParams = rewriteResult.extractedParams;
+        
+        // Inject extracted params into req.query for handlers to access
+        // Preserve existing query params
+        Object.assign(req.query, extractedParams);
+        
+        // Also store in locals for easier access
+        if (!(req as any).locals) {
+          (req as any).locals = {};
+        }
+        Object.assign((req as any).locals, extractedParams);
+      }
+    } catch (error) {
+      const reqLogger = getRequestLogger(req);
+      reqLogger.error("Error processing rewrites", error, {
+        urlPath,
+      });
+      // Continue with original path if rewrite fails
+    }
+  }
+  
+  // Normalize finalUrlPath before matching
+  finalUrlPath = finalUrlPath.replace(/\/$/, "") || "/";
+
+  const matched = matchApiRoute(apiRoutes, finalUrlPath);
 
   if (!matched) {
     res.status(404).json({ error: "Not Found" });
@@ -52,9 +91,14 @@ export async function handleApiRequest(
     Response: (body: any = {}, status = 200) => res.status(status).json(body),
     NotFound: (body: any = {}) => res.status(404).json(body),
     params: sanitizedParams,
-    pathname: urlPath,
+    pathname: finalUrlPath, // Use rewritten path
     locals: {},
   };
+  
+  // Merge extracted params from rewrites into locals
+  if (extractedParams && Object.keys(extractedParams).length > 0) {
+    Object.assign(ctx.locals, extractedParams);
+  }
 
   // Update req.query with sanitized values
   req.query = sanitizedQuery as any;

@@ -14,6 +14,12 @@ export {
   WssActions,
 } from "@router/index.types";
 export {
+  RewriteConfig,
+  RewriteRule,
+  RewriteCondition,
+  type RewriteDestination,
+} from "@router/rewrites";
+export {
   defineWssRoute,
   type WssRouteDefinition,
   type WssEventDefinition,

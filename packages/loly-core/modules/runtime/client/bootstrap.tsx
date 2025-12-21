@@ -70,8 +70,11 @@ function initializeRouterData(
   let routerData = getRouterData();
   if (!routerData) {
     const url = new URL(initialUrl, window.location.origin);
+    // Use initialData.pathname if available (rewritten path from server)
+    // This ensures rewrites work correctly on the client
+    const pathname = initialData?.pathname || url.pathname;
     routerData = {
-      pathname: url.pathname,
+      pathname,
       params: initialData?.params || {},
       searchParams: Object.fromEntries(url.searchParams.entries()),
     };
@@ -166,7 +169,11 @@ export function bootstrapClient(
       }
 
       const initialData = getWindowData();
-      const initialUrl = window.location.pathname + window.location.search;
+      
+      // Use initialData.pathname if available (contains rewritten path from server)
+      // Otherwise fall back to window.location.pathname (original URL)
+      // This ensures rewrites work correctly: server rewrites the path, client uses rewritten path for matching
+      const initialUrl = (initialData?.pathname || window.location.pathname) + window.location.search;
 
       // Preserve layout props from initial load (they come combined in initialData.props)
       // In SSR, layout hooks are always executed, so we need to extract layout props
@@ -179,7 +186,9 @@ export function bootstrapClient(
       }
 
       // 3. Initialize router data
-      initializeRouterData(initialUrl, initialData);
+      // Use initialData.pathname if available (rewritten path) for router data
+      const routerPathname = initialData?.pathname || window.location.pathname;
+      initializeRouterData(routerPathname + window.location.search, initialData);
 
       // 4. Load and hydrate initial route
       await hydrateInitialRoute(

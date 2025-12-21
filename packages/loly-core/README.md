@@ -440,6 +440,229 @@ export default function SettingsPage({ user, settings }) {
 
 The architecture is prepared for future parallel routes support (e.g., `(modal)`). Route groups can be extended to support special types that render in parallel slots.
 
+### 🔄 URL Rewrites
+
+URL rewrites allow you to rewrite incoming request paths to different destination paths internally, without changing the URL visible in the browser. This is especially useful for multitenancy, API proxying, and other advanced routing scenarios.
+
+**Key Features:**
+- Rewrites happen internally - the URL in the browser doesn't change
+- Support for dynamic parameters (`:param`, `*` catch-all)
+- Conditional rewrites based on host, headers, cookies, or query parameters
+- Async destination functions for dynamic rewrites
+- High performance with pre-compiled regex patterns and caching
+
+**Configuration:**
+
+Create `rewrites.config.ts` in your project root:
+
+```typescript
+import type { RewriteConfig } from "@lolyjs/core";
+
+export default async function rewrites(): Promise<RewriteConfig> {
+  return [
+    // Static rewrite
+    {
+      source: "/old-path",
+      destination: "/new-path",
+    },
+    
+    // Rewrite with parameters
+    {
+      source: "/tenant/:tenant*",
+      destination: "/app/:tenant*",
+    },
+    
+    // Rewrite with async function (for dynamic logic)
+    {
+      source: "/api/proxy/:path*",
+      destination: async (params, req) => {
+        const tenant = extractTenantFromRequest(req);
+        return `/api/${tenant}/:path*`;
+      },
+    },
+    
+    // Conditional rewrite based on host (multitenant by subdomain)
+    {
+      source: "/:path*",
+      has: [
+        { type: "host", value: ":tenant.example.com" },
+      ],
+      destination: "/project/:tenant/:path*",
+    },
+  ];
+}
+```
+
+**Multitenant by Subdomain (Main Use Case):**
+
+The most common use case is multitenancy where each tenant has its own subdomain:
+
+```typescript
+// rewrites.config.ts
+import type { RewriteConfig } from "@lolyjs/core";
+
+export default async function rewrites(): Promise<RewriteConfig> {
+  return [
+    // Multitenant by subdomain - catch-all pattern
+    // tenant1.example.com/* → /project/tenant1/*
+    // tenant2.example.com/* → /project/tenant2/*
+    // All routes under the tenant subdomain will be rewritten
+    // If a route doesn't exist in /project/[tenantId]/*, it will return 404
+    {
+      source: "/:path*",
+      has: [
+        { 
+          type: "host", 
+          value: ":tenant.example.com"  // Captures tenant from subdomain
+        }
+      ],
+      destination: "/project/:tenant/:path*",
+    },
+  ];
+}
+```
+
+**How It Works:**
+- User visits: `tenant1.example.com/dashboard`
+- Internally rewrites to: `/project/tenant1/dashboard`
+- URL visible in browser: `tenant1.example.com/dashboard` (unchanged)
+- Route `/project/[tenantId]/dashboard` receives `params.tenantId = "tenant1"`
+
+**Multitenant by Path:**
+
+Alternatively, you can use path-based multitenancy:
+
+```typescript
+// rewrites.config.ts
+export default async function rewrites(): Promise<RewriteConfig> {
+  return [
+    // /tenant1/dashboard → /project/tenant1/dashboard
+    {
+      source: "/:tenant/:path*",
+      destination: "/project/:tenant/:path*",
+    },
+  ];
+}
+```
+
+**API Proxy Example:**
+
+```typescript
+export default async function rewrites(): Promise<RewriteConfig> {
+  return [
+    // Proxy all /api/proxy/* requests to external API
+    {
+      source: "/api/proxy/:path*",
+      destination: async (params, req) => {
+        const externalApi = process.env.EXTERNAL_API_URL;
+        return `${externalApi}/${params.path}`;
+      },
+    },
+  ];
+}
+```
+
+**Conditional Rewrites:**
+
+Rewrites can be conditional based on request properties:
+
+```typescript
+export default async function rewrites(): Promise<RewriteConfig> {
+  return [
+    // Rewrite based on host
+    {
+      source: "/:path*",
+      has: [
+        { type: "host", value: "api.example.com" },
+      ],
+      destination: "/api/:path*",
+    },
+    
+    // Rewrite based on header
+    {
+      source: "/admin/:path*",
+      has: [
+        { type: "header", key: "X-Admin-Key", value: "secret" },
+      ],
+      destination: "/admin-panel/:path*",
+    },
+    
+    // Rewrite based on cookie
+    {
+      source: "/premium/:path*",
+      has: [
+        { type: "cookie", key: "premium", value: "true" },
+      ],
+      destination: "/premium-content/:path*",
+    },
+    
+    // Rewrite based on query parameter
+    {
+      source: "/:path*",
+      has: [
+        { type: "query", key: "version", value: "v2" },
+      ],
+      destination: "/v2/:path*",
+    },
+  ];
+}
+```
+
+**Pattern Syntax:**
+
+- `:param` - Named parameter (matches one segment)
+- `:param*` - Named catch-all (matches remaining path)
+- `*` - Anonymous catch-all (matches remaining path)
+
+**Accessing Extracted Parameters:**
+
+Parameters extracted from rewrites (including from host conditions) are automatically available in:
+- `req.query` - Query parameters
+- `req.locals` - Request locals (for server hooks)
+- `ctx.params` - Route parameters (if the rewritten path matches a dynamic route)
+
+```typescript
+// app/project/[tenantId]/dashboard/page.server.hook.ts
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  // tenantId comes from the rewrite: /project/:tenant/:path*
+  const tenantId = ctx.params.tenantId;
+  
+  // Also available in req.query and req.locals
+  const tenantFromQuery = ctx.req.query.tenant;
+  const tenantFromLocals = ctx.req.locals?.tenant;
+  
+  return { props: { tenantId } };
+};
+```
+
+**Performance & Caching:**
+
+- Rewrites config is loaded once and cached
+- Regex patterns are pre-compiled for performance
+- In development: File tracking invalidates cache only when `rewrites.config.ts` changes
+- In production: Rewrites are loaded from manifest (faster, no async functions)
+
+**Important Notes:**
+
+- Rewrites are applied **before** route matching
+- The original URL is preserved in the browser (not a redirect)
+- Query parameters are preserved and can be extended
+- Rewrites work for both pages and API routes (like Next.js)
+- Functions in rewrite destinations cannot be serialized in production builds (only static rewrites are included in manifest)
+- Rewrites are evaluated in order - the first match wins
+- **Behavior (like Next.js)**: Rewrites are applied ALWAYS if the source pattern matches, regardless of whether the destination route exists
+- If a rewritten route doesn't exist, a 404 will be returned (strict behavior, no fallback to original route)
+- Catch-all patterns (`/:path*`) are fully supported and recommended for multitenancy scenarios
+- **API Routes**: Can be rewritten. If rewritten route starts with `/api/`, it's handled as API route. Otherwise, it's handled as a page route
+- **WSS Routes**: Automatically excluded from rewrites (WebSocket handled separately by Socket.IO)
+- System routes (`/static/*`, `/__fw/*`, `/favicon.ico`) are automatically excluded from rewrites
+
+**Validation:**
+
+The framework automatically validates rewrites to prevent:
+- Infinite loops (warns if source and destination are identical)
+- Duplicate source patterns (warns if multiple rewrites have the same source)
+
 ### 🚀 Hybrid Rendering
 
 Choose the best rendering strategy for each page:

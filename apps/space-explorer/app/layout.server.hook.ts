@@ -58,6 +58,7 @@ export const getServerSideProps: ServerLoader = async (ctx) => {
       { href: "/realtime", label: "Realtime" },
       { href: "/test-hooks", label: "Test Hooks" },
       { href: "/test-middleware", label: "Test Middleware" },
+      { href: "/tenant/tenant1/dashboard", label: "Rewrites Example" },
     ],
       
       // Execution tracking (for testing purposes)

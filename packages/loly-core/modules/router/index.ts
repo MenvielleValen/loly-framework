@@ -14,3 +14,6 @@ export * from "./server-hook";
 export * from "./index.types";
 export * from "./loader-routes";
 export * from "./route-loader";
+export * from "./rewrites";
+export * from "./rewrites-loader";
+export * from "./rewrites-manifest";

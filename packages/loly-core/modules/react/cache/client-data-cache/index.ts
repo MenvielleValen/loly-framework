@@ -17,6 +17,8 @@ export type RouteDataResponse = {
   error?: boolean;
   message?: string;
   params?: Record<string, string>;
+  /** Pathname after rewrite (for client-side route matching) */
+  pathname?: string;
 };
 
 type RouteData = {

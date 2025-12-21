@@ -1,7 +1,7 @@
 import express from "express";
 import { LoadedRoute, ApiRoute, WssRoute } from "@router/index.types";
 import { handleApiRequest, handlePageRequest } from "./handlers";
-import { RouteLoader } from "@router/index";
+import { RouteLoader, RewriteLoader, createRewriteLoader } from "@router/index";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
 import { getBuildDir, type FrameworkConfig } from "@src/config";
 import { getServerConfig } from "@server/config";
@@ -21,6 +21,29 @@ export interface SetupRoutesOptions {
     apiRoutes: ApiRoute[];
   };
   config?: FrameworkConfig;
+}
+
+/**
+ * Creates and caches a RewriteLoader instance.
+ * The loader is cached and reused for all requests.
+ */
+let cachedRewriteLoader: RewriteLoader | null = null;
+let cachedProjectRoot: string | null = null;
+let cachedIsDev: boolean | null = null;
+
+function getRewriteLoader(projectRoot: string, isDev: boolean): RewriteLoader {
+  if (
+    cachedRewriteLoader &&
+    cachedProjectRoot === projectRoot &&
+    cachedIsDev === isDev
+  ) {
+    return cachedRewriteLoader;
+  }
+
+  cachedRewriteLoader = createRewriteLoader(projectRoot, isDev);
+  cachedProjectRoot = projectRoot;
+  cachedIsDev = isDev;
+  return cachedRewriteLoader;
 }
 
 /**
@@ -46,6 +69,9 @@ export function setupRoutes(options: SetupRoutesOptions): void {
   // Cache route chunks - they don't change during runtime
   const routeChunks = routeLoader.loadRouteChunks();
 
+  // Create rewrite loader (cached and reused)
+  const rewriteLoader = getRewriteLoader(projectRoot, isDev);
+
   // SSG directory - available in both dev and prod if files exist
   const ssgOutDir = path.join(
     config ? getBuildDir(projectRoot, config) : path.join(projectRoot, BUILD_FOLDER_NAME),
@@ -70,6 +96,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
       env: isDev ? "dev" : "prod",
       strictRateLimitPatterns: strictPatterns,
       rateLimitConfig,
+      rewriteLoader,
     });
   });
 
@@ -100,6 +127,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
       theme: req.cookies?.theme || "light",
       projectRoot,
       config,
+      rewriteLoader,
     });
   });
 }

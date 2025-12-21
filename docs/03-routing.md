@@ -334,6 +334,164 @@ app/
 │       └── page.tsx            → /shop/checkout
 ```
 
+## URL Rewrites
+
+Los rewrites permiten reescribir rutas internamente sin cambiar la URL visible en el navegador. Esto es especialmente útil para multitenancy, proxy de APIs y otros escenarios avanzados de routing.
+
+### Configuración
+
+Crea `rewrites.config.ts` en la raíz del proyecto:
+
+```typescript
+import type { RewriteConfig } from "@lolyjs/core";
+
+export default async function rewrites(): Promise<RewriteConfig> {
+  return [
+    // Rewrite estático
+    {
+      source: "/old-path",
+      destination: "/new-path",
+    },
+    
+    // Rewrite con parámetros
+    {
+      source: "/tenant/:tenant/:path*",
+      destination: "/project/:tenant/:path*",
+    },
+    
+    // Rewrite condicional por host (multitenant por subdomain)
+    {
+      source: "/:path*",
+      has: [
+        { type: "host", value: ":tenant.localhost" },
+      ],
+      destination: "/project/:tenant/:path*",
+    },
+  ];
+}
+```
+
+### Multitenancy por Subdomain
+
+El caso de uso más común es multitenancy donde cada tenant tiene su propio subdomain:
+
+```typescript
+// rewrites.config.ts
+export default async function rewrites(): Promise<RewriteConfig> {
+  return [
+    // Catch-all: tenant1.localhost:3000/* → /project/tenant1/*
+    {
+      source: "/:path*",
+      has: [
+        { 
+          type: "host", 
+          value: ":tenant.localhost"  // Captura tenant del subdomain
+        }
+      ],
+      destination: "/project/:tenant/:path*",
+    },
+  ];
+}
+```
+
+**Cómo funciona:**
+- Usuario visita: `tenant1.localhost:3000/dashboard`
+- Internamente se reescribe a: `/project/tenant1/dashboard`
+- URL visible en navegador: `tenant1.localhost:3000/dashboard` (sin cambios)
+- La ruta `/project/[tenantId]/dashboard` recibe `params.tenantId = "tenant1"`
+
+### Comportamiento (como Next.js)
+
+- Los rewrites se aplican **SIEMPRE** si el patrón source coincide
+- Si la ruta reescrita no existe, se devuelve 404 (comportamiento estricto, sin fallback)
+- Los catch-all (`/:path*`) están completamente soportados y recomendados para multitenancy
+- Las rutas de API pueden reescribirse (como Next.js)
+- Las rutas WSS (`/wss/*`) se excluyen automáticamente (manejadas por Socket.IO)
+- Las rutas del sistema (`/static/*`, `/__fw/*`, `/favicon.ico`) se excluyen automáticamente
+
+### Acceso a Parámetros Extraídos
+
+Los parámetros extraídos de rewrites (incluyendo condiciones de host) están disponibles en:
+
+- `req.query` - Query parameters
+- `req.locals` - Request locals (para server hooks)
+- `ctx.params` - Route parameters (si la ruta reescrita coincide con una ruta dinámica)
+
+```typescript
+// app/project/[tenantId]/dashboard/page.server.hook.ts
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  // tenantId viene del rewrite: /project/:tenant/:path*
+  const tenantId = ctx.params.tenantId;
+  
+  // También disponible en req.query y req.locals
+  const tenantFromQuery = ctx.req.query.tenant;
+  const tenantFromLocals = ctx.req.locals?.tenant;
+  
+  return { props: { tenantId } };
+};
+```
+
+### Condiciones
+
+Los rewrites pueden ser condicionales basados en propiedades de la request:
+
+```typescript
+export default async function rewrites(): Promise<RewriteConfig> {
+  return [
+    // Rewrite basado en host
+    {
+      source: "/:path*",
+      has: [
+        { type: "host", value: "api.example.com" },
+      ],
+      destination: "/api/:path*",
+    },
+    
+    // Rewrite basado en header
+    {
+      source: "/admin/:path*",
+      has: [
+        { type: "header", key: "X-Admin-Key", value: "secret" },
+      ],
+      destination: "/admin-panel/:path*",
+    },
+    
+    // Rewrite basado en cookie
+    {
+      source: "/premium/:path*",
+      has: [
+        { type: "cookie", key: "premium", value: "true" },
+      ],
+      destination: "/premium-content/:path*",
+    },
+    
+    // Rewrite basado en query parameter
+    {
+      source: "/:path*",
+      has: [
+        { type: "query", key: "version", value: "v2" },
+      ],
+      destination: "/v2/:path*",
+    },
+  ];
+}
+```
+
+### Sintaxis de Patrones
+
+- `:param` - Parámetro nombrado (coincide con un segmento)
+- `:param*` - Catch-all nombrado (coincide con el path restante)
+- `*` - Catch-all anónimo (coincide con el path restante)
+
+### Notas Importantes
+
+- Los rewrites se aplican **antes** del route matching
+- La URL original se preserva en el navegador (no es un redirect)
+- Los query parameters se preservan y pueden extenderse
+- Los rewrites funcionan tanto para páginas como para rutas de API
+- Las funciones en destinos de rewrite no pueden serializarse en builds de producción (solo rewrites estáticos se incluyen en el manifest)
+- Los rewrites se evalúan en orden - el primer match gana
+
 ## Próximos Pasos
 
 - [Server Loaders](./04-server-loaders.md) - Data fetching en rutas

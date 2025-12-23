@@ -5,6 +5,7 @@ export {
   ServerContext,
   LoaderResult,
   RouteMiddleware,
+  GlobalMiddleware,
   ApiMiddleware,
   ApiContext,
   MetadataLoader,

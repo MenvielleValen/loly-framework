@@ -16,6 +16,7 @@ export const getServerSideProps: ServerLoader = async () => {
       navigation: [
         { href: "/", label: "Home" },
         { href: "/examples/redirects", label: "Redirect Examples" },
+        { href: "/examples/auth/dashboard", label: "Auth Example" },
       ],
     },
 

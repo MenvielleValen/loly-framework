@@ -4,6 +4,72 @@ El sistema de middleware de Loly permite ejecutar código antes de que se ejecut
 
 ## Tipos de Middleware
 
+### Global Middleware
+
+Los global middlewares se ejecutan **siempre** en cada request (tanto SSR como navegación client-side SPA). Establecen contexto (`ctx.locals`) que estará disponible de forma consistente en toda la aplicación.
+
+**Archivo:** `global.middleware.ts` en la raíz del proyecto
+
+```tsx
+// global.middleware.ts (en la raíz del proyecto)
+import type { GlobalMiddleware } from "@lolyjs/core";
+
+export const globalMiddlewares: GlobalMiddleware[] = [
+  async (ctx, next) => {
+    // Establecer contexto (ej: sesión, usuario, tenant, locale)
+    // Esto se ejecuta en CADA request (SSR y navegación SPA)
+    const sessionCookie = ctx.req.cookies?.session;
+    
+    if (sessionCookie) {
+      ctx.locals.user = await getSession(sessionCookie);
+      ctx.locals.session = { id: sessionCookie };
+    } else {
+      ctx.locals.user = null;
+      ctx.locals.session = null;
+    }
+    
+    await next();
+  },
+];
+```
+
+**Importante:** Los global middlewares solo deben establecer contexto (configurar `ctx.locals`), no tomar decisiones de routing. Las decisiones de routing deben hacerse en layout/page hooks.
+
+**Casos de uso:**
+
+- Contexto de sesión/autenticación
+- Contexto de tenant/multi-tenancy
+- Detección de locale/idioma
+- Feature flags basados en usuario
+- Tracing/logging de requests
+
+**Ejemplo con Rutas Protegidas:**
+
+```tsx
+// global.middleware.ts - Establece contexto de usuario
+export const globalMiddlewares: GlobalMiddleware[] = [
+  async (ctx, next) => {
+    ctx.locals.user = await getSession(ctx.req);
+    await next();
+  },
+];
+
+// app/dashboard/layout.server.hook.ts - Toma decisión de routing
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  // ctx.locals.user ya está disponible desde global middleware
+  if (!ctx.locals.user) {
+    return ctx.Redirect("/login", false);
+  }
+  return { props: { user: ctx.locals.user } };
+};
+```
+
+**Ventajas:**
+
+- Contexto consistente en SSR y SPA navigation
+- No necesitas repetir lógica de sesión en cada layout
+- Funciona correctamente con navegación client-side
+
 ### Route Middleware
 Se ejecuta antes de los server loaders en páginas. Se define en `page.server.hook.ts` (preferido) o `server.hook.ts` (legacy) usando `beforeServerData`:
 
@@ -110,7 +176,7 @@ type ApiMiddleware = (
 
 ### Orden de Ejecución
 
-1. **Global Middleware** (si está configurado)
+1. **Global Middleware** (desde `global.middleware.ts` - siempre ejecuta)
 2. **Route/API Middleware** (en orden de definición)
 3. **Loader/Handler**
 
@@ -341,7 +407,7 @@ export const middleware: ApiMiddleware[] = [
 
 ## Middleware Global del Framework
 
-El framework incluye middleware global automático:
+El framework incluye middlewares globales automáticos a nivel de Express:
 
 - **Helmet**: Headers de seguridad
 - **CORS**: Configuración de CORS
@@ -349,6 +415,8 @@ El framework incluye middleware global automático:
 - **Cookie Parser**: Parsing de cookies
 - **Compression**: Compresión de respuestas
 - **Rate Limiting**: Rate limiting global (configurable)
+
+Además, puedes definir **Global Middlewares personalizados** usando `global.middleware.ts` (ver sección "Global Middleware" arriba) para establecer contexto de aplicación (`ctx.locals`) que esté disponible en todos los requests.
 
 ## Próximos Pasos
 

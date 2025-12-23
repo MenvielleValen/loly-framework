@@ -37,6 +37,7 @@ Loly is a full-stack React framework that combines the simplicity of file-based 
 
 - 🔌 **Native WebSocket Support** - Built-in Socket.IO integration with automatic namespace routing
 - 🎯 **Route-Level Middlewares** - Define middlewares directly in your routes for pages and APIs
+- 🌐 **Global Middlewares** - Middlewares that always execute (SSR and SPA) to establish consistent context
 - 📁 **Separation of Concerns** - Server logic in `page.server.hook.ts` and `layout.server.hook.ts` separate from React components
 - 🚀 **Hybrid Rendering** - SSR, SSG, and CSR with streaming support
 - 🛡️ **Security First** - Built-in rate limiting, validation, sanitization, and security headers
@@ -261,6 +262,65 @@ export async function POST(ctx: ApiContext) {
 - Share data via `ctx.locals`
 - Method-specific middlewares for APIs
 - Clean separation of concerns
+
+### 🌐 Global Middlewares
+
+Global middlewares always execute on every request (both SSR initial load and SPA client-side navigation). They establish context (`ctx.locals`) that is consistently available across your application.
+
+Create `global.middleware.ts` in your project root:
+
+```tsx
+// global.middleware.ts (in project root)
+import type { GlobalMiddleware } from "@lolyjs/core";
+
+export const globalMiddlewares: GlobalMiddleware[] = [
+  async (ctx, next) => {
+    // Establish context (e.g., session, user, tenant, locale)
+    // This runs on EVERY request (SSR and SPA navigation)
+    const sessionCookie = ctx.req.cookies?.session;
+    if (sessionCookie) {
+      ctx.locals.user = await getSession(sessionCookie);
+      ctx.locals.session = { id: sessionCookie };
+    } else {
+      ctx.locals.user = null;
+      ctx.locals.session = null;
+    }
+    
+    await next();
+  },
+];
+```
+
+**Important:** Global middlewares should only establish context (set `ctx.locals`), not make routing decisions. Routing decisions should be made in layout/page hooks.
+
+**Use Cases:**
+
+- Session/Authentication context
+- Tenant/Multi-tenancy context
+- Locale/Language detection
+- Feature flags based on user
+- Request tracing/logging
+
+**Example with Protected Routes:**
+
+```tsx
+// global.middleware.ts - Establishes user context
+export const globalMiddlewares: GlobalMiddleware[] = [
+  async (ctx, next) => {
+    ctx.locals.user = await getSession(ctx.req);
+    await next();
+  },
+];
+
+// app/dashboard/layout.server.hook.ts - Makes routing decision
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  // ctx.locals.user is already available from global middleware
+  if (!ctx.locals.user) {
+    return ctx.Redirect("/login", false);
+  }
+  return { props: { user: ctx.locals.user } };
+};
+```
 
 ### 📁 File-Based Routing
 
@@ -1064,6 +1124,7 @@ your-app/
 ├── lib/                        # Utilities
 ├── public/                     # Static files (served at root: /sitemap.xml, /robots.txt, etc.)
 ├── loly.config.ts              # Framework configuration
+├── global.middleware.ts        # Global middlewares (always execute)
 ├── init.server.ts              # Server initialization (DB, services, etc.)
 └── package.json
 ```
@@ -1362,6 +1423,7 @@ import type {
   ApiContext,
   WssContext,
   RouteMiddleware,
+  GlobalMiddleware,
   ApiMiddleware,
   GenerateStaticParams,
 } from "@lolyjs/core";
@@ -1411,6 +1473,7 @@ import type {
   ApiContext,
   WssContext,
   RouteMiddleware,
+  GlobalMiddleware,
   ApiMiddleware,
   GenerateStaticParams,
 } from "@lolyjs/core";

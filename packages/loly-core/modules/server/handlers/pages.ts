@@ -19,6 +19,7 @@ import {
 import { runRouteMiddlewares } from "./middleware";
 import { runRouteServerHook } from "./server-hook";
 import { handleDataResponse, handleRedirect, handleNotFound } from "./response";
+import { loadGlobalMiddlewares, runGlobalMiddlewares } from "../global-middleware";
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
 import { getClientJsPath, getClientCssPath, loadAssetManifest, getFaviconInfo } from "@build/utils";
@@ -523,6 +524,12 @@ async function handlePageRequestInternal(
     Redirect: (destination: string, permanent = false) => new RedirectResponse(destination, permanent),
     NotFound: () => new NotFoundResponse(),
   };
+
+  const globalMiddlewares = await loadGlobalMiddlewares(projectRoot || process.cwd());
+  await runGlobalMiddlewares(ctx, globalMiddlewares);
+  if (res.headersSent) {
+    return;
+  }
 
   await runRouteMiddlewares(route, ctx);
   if (res.headersSent) {

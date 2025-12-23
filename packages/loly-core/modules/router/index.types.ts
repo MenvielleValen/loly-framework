@@ -210,6 +210,24 @@ export type RouteMiddleware = (
 ) => Promise<void> | void;
 
 /**
+ * Global middleware type for middlewares that run before route matching.
+ * These middlewares establish context (ctx.locals) and always execute (both SSR and SPA navigation).
+ * 
+ * @example
+ * // global.middleware.ts
+ * export const globalMiddlewares: GlobalMiddleware[] = [
+ *   async (ctx, next) => {
+ *     ctx.locals.user = await getSession(ctx.req);
+ *     await next();
+ *   }
+ * ];
+ */
+export type GlobalMiddleware = (
+  ctx: ServerContext,
+  next: () => Promise<void>
+) => Promise<void> | void;
+
+/**
  * Result returned by a server loader (getServerSideProps).
  * @template TProps - Type of props that will be passed to the component (defaults to Record<string, any>)
  */

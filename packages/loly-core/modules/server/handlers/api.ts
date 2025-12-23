@@ -26,6 +26,9 @@ export async function handleApiRequest(
 ): Promise<void> {
   const { apiRoutes, urlPath, req, res, env = "dev", rewriteLoader } = options;
 
+  // Preserve original URL path before rewrites for req.originalUrl reconstruction
+  const originalUrlPath = urlPath;
+
   // Apply rewrites BEFORE route matching
   // NOTE: API routes CAN be rewritten (like Next.js)
   // If rewritten route starts with /api/, it will still be handled as an API route
@@ -84,6 +87,63 @@ export async function handleApiRequest(
   // Security: Sanitize route parameters and query parameters
   const sanitizedParams = sanitizeParams(params);
   const sanitizedQuery = sanitizeQuery(req.query as Record<string, any>);
+
+  /**
+   * Reconstructs the full path from route pattern and captured parameters.
+   * Preserves hyphens and special characters correctly.
+   */
+  function reconstructPathFromParams(
+    routePattern: string,
+    params: Record<string, string>
+  ): string {
+    let reconstructed = routePattern;
+    
+    // Reemplazar parámetros dinámicos [param] con sus valores
+    // IMPORTANTE: Reemplazar catch-all PRIMERO para evitar conflictos
+    for (const [key, value] of Object.entries(params)) {
+      // Para catch-all [...param], reemplazar con el valor completo
+      // El valor puede contener guiones, slashes, etc.
+      const catchAllPattern = `[...${key}]`;
+      if (reconstructed.includes(catchAllPattern)) {
+        reconstructed = reconstructed.replace(catchAllPattern, value);
+      } else {
+        // Para parámetros normales [param]
+        const normalPattern = `[${key}]`;
+        if (reconstructed.includes(normalPattern)) {
+          // Para parámetros normales, el valor no debería contener slashes
+          reconstructed = reconstructed.replace(normalPattern, value);
+        }
+      }
+    }
+    
+    return reconstructed;
+  }
+
+  // Reconstruir path completo desde parámetros (especialmente para catch-all)
+  // Los parámetros capturados corresponden al pattern de la ruta, así que reconstruimos desde ahí
+  const reconstructedPath = reconstructPathFromParams(route.pattern, sanitizedParams);
+
+  // Construir originalUrl con query string si existe
+  const queryString = req.url?.includes("?") ? req.url.split("?")[1] : "";
+  const originalUrl = queryString 
+    ? `${reconstructedPath}?${queryString}` 
+    : reconstructedPath;
+
+  // Establecer req.originalUrl si no está ya establecido
+  if (!req.originalUrl) {
+    req.originalUrl = originalUrl;
+  }
+
+  // Establecer req.params para compatibilidad con Express
+  // Convertir params a formato que Express espera
+  if (!req.params) {
+    req.params = {};
+  }
+  for (const [key, value] of Object.entries(sanitizedParams)) {
+    // Para catch-all, Express puede esperar un array o string
+    // Mejor usar string que es más compatible
+    req.params[key] = value;
+  }
 
   const ctx: ApiContext = {
     req,

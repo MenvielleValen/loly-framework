@@ -237,6 +237,77 @@ See `public/README.md` for more details.
 - `tailwindcss` - Utility-first CSS framework
 - `lucide-react` - Icon library
 
+## Testing Catch-All Routes
+
+This playground includes examples and test cases for catch-all routes to verify that `req.originalUrl` and `req.params` are automatically set correctly.
+
+### Test Page
+
+Visit `/examples/catch-all-routes` to see all test cases with clickable links.
+
+### Manual Test Cases
+
+#### Case 1: Simple catch-all route
+- **URL**: `GET /api/catch-all/test/path/here`
+- **Expected**:
+  - `ctx.params.path` = `"test/path/here"`
+  - `ctx.req.originalUrl` = `"/api/catch-all/test/path/here"`
+  - `ctx.req.params.path` = `"test/path/here"`
+
+#### Case 2: Catch-all with query string
+- **URL**: `GET /api/catch-all/test?foo=bar&baz=qux`
+- **Expected**:
+  - `ctx.params.path` = `"test"`
+  - `ctx.req.originalUrl` = `"/api/catch-all/test?foo=bar&baz=qux"`
+  - `ctx.req.query.foo` = `"bar"`
+
+#### Case 3: Normal parameter + catch-all
+- **URL**: `GET /api/files/123/documents/reports/2024`
+- **Expected**:
+  - `ctx.params.id` = `"123"`
+  - `ctx.params.path` = `"documents/reports/2024"`
+  - `ctx.req.originalUrl` = `"/api/files/123/documents/reports/2024"`
+  - `ctx.req.params.id` = `"123"`
+  - `ctx.req.params.path` = `"documents/reports/2024"`
+
+#### Case 4: Normal route (without catch-all) - verify it doesn't break
+- **URL**: `GET /api/posts/456`
+- **Route**: `app/api/posts/[id]/route.ts`
+- **Expected**:
+  - `ctx.params.id` = `"456"`
+  - `ctx.req.originalUrl` = `"/api/posts/456"`
+  - `ctx.req.params.id` = `"456"`
+
+#### Case 5: Empty catch-all (base route)
+- **URL**: `GET /api/catch-all`
+- **Expected**:
+  - `ctx.params.path` = `""` or `undefined`
+  - `ctx.req.originalUrl` = `"/api/catch-all"`
+
+#### Case 6: Catch-all with hyphens (important for auth routes)
+- **URL**: `GET /api/catch-all/sign-in/social/google`
+- **Expected**:
+  - `ctx.params.path` = `"sign-in/social/google"`
+  - `ctx.req.originalUrl` = `"/api/catch-all/sign-in/social/google"`
+  - `ctx.req.params.path` = `"sign-in/social/google"`
+
+#### Case 7: Catch-all with hyphens and query string
+- **URL**: `GET /api/catch-all/callback/google?code=123&state=abc`
+- **Expected**:
+  - `ctx.params.path` = `"callback/google"`
+  - `ctx.req.originalUrl` = `"/api/catch-all/callback/google?code=123&state=abc"`
+  - `ctx.req.query.code` = `"123"`
+
+### How to Verify
+
+1. Click on each test case link in the test page
+2. Verify that the JSON response contains:
+   - `originalUrl` should contain the full path
+   - `reqParams` should contain the captured parameters
+   - `path` (for catch-all) should contain all captured segments
+3. For cases with query strings, verify that query parameters are present
+4. For cases with hyphens, verify that hyphens are preserved correctly
+
 ## Learn More
 
 - [Loly Framework Documentation](https://github.com/MenvielleValen/loly-framework/blob/main/packages/loly-core/README.md)

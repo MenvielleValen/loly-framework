@@ -56,7 +56,7 @@ export function matchApiRoute(
 
     const params: Record<string, string> = {};
     r.paramNames.forEach((name, idx) => {
-      params[name] = match[idx + 1];
+      params[name] = decodeURIComponent(match[idx + 1] || "");
     });
 
     return { route: r, params };

@@ -75,21 +75,21 @@ function validateRoutes(routes: LoadedRoute[], appDir: string): void {
  * Scans the app directory and loads all page routes.
  * Recursively walks through the app directory, finding all page files and creating route definitions.
  */
-export function loadRoutes(appDir: string): LoadedRoute[] {
+export async function loadRoutes(appDir: string): Promise<LoadedRoute[]> {
   if (!fs.existsSync(appDir)) {
     return [];
   }
 
   const routes: LoadedRoute[] = [];
 
-  function walk(currentDir: string) {
+  async function walk(currentDir: string): Promise<void> {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
     for (const entry of entries) {
       const fullPath = path.join(currentDir, entry.name);
 
       if (entry.isDirectory()) {
-        walk(fullPath);
+        await walk(fullPath);
         continue;
       }
 
@@ -104,15 +104,16 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
       const routePath = buildRoutePathFromDir(relDir);
       const { regex, paramNames } = buildRegexFromRoutePath(routePath);
 
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require(fullPath);
-      const component: PageComponent = mod.default;
+      const { loadDefaultExport } = await import("./utils/module-loader");
+      const component = await loadDefaultExport<PageComponent>(fullPath, {
+        projectRoot: appDir,
+      });
 
       if (!component) {
         continue;
       }
 
-      const { components: layouts, files: layoutFiles } = loadLayoutsForDir(
+      const { components: layouts, files: layoutFiles } = await loadLayoutsForDir(
         currentDir,
         appDir
       );
@@ -122,7 +123,7 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
       const layoutServerHooks: (typeof serverHook)[] = [];
       const layoutMiddlewares: RouteMiddleware[][] = [];
       for (const layoutFile of layoutFiles) {
-        const layoutHookData = loadLayoutServerHook(layoutFile);
+        const layoutHookData = await loadLayoutServerHook(layoutFile);
         if (layoutHookData) {
           layoutServerHooks.push(layoutHookData.serverHook);
           layoutMiddlewares.push(layoutHookData.middlewares);
@@ -133,7 +134,7 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
       }
 
       const { middlewares, serverHook, dynamic, generateStaticParams } =
-        loadServerHookForDir(currentDir);
+        await loadServerHookForDir(currentDir);
 
       routes.push({
         pattern: routePath,
@@ -153,7 +154,7 @@ export function loadRoutes(appDir: string): LoadedRoute[] {
     }
   }
 
-  walk(appDir);
+  await walk(appDir);
 
   // Validate routes and report issues
   validateRoutes(routes, appDir);

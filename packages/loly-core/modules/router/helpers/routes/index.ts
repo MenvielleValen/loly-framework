@@ -31,10 +31,10 @@ export function readManifest(projectRoot: string): RoutesManifest | null {
 /**
  * Safely loads a module with error handling.
  */
-export function loadModuleSafely(filePath: string): any | null {
+export async function loadModuleSafely(filePath: string, projectRoot?: string): Promise<any | null> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require(filePath);
+    const { loadModule } = await import("../../utils/module-loader");
+    return await loadModule(filePath, { projectRoot });
   } catch (err) {
     return null;
   }
@@ -43,16 +43,18 @@ export function loadModuleSafely(filePath: string): any | null {
 /**
  * Loads and processes layout components from layout file paths.
  */
-export function loadLayouts(
+export async function loadLayouts(
   layoutFiles: string[],
   projectRoot: string
-): LayoutComponent[] {
+): Promise<LayoutComponent[]> {
   const layoutMods = layoutFiles.map((lf) => {
     const fullPath = path.join(projectRoot, lf);
-    return loadModuleSafely(fullPath);
+    return loadModuleSafely(fullPath, projectRoot);
   });
 
-  return layoutMods
+  const resolved = await Promise.all(layoutMods);
+
+  return resolved
     .filter((m): m is { default: LayoutComponent } => !!m?.default)
     .map((m) => m.default);
 }
@@ -167,12 +169,12 @@ export function extractWssHandlersFromModule(mod: any): Record<string, ApiHandle
 /**
  * Loads a page component from a file path.
  */
-export function loadPageComponent(
+export async function loadPageComponent(
   pageFile: string,
   projectRoot: string
-): PageComponent | null {
+): Promise<PageComponent | null> {
   const fullPath = path.join(projectRoot, pageFile);
-  const pageMod = loadModuleSafely(fullPath);
+  const pageMod = await loadModuleSafely(fullPath, projectRoot);
   return pageMod?.default || null;
 }
 

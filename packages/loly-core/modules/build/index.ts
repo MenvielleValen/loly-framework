@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs";
 import {
   loadApiRoutes,
   LoadedRoute,
@@ -28,17 +29,41 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
   const config = options.config ?? loadConfig(projectRoot);
   const appDir = options.appDir ?? getAppDir(projectRoot, config);
 
+  // Register tsx/esm loader BEFORE setting LOLY_BUILD and loading modules
+  // This allows Node.js to load .ts/.tsx files during build process
+  // IMPORTANT: This must complete before any TypeScript files are imported
+  try {
+    // Try to resolve tsx from project root (where it's typically installed)
+    // tsx/esm resolves to dist/esm/index.mjs according to package.json exports
+    const tsxPath = path.join(projectRoot, "node_modules", "tsx", "dist", "esm", "index.mjs");
+    if (fs.existsSync(tsxPath)) {
+      const { pathToFileURL } = await import("url");
+      const tsxUrl = pathToFileURL(tsxPath).href;
+      await import(tsxUrl);
+    } else {
+      // Fallback: try bare import (might work if tsx is hoisted or in a monorepo)
+      // @ts-expect-error - tsx/esm may not have type definitions, but it exists at runtime
+      await import("tsx/esm");
+    }
+    // Give Node.js a tick to register the loader hooks
+    await new Promise(resolve => setImmediate(resolve));
+  } catch (error) {
+    // tsx might not be available, but continue anyway
+    // Some environments might have pre-compiled files
+    console.warn("[framework][build] tsx/esm loader could not be registered:", error instanceof Error ? error.message : String(error));
+  }
+
   process.env.LOLY_BUILD = "1";
 
-  const routes = loadRoutes(appDir);
-  const apiRoutes = loadApiRoutes(appDir);
-  const wssRoutes = loadWssRoutes(appDir);
+  const routes = await loadRoutes(appDir);
+  const apiRoutes = await loadApiRoutes(appDir);
+  const wssRoutes = await loadWssRoutes(appDir);
 
-  const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir);
+  const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir, config);
 
   // Load special error pages (_not-found.tsx, _error.tsx)
-  const notFoundRoute = loadNotFoundRouteFromFilesystem(appDir);
-  const errorRoute = loadErrorRouteFromFilesystem(appDir);
+  const notFoundRoute = await loadNotFoundRouteFromFilesystem(appDir);
+  const errorRoute = await loadErrorRouteFromFilesystem(appDir);
 
   if (!notFoundRoute) {
     console.warn(

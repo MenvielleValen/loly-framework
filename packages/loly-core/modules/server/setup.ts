@@ -31,10 +31,10 @@ export interface ServerSetupResult {
   notFoundPage: LoadedRoute | null;
   errorPage: LoadedRoute | null;
   apiRoutes: ApiRoute[];
-  getRoutes?: () => {
+  getRoutes?: () => Promise<{
     routes: LoadedRoute[];
     apiRoutes: ApiRoute[];
-  };
+  }>;
 }
 
 /**
@@ -75,10 +75,10 @@ function setupStaticFiles(
  * @param options - Setup options
  * @returns Server setup result with routes and handlers
  */
-export function setupServer(
+export async function setupServer(
   app: express.Application,
   options: ServerSetupOptions
-): ServerSetupResult {
+): Promise<ServerSetupResult> {
   const { projectRoot, appDir, isDev, config } = options;
 
   // Set up static files from public/ directory FIRST (before /static and routes)
@@ -111,7 +111,7 @@ export function setupServer(
       // This is needed when routes are added/removed/changed
       if (isPageFile) {
         const loader = new FilesystemRouteLoader(appDir, projectRoot);
-        const newRoutes = loader.loadRoutes();
+        const newRoutes = await loader.loadRoutes();
         writeClientRoutesManifest(newRoutes, projectRoot);
         console.log("[hot-reload] Client routes manifest reloaded");
       }
@@ -127,23 +127,23 @@ export function setupServer(
     
     app.use("/static", express.static(outDir));
 
-    const routes = routeLoader.loadRoutes();
-    const wssRoutes = routeLoader.loadWssRoutes();
-    const notFoundPage = routeLoader.loadNotFoundRoute();
-    const errorPage = routeLoader.loadErrorRoute();
+    const routes = await routeLoader.loadRoutes();
+    const wssRoutes = await routeLoader.loadWssRoutes();
+    const notFoundPage = await routeLoader.loadNotFoundRoute();
+    const errorPage = await routeLoader.loadErrorRoute();
     writeClientRoutesManifest(routes, projectRoot);
 
     // Reuse the same loader instance to benefit from caching
     // Pass projectRoot so it can monitor files outside app/ directory
     const sharedLoader = new FilesystemRouteLoader(appDir, projectRoot);
     
-    function getRoutes() {
+    async function getRoutes() {
       clearAppRequireCache(appDir);
       // Invalidate cache to force reload after clearing require cache
       sharedLoader.invalidateCache();
       return {
-        routes: sharedLoader.loadRoutes(),
-        apiRoutes: sharedLoader.loadApiRoutes(),
+        routes: await sharedLoader.loadRoutes(),
+        apiRoutes: await sharedLoader.loadApiRoutes(),
       };
     }
 
@@ -152,15 +152,15 @@ export function setupServer(
       wssRoutes,
       notFoundPage,
       errorPage,
-      apiRoutes: routeLoader.loadApiRoutes(),
+      apiRoutes: await routeLoader.loadApiRoutes(),
       getRoutes,
     };
   } else {
-    const routes = routeLoader.loadRoutes();
-    const apiRoutes = routeLoader.loadApiRoutes();
-    const wssRoutes = routeLoader.loadWssRoutes();
-    const notFoundPage = routeLoader.loadNotFoundRoute();
-    const errorPage = routeLoader.loadErrorRoute();
+    const routes = await routeLoader.loadRoutes();
+    const apiRoutes = await routeLoader.loadApiRoutes();
+    const wssRoutes = await routeLoader.loadWssRoutes();
+    const notFoundPage = await routeLoader.loadNotFoundRoute();
+    const errorPage = await routeLoader.loadErrorRoute();
 
     const buildDir = config ? getBuildDir(projectRoot, config) : path.join(projectRoot, BUILD_FOLDER_NAME);
     const clientOutDir = path.join(buildDir, "client");

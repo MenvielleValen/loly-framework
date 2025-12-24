@@ -42,6 +42,7 @@ Loly is a full-stack React framework that combines the simplicity of file-based 
 - 🚀 **Hybrid Rendering** - SSR, SSG, and CSR with streaming support
 - 🛡️ **Security First** - Built-in rate limiting, validation, sanitization, and security headers
 - ⚡ **Performance** - Fast bundling with Rspack and optimized code splitting
+- 📦 **Full ESM Support** - Native ES modules with top-level await, dynamic imports, and `import.meta.url`
 
 ---
 
@@ -1428,6 +1429,73 @@ import type {
   GenerateStaticParams,
 } from "@lolyjs/core";
 ```
+
+---
+
+## ES Modules (ESM) Support
+
+Loly Framework uses native ES modules (ESM) throughout the codebase, not CommonJS. This enables modern JavaScript features that weren't available in CJS:
+
+### Top-Level Await
+
+Use `await` at the module level without wrapping in an async function:
+
+```tsx
+// app/lib/config.ts
+const config = await loadConfigFromAPI();
+export default config;
+```
+
+### Dynamic Imports
+
+Use `import()` for conditional and parallel module loading:
+
+```tsx
+// app/page.server.hook.ts
+export const getServerSideProps: ServerLoader = async () => {
+  // Dynamic import - loads only when needed
+  const utils = await import("../../lib/utils");
+  
+  // Parallel imports
+  const [config, helpers] = await Promise.all([
+    import("../../lib/config"),
+    import("../../lib/helpers"),
+  ]);
+  
+  return { props: { utils, config, helpers } };
+};
+```
+
+### import.meta.url
+
+Access module metadata for file operations (no `__dirname` in ESM):
+
+```tsx
+// app/api/files/route.ts
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { readFile } from "fs/promises";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export async function GET(ctx: ApiContext) {
+  const filePath = join(__dirname, "data.json");
+  const content = await readFile(filePath, "utf-8");
+  return ctx.Response({ data: JSON.parse(content) });
+}
+```
+
+### Static Files During Build
+
+Static files (JSON, txt, etc.) in your `app/` directory are automatically copied to the output directory during build, preserving directory structure. This ensures files referenced via `import.meta.url` are available at runtime.
+
+**Key Benefits:**
+- ✅ Native ESM - No CommonJS compilation overhead
+- ✅ Top-level await for async module initialization
+- ✅ Better tree-shaking and optimizations
+- ✅ Modern JavaScript features
+- ✅ Path aliases work correctly with ESM
 
 ---
 

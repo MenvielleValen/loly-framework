@@ -37,29 +37,59 @@ const NAMING = {
  * export const dynamic = "force-static";
  * export const generateStaticParams = async () => [{ slug: "post-1" }];
  */
-export function loadServerHookForDir(currentDir: string): {
+export async function loadServerHookForDir(currentDir: string): Promise<{
   middlewares: RouteMiddleware[];
   serverHook: ServerLoader | null;
   dynamic: DynamicMode;
   generateStaticParams: GenerateStaticParams | null;
-} {
-  // Try page.server.hook.ts first (preferred, consistent with layout.server.hook.ts)
-  const pageServerHookTs = path.join(currentDir, `page.server.hook.ts`);
-  const pageServerHookJs = path.join(currentDir, `page.server.hook.js`);
+}> {
+  // Determine if we're in production (compiled) or dev (source)
+  const isDev = process.env.NODE_ENV === "development";
+  const isBuild = process.env.LOLY_BUILD === "1";
   
-  // Fallback to server.hook.ts (legacy, backward compatibility)
-  const serverHookTs = path.join(currentDir, `${NAMING.SERVER_HOOK}.ts`);
-  const serverHookJs = path.join(currentDir, `${NAMING.SERVER_HOOK}.js`);
+  let file: string | null = null;
+  
+  // Check if we're in a compiled directory (.loly/server)
+  const isCompiledDir = currentDir.includes(".loly") && currentDir.includes("server");
+  
+  if (isCompiledDir || (!isDev && !isBuild)) {
+    // Production: always look for .mjs files (ESM only)
+    // Try page.server.hook first (preferred)
+    const pageServerHookMjs = path.join(currentDir, `page.server.hook.mjs`);
+    const pageServerHookJs = path.join(currentDir, `page.server.hook.js`);
+    
+    // Fallback to server.hook (legacy)
+    const serverHookMjs = path.join(currentDir, `${NAMING.SERVER_HOOK}.mjs`);
+    const serverHookJs = path.join(currentDir, `${NAMING.SERVER_HOOK}.js`);
+    
+    file = fs.existsSync(pageServerHookMjs)
+      ? pageServerHookMjs
+      : fs.existsSync(pageServerHookJs)
+      ? pageServerHookJs
+      : fs.existsSync(serverHookMjs)
+      ? serverHookMjs
+      : fs.existsSync(serverHookJs)
+      ? serverHookJs
+      : null;
+  } else {
+    // Development: look for .ts files
+    const pageServerHookTs = path.join(currentDir, `page.server.hook.ts`);
+    const pageServerHookJs = path.join(currentDir, `page.server.hook.js`);
+    
+    // Fallback to server.hook.ts (legacy, backward compatibility)
+    const serverHookTs = path.join(currentDir, `${NAMING.SERVER_HOOK}.ts`);
+    const serverHookJs = path.join(currentDir, `${NAMING.SERVER_HOOK}.js`);
 
-  const file = fs.existsSync(pageServerHookTs)
-    ? pageServerHookTs
-    : fs.existsSync(pageServerHookJs)
-    ? pageServerHookJs
-    : fs.existsSync(serverHookTs)
-    ? serverHookTs
-    : fs.existsSync(serverHookJs)
-    ? serverHookJs
-    : null;
+    file = fs.existsSync(pageServerHookTs)
+      ? pageServerHookTs
+      : fs.existsSync(pageServerHookJs)
+      ? pageServerHookJs
+      : fs.existsSync(serverHookTs)
+      ? serverHookTs
+      : fs.existsSync(serverHookJs)
+      ? serverHookJs
+      : null;
+  }
 
   if (!file) {
     return {
@@ -70,21 +100,10 @@ export function loadServerHookForDir(currentDir: string): {
     };
   }
 
-  // Ensure tsx is loaded for TypeScript files during build
-  // tsx automatically reads tsconfig.json from the project root to resolve path aliases
-  if (file.endsWith('.ts') || file.endsWith('.tsx')) {
-    try {
-      // Load tsx if not already loaded - it will handle TypeScript compilation and path resolution
-      require('tsx/cjs');
-    } catch (e) {
-      // tsx might already be loaded, ignore error
-    }
-  }
-
-  let mod;
+  let mod: any;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    mod = require(file);
+    const { loadModule } = await import("./utils/module-loader");
+    mod = await loadModule(file, { projectRoot: currentDir });
   } catch (error) {
     console.error(
       `[framework][server-hook] Error loading server hook from ${file}:`,
@@ -169,39 +188,51 @@ export function loadServerHookForDir(currentDir: string): {
  *   return { props: { theme: ctx.locals.layoutData?.theme } };
  * };
  */
-export function loadLayoutServerHook(layoutFile: string): {
+export async function loadLayoutServerHook(layoutFile: string): Promise<{
   serverHook: ServerLoader | null;
   middlewares: RouteMiddleware[];
-} | null {
+} | null> {
   const layoutDir = path.dirname(layoutFile);
-  const layoutBasename = path.basename(layoutFile, path.extname(layoutFile)); // "layout" without extension
+  const layoutExt = path.extname(layoutFile); // .tsx, .ts, .jsx, .js, .mjs, .cjs
+  const layoutBasename = path.basename(layoutFile, layoutExt); // "layout" without extension
   
-  // Look for layout.server.hook.ts in the same directory
-  const serverHookTs = path.join(layoutDir, `${layoutBasename}.server.hook.ts`);
-  const serverHookJs = path.join(layoutDir, `${layoutBasename}.server.hook.js`);
+  // Determine if we're in production (compiled) or dev (source)
+  const isDev = process.env.NODE_ENV === "development";
+  const isBuild = process.env.LOLY_BUILD === "1";
   
-  const file = fs.existsSync(serverHookTs)
-    ? serverHookTs
-    : fs.existsSync(serverHookJs)
-    ? serverHookJs
-    : null;
+  let file: string | null = null;
+  
+  // If layoutFile is already compiled (.mjs), look for compiled hook
+  if (layoutExt === ".mjs") {
+    // Production: layout file is compiled, so hook should be too (always .mjs for ESM)
+    const serverHookMjs = path.join(layoutDir, `${layoutBasename}.server.hook.mjs`);
+    const serverHookJs = path.join(layoutDir, `${layoutBasename}.server.hook.js`);
+    file = fs.existsSync(serverHookMjs) 
+      ? serverHookMjs 
+      : (fs.existsSync(serverHookJs) ? serverHookJs : null);
+  } else if (isDev && !isBuild) {
+    // Development: look for .ts files
+    const serverHookTs = path.join(layoutDir, `${layoutBasename}.server.hook.ts`);
+    const serverHookJs = path.join(layoutDir, `${layoutBasename}.server.hook.js`);
+    file = fs.existsSync(serverHookTs) ? serverHookTs : (fs.existsSync(serverHookJs) ? serverHookJs : null);
+  } else {
+    // Build time or production: always look for .mjs (ESM only)
+    const serverHookMjs = path.join(layoutDir, `${layoutBasename}.server.hook.mjs`);
+    const serverHookTs = path.join(layoutDir, `${layoutBasename}.server.hook.ts`);
+    const serverHookJs = path.join(layoutDir, `${layoutBasename}.server.hook.js`);
+    
+    file = fs.existsSync(serverHookMjs) 
+      ? serverHookMjs 
+      : (fs.existsSync(serverHookTs) ? serverHookTs : (fs.existsSync(serverHookJs) ? serverHookJs : null));
+  }
 
   if (!file) {
     return null;
   }
 
-  // Ensure tsx is loaded for TypeScript files
-  if (file.endsWith('.ts') || file.endsWith('.tsx')) {
-    try {
-      require('tsx/cjs');
-    } catch (e) {
-      // tsx might already be loaded, ignore error
-    }
-  }
-
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require(file);
+    const { loadModule } = await import("./utils/module-loader");
+    const mod = await loadModule(file, { projectRoot: path.dirname(file) });
     
     const serverHook: ServerLoader | null =
       typeof mod?.getServerSideProps === "function"

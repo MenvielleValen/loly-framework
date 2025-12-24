@@ -41,11 +41,12 @@ export default defineConfig({
   target: "node18",
   platform: "node",
 
-  // Important: generate .cjs for CJS and .js for ESM
+  // Important: generate .cjs for CJS and .mjs for ESM
+  // Using .mjs explicitly avoids needing "type": "module" in package.json
   outExtension({ format }) {
     return format === "cjs"
       ? { js: ".cjs" } // index.cjs, cli.cjs
-      : { js: ".js" }; // index.js, cli.js
+      : { js: ".mjs" }; // index.mjs, cli.mjs
   },
 
   // Resolve path aliases from tsconfig

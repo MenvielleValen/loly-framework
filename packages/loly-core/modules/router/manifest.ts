@@ -327,8 +327,9 @@ export function writeRoutesManifest({
   const toRelative = (abs: string) =>
     path.relative(projectRoot, abs).replace(/\\/g, "/");
 
+  // Always use .mjs for ESM output
   const convertToJs = (file: string) =>
-    file.replace(/\.(ts|tsx|jsx|mjs|cjs)$/i, ".js");
+    file.replace(/\.(ts|tsx|jsx|mjs|cjs|js)$/i, ".mjs");
 
   const pageEntries: PageRouteManifestEntry[] = routes.map((r) => {
     const relativeSource = path.relative(appDir, r.pageFile);

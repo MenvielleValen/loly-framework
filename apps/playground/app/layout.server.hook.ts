@@ -8,16 +8,36 @@ import type { ServerLoader } from "@lolyjs/core";
  *
  * NOTE: Metadata defined here acts as BASE/fallback for all pages.
  * Pages can override specific fields, but layout metadata provides defaults.
+ * 
+ * ✅ This demonstrates top-level await in ESM!
  */
+
+// Top-level await to load navigation
+// This executes when the module loads, not inside the function
+const loadNavigation = async () => {
+  // Simulate load from API/DB (in production this could be a real call)
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  return [
+    { href: "/", label: "Home" },
+    { href: "/examples/redirects", label: "Redirect Examples" },
+    { href: "/examples/auth/dashboard", label: "Auth Example" },
+    { href: "/examples/auth/login", label: "Login Example" },
+    { href: "/examples/esm/top-level-await", label: "Top-Level Await" },
+    { href: "/examples/esm/import-meta", label: "Import.meta" },
+    { href: "/examples/esm/dynamic-imports", label: "Dynamic Imports" },
+    { href: "/examples/esm/async-init", label: "Async Init" },
+  ];
+};
+
+// Top-level await - Does NOT work in CJS
+const navigation = await loadNavigation();
+
 export const getServerSideProps: ServerLoader = async () => {
   return {
     props: {
       appName: "Loly Playground",
-      navigation: [
-        { href: "/", label: "Home" },
-        { href: "/examples/redirects", label: "Redirect Examples" },
-        { href: "/examples/auth/dashboard", label: "Auth Example" },
-      ],
+      navigation,
     },
 
     // Layout-level metadata - provides BASE defaults for all pages

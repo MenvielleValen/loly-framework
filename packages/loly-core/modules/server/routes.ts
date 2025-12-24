@@ -16,10 +16,10 @@ export interface SetupRoutesOptions {
   isDev: boolean;
   projectRoot: string;
   routeLoader: RouteLoader;
-  getRoutes?: () => {
+  getRoutes?: () => Promise<{
     routes: LoadedRoute[];
     apiRoutes: ApiRoute[];
-  };
+  }>;
   config?: FrameworkConfig;
 }
 
@@ -80,7 +80,7 @@ export function setupRoutes(options: SetupRoutesOptions): void {
 
   app.all("/api/*", async (req, res) => {
     const apiRoutes = isDev && getRoutes
-      ? getRoutes().apiRoutes
+      ? (await getRoutes()).apiRoutes
       : initialApiRoutes;
 
     // Get rate limit configuration for auto-application
@@ -105,13 +105,13 @@ export function setupRoutes(options: SetupRoutesOptions): void {
     let currentNotFoundPage = notFoundPage;
 
     if (isDev && getRoutes) {
-      routes = getRoutes().routes;
+      routes = (await getRoutes()).routes;
       // In dev, reload not-found on each request to support hot-reload
-      currentNotFoundPage = routeLoader.loadNotFoundRoute();
+      currentNotFoundPage = await routeLoader.loadNotFoundRoute();
     }
 
     const currentErrorPage = isDev && getRoutes
-      ? routeLoader.loadErrorRoute()
+      ? await routeLoader.loadErrorRoute()
       : errorPage;
 
     await handlePageRequest({

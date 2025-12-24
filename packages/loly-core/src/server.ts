@@ -90,7 +90,7 @@ export async function startServer(options: StartServerOptions = {}) {
   await runInitIfExists(projectRoot, { server: httpServer });
 
   const { routes, apiRoutes, wssRoutes, notFoundPage, errorPage, getRoutes } =
-    setupServer(app, {
+    await setupServer(app, {
       projectRoot,
       appDir,
       isDev,

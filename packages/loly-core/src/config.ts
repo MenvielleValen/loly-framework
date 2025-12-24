@@ -35,7 +35,6 @@ export interface FrameworkConfig {
   build: {
     clientBundler: 'rspack' | 'webpack' | 'vite';
     serverBundler: 'esbuild' | 'tsup' | 'swc';
-    outputFormat: 'cjs' | 'esm';
   };
   
   // Server
@@ -81,7 +80,6 @@ export const DEFAULT_CONFIG: FrameworkConfig = {
   build: {
     clientBundler: 'rspack',
     serverBundler: 'esbuild',
-    outputFormat: 'cjs',
   },
   server: {
     adapter: 'express',
@@ -207,13 +205,6 @@ function validateConfig(config: FrameworkConfig, projectRoot: string): void {
     errors.push(
       `config.build.serverBundler must be one of: ${validServerBundlers.join(', ')}\n` +
       `  Received: ${JSON.stringify(config.build.serverBundler)}`
-    );
-  }
-
-  if (!['cjs', 'esm'].includes(config.build.outputFormat)) {
-    errors.push(
-      `config.build.outputFormat must be 'cjs' or 'esm'\n` +
-      `  Received: ${JSON.stringify(config.build.outputFormat)}`
     );
   }
 

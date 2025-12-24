@@ -31,20 +31,20 @@ const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
  * //   },
  * // ]
  */
-export function loadApiRoutes(appDir: string): ApiRoute[] {
+export async function loadApiRoutes(appDir: string): Promise<ApiRoute[]> {
   const apiRoot = path.join(appDir, "api");
   const routes: ApiRoute[] = [];
 
   if (!fs.existsSync(apiRoot)) return routes;
 
-  function walk(currentDir: string) {
+  async function walk(currentDir: string): Promise<void> {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
     for (const entry of entries) {
       const fullPath = path.join(currentDir, entry.name);
 
       if (entry.isDirectory()) {
-        walk(fullPath);
+        await walk(fullPath);
         continue;
       }
 
@@ -57,7 +57,7 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
 
       const { regex, paramNames } = extractRouteRegex(pattern);
 
-      const mod = loadModuleSafely(fullPath);
+      const mod = await loadModuleSafely(fullPath, appDir);
       if (!mod) {
         continue;
       }
@@ -78,7 +78,7 @@ export function loadApiRoutes(appDir: string): ApiRoute[] {
     }
   }
 
-  walk(apiRoot);
+  await walk(apiRoot);
 
   return routes;
 }

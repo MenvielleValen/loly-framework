@@ -25,20 +25,20 @@ export interface ExtendedWssRoute extends WssRoute {
  * @param appDir - Application directory
  * @returns Array of WSS routes
  */
-export function loadWssRoutes(appDir: string): ExtendedWssRoute[] {
+export async function loadWssRoutes(appDir: string): Promise<ExtendedWssRoute[]> {
   const apiRoot = path.join(appDir, "wss");
   const routes: ExtendedWssRoute[] = [];
 
   if (!fs.existsSync(apiRoot)) return routes;
 
-  function walk(currentDir: string) {
+  async function walk(currentDir: string): Promise<void> {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
     for (const entry of entries) {
       const fullPath = path.join(currentDir, entry.name);
 
       if (entry.isDirectory()) {
-        walk(fullPath);
+        await walk(fullPath);
         continue;
       }
 
@@ -51,7 +51,7 @@ export function loadWssRoutes(appDir: string): ExtendedWssRoute[] {
 
       const { regex, paramNames } = extractRouteRegex(pattern);
 
-      const mod = loadModuleSafely(fullPath);
+      const mod = await loadModuleSafely(fullPath, appDir);
       if (!mod) {
         continue;
       }
@@ -107,7 +107,7 @@ export function loadWssRoutes(appDir: string): ExtendedWssRoute[] {
     }
   }
 
-  walk(apiRoot);
+  await walk(apiRoot);
 
   return routes;
 }

@@ -48,10 +48,12 @@ El framework escanea `app/` y carga:
 ### 2. Build del Servidor
 
 Compila el código del servidor usando esbuild:
-- Bundling de módulos
+- Bundling de módulos ESM (ES Modules)
 - Tree shaking
 - Minificación
-- Output en `.loly/server/`
+- Output en `.loly/server/` como archivos `.mjs` (ESM)
+- Path aliases resueltos correctamente
+- Archivos estáticos (JSON, txt, etc.) copiados automáticamente manteniendo estructura
 
 ### 3. Build del Cliente
 
@@ -80,8 +82,9 @@ Crea manifestos JSON:
 
 ```
 .loly/
-├── server/              # Código del servidor compilado
+├── server/              # Código del servidor compilado (ESM .mjs)
 │   ├── app/
+│   ├── lib/             # Archivos estáticos copiados (JSON, etc.)
 │   └── routes-manifest.json
 ├── client/              # Código del cliente
 │   ├── client.js
@@ -96,22 +99,13 @@ Crea manifestos JSON:
 └── asset-manifest.json
 ```
 
+**Nota:** El código del servidor se compila como módulos ESM (`.mjs`), lo que permite usar características modernas como top-level await, dynamic imports, y `import.meta.url`.
+
 ## Configuración de Build
 
 ### loly.config.ts
 
-```typescript
-export default {
-  build: {
-    clientBundler: "rspack",  // "rspack" | "webpack" | "vite"
-    serverBundler: "esbuild", // "esbuild" | "tsup" | "swc"
-    outputFormat: "cjs",      // "cjs" | "esm"
-  },
-  directories: {
-    build: ".loly",           // Directorio de output
-  },
-};
-```
+The framework uses native ESM by default. Server files are compiled as ESM modules (`.mjs`).
 
 ## Code Splitting
 

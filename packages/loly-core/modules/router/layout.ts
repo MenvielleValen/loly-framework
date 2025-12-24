@@ -38,10 +38,10 @@ export function findLayoutFileInDir(dir: string): string | null {
  * // For app/(dashboard)/settings/page.tsx:
  * // Returns layouts from: app/layout.tsx, app/(dashboard)/layout.tsx, app/(dashboard)/settings/layout.tsx (if exists)
  */
-export function loadLayoutsForDir(
+export async function loadLayoutsForDir(
   pageDir: string,
   appDir: string
-): { components: LayoutComponent[]; files: string[] } {
+): Promise<{ components: LayoutComponent[]; files: string[] }> {
   const componentsBottomUp: LayoutComponent[] = [];
   const filesBottomUp: string[] = [];
 
@@ -51,9 +51,10 @@ export function loadLayoutsForDir(
   while (true) {
     const layoutFile = findLayoutFileInDir(currentDir);
     if (layoutFile) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require(layoutFile);
-      const LayoutComp: LayoutComponent = mod.default;
+      const { loadDefaultExport } = await import("./utils/module-loader");
+      const LayoutComp = await loadDefaultExport<LayoutComponent>(layoutFile, {
+        projectRoot: appDir,
+      });
       if (LayoutComp) {
         componentsBottomUp.push(LayoutComp);
         filesBottomUp.push(layoutFile);

@@ -28,11 +28,11 @@ import type { ExtendedWssRoute } from "./loader-wss";
  * @param projectRoot - Root directory of the project
  * @returns Object containing loaded routes and API routes
  */
-export function loadRoutesFromManifest(projectRoot: string): {
+export async function loadRoutesFromManifest(projectRoot: string): Promise<{
   routes: LoadedRoute[];
   apiRoutes: ApiRoute[];
   wssRoutes: ExtendedWssRoute[];
-} {
+}> {
   const manifest = readManifest(projectRoot);
   if (!manifest) {
     return { routes: [], apiRoutes: [], wssRoutes: [] };
@@ -46,12 +46,12 @@ export function loadRoutesFromManifest(projectRoot: string): {
       entry.paramNames
     );
 
-    const component = loadPageComponent(entry.pageFile, projectRoot);
+    const component = await loadPageComponent(entry.pageFile, projectRoot);
     if (!component) {
       continue;
     }
 
-    const layouts = loadLayouts(entry.layoutFiles, projectRoot);
+    const layouts = await loadLayouts(entry.layoutFiles, projectRoot);
     const pageFile = path.join(projectRoot, entry.pageFile);
     const layoutFiles = entry.layoutFiles.map((f) =>
       path.join(projectRoot, f)
@@ -63,7 +63,7 @@ export function loadRoutesFromManifest(projectRoot: string): {
     const layoutServerHooks: (typeof serverHook)[] = [];
     const layoutMiddlewares: RouteMiddleware[][] = [];
     for (const layoutFile of layoutFiles) {
-      const layoutHookData = loadLayoutServerHook(layoutFile);
+      const layoutHookData = await loadLayoutServerHook(layoutFile);
       if (layoutHookData) {
         layoutServerHooks.push(layoutHookData.serverHook);
         layoutMiddlewares.push(layoutHookData.middlewares);
@@ -74,7 +74,7 @@ export function loadRoutesFromManifest(projectRoot: string): {
     }
     
     const { middlewares, serverHook, dynamic, generateStaticParams } =
-      loadServerHookForDir(pageDir);
+      await loadServerHookForDir(pageDir);
 
     pageRoutes.push({
       pattern: entry.pattern,
@@ -102,7 +102,7 @@ export function loadRoutesFromManifest(projectRoot: string): {
       entry.paramNames
     );
     const filePath = path.join(projectRoot, entry.file);
-    const mod = loadModuleSafely(filePath);
+    const mod = await loadModuleSafely(filePath, projectRoot);
 
     if (!mod) {
       continue;
@@ -131,7 +131,7 @@ export function loadRoutesFromManifest(projectRoot: string): {
       entry.paramNames
     );
     const filePath = path.join(projectRoot, entry.file);
-    const mod = loadModuleSafely(filePath);
+    const mod = await loadModuleSafely(filePath, projectRoot);
 
     if (!mod) {
       continue;
@@ -215,20 +215,20 @@ export function loadChunksFromManifest(projectRoot: string): Record<string, stri
  * @param projectRoot - Root directory of the project
  * @returns LoadedRoute for the not-found page, or null if not found
  */
-export function loadNotFoundFromManifest(
+export async function loadNotFoundFromManifest(
   projectRoot: string
-): LoadedRoute | null {
+): Promise<LoadedRoute | null> {
   const manifest = readManifest(projectRoot);
   if (!manifest) {
     return null;
   }
 
-  const component = loadPageComponent(manifest.notFound.pageFile, projectRoot);
+  const component = await loadPageComponent(manifest.notFound.pageFile, projectRoot);
   if (!component) {
     return null;
   }
 
-  const layouts = loadLayouts(manifest.notFound.layoutFiles, projectRoot);
+  const layouts = await loadLayouts(manifest.notFound.layoutFiles, projectRoot);
   const pageFile = path.join(projectRoot, manifest.notFound.pageFile);
 
   return {
@@ -252,9 +252,9 @@ export function loadNotFoundFromManifest(
  * @param projectRoot - Root directory of the project
  * @returns LoadedRoute for the error page, or null if not found
  */
-export function loadErrorFromManifest(
+export async function loadErrorFromManifest(
   projectRoot: string
-): LoadedRoute | null {
+): Promise<LoadedRoute | null> {
   const manifest = readManifest(projectRoot);
   if (!manifest) {
     return null;
@@ -266,13 +266,13 @@ export function loadErrorFromManifest(
     return null;
   }
 
-  const component = loadPageComponent(errorEntry.pageFile, projectRoot);
+  const component = await loadPageComponent(errorEntry.pageFile, projectRoot);
   if (!component) {
     return null;
   }
 
   const layoutFiles = (errorEntry.layoutFiles || []) as string[];
-  const layouts = loadLayouts(layoutFiles, projectRoot);
+  const layouts = await loadLayouts(layoutFiles, projectRoot);
   const pageFile = path.join(projectRoot, errorEntry.pageFile);
 
   return {

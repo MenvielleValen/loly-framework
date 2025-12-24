@@ -107,13 +107,9 @@ export class FilesystemRewriteLoader implements RewriteLoader {
       return Array.isArray(config) ? config : [];
     }
 
-    // TypeScript/JavaScript config
-    // Clear require cache to ensure fresh load
-    delete require.cache[require.resolve(configPath)];
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require(configPath);
-    const config = mod.default || mod;
+    const { loadModule } = await import("./utils/module-loader");
+    const mod = await loadModule(configPath, { projectRoot: this.projectRoot });
+    const config = (mod as any)?.default || mod;
 
     if (typeof config === "function") {
       // Async function - execute it

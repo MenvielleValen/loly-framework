@@ -28,8 +28,8 @@ export const lolySocket = (
   namespace: string,
   opts?: Partial<ManagerOptions & SocketOptions>
 ): Socket => {
-  // SIMPLIFICADO: Siempre usar el origin actual en el navegador
-  // Socket.IO maneja el namespace automáticamente
+  // Simplified: Always use the current origin in the browser
+  // Socket.IO handles the namespace automatically
   if (typeof window === "undefined") {
     throw new Error(
       "[loly:socket] lolySocket can only be called on the client side."
@@ -39,9 +39,9 @@ export const lolySocket = (
   const normalizedNamespace = namespace.startsWith("/") ? namespace : `/${namespace}`;
   
   // Socket.IO: io(namespace, { path: '/wss' })
-  // Socket.IO usa window.location.origin automáticamente
-  // El path '/wss' es el endpoint del engine de Socket.IO
-  // El namespace se maneja en el handshake
+  // Socket.IO uses window.location.origin automatically
+  // The path '/wss' is the Socket.IO engine endpoint
+  // The namespace is handled in the handshake
 
   const socket = io(normalizedNamespace, {
     path: "/wss",

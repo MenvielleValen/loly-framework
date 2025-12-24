@@ -26,11 +26,11 @@ import { loadWssRoutes, type ExtendedWssRoute } from "./loader-wss";
  * Abstracts the difference between filesystem (dev) and manifest (prod) loading.
  */
 export interface RouteLoader {
-  loadRoutes(): LoadedRoute[];
-  loadApiRoutes(): ApiRoute[];
-  loadWssRoutes(): ExtendedWssRoute[];
-  loadNotFoundRoute(): LoadedRoute | null;
-  loadErrorRoute(): LoadedRoute | null;
+  loadRoutes(): Promise<LoadedRoute[]>;
+  loadApiRoutes(): Promise<ApiRoute[]>;
+  loadWssRoutes(): Promise<ExtendedWssRoute[]>;
+  loadNotFoundRoute(): Promise<LoadedRoute | null>;
+  loadErrorRoute(): Promise<LoadedRoute | null>;
   loadRouteChunks(): Record<string, string>;
 }
 
@@ -251,11 +251,11 @@ export class FilesystemRouteLoader implements RouteLoader {
     }
   }
 
-  loadRoutes(): LoadedRoute[] {
+  async loadRoutes(): Promise<LoadedRoute[]> {
     this.ensureCacheValid();
     
     if (!this.cache || hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats)) {
-      const routes = loadRoutes(this.appDir);
+      const routes = await loadRoutes(this.appDir);
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
       
@@ -274,12 +274,12 @@ export class FilesystemRouteLoader implements RouteLoader {
     return this.cache.routes;
   }
 
-  loadApiRoutes(): ApiRoute[] {
+  async loadApiRoutes(): Promise<ApiRoute[]> {
     this.ensureCacheValid();
     
     // Ensure cache exists
     if (!this.cache) {
-      this.loadRoutes(); // This will initialize the cache
+      await this.loadRoutes(); // This will initialize the cache
     }
     
     // Ensure we have a cache at this point
@@ -291,7 +291,7 @@ export class FilesystemRouteLoader implements RouteLoader {
       // Files changed or not loaded yet, reload
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.apiRoutes = loadApiRoutes(this.appDir);
+      this.cache.apiRoutes = await loadApiRoutes(this.appDir);
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -299,11 +299,11 @@ export class FilesystemRouteLoader implements RouteLoader {
     return this.cache.apiRoutes;
   }
 
-  loadWssRoutes(): ExtendedWssRoute[] {
+  async loadWssRoutes(): Promise<ExtendedWssRoute[]> {
     this.ensureCacheValid();
     
     if (!this.cache) {
-      this.loadRoutes(); // Initialize cache
+      await this.loadRoutes(); // Initialize cache
     }
     
     if (!this.cache) {
@@ -313,7 +313,7 @@ export class FilesystemRouteLoader implements RouteLoader {
     if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.wssRoutes.length === 0) {
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.wssRoutes = loadWssRoutes(this.appDir);
+      this.cache.wssRoutes = await loadWssRoutes(this.appDir);
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -321,11 +321,11 @@ export class FilesystemRouteLoader implements RouteLoader {
     return this.cache.wssRoutes;
   }
 
-  loadNotFoundRoute(): LoadedRoute | null {
+  async loadNotFoundRoute(): Promise<LoadedRoute | null> {
     this.ensureCacheValid();
     
     if (!this.cache) {
-      this.loadRoutes(); // Initialize cache
+      await this.loadRoutes(); // Initialize cache
     }
     
     if (!this.cache) {
@@ -335,7 +335,7 @@ export class FilesystemRouteLoader implements RouteLoader {
     if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.notFoundRoute === undefined) {
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.notFoundRoute = loadNotFoundRouteFromFilesystem(this.appDir);
+      this.cache.notFoundRoute = await loadNotFoundRouteFromFilesystem(this.appDir);
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -343,11 +343,11 @@ export class FilesystemRouteLoader implements RouteLoader {
     return this.cache.notFoundRoute;
   }
 
-  loadErrorRoute(): LoadedRoute | null {
+  async loadErrorRoute(): Promise<LoadedRoute | null> {
     this.ensureCacheValid();
     
     if (!this.cache) {
-      this.loadRoutes(); // Initialize cache
+      await this.loadRoutes(); // Initialize cache
     }
     
     if (!this.cache) {
@@ -357,7 +357,7 @@ export class FilesystemRouteLoader implements RouteLoader {
     if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.errorRoute === undefined) {
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.errorRoute = loadErrorRouteFromFilesystem(this.appDir);
+      this.cache.errorRoute = await loadErrorRouteFromFilesystem(this.appDir);
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -411,52 +411,52 @@ export class ManifestRouteLoader implements RouteLoader {
     return manifest;
   }
 
-  loadRoutes(): LoadedRoute[] {
+  async loadRoutes(): Promise<LoadedRoute[]> {
     if (this.cache.routes) {
       return this.cache.routes;
     }
 
-    const { routes } = loadRoutesFromManifest(this.projectRoot);
+    const { routes } = await loadRoutesFromManifest(this.projectRoot);
     this.cache.routes = routes;
     return routes;
   }
 
-  loadApiRoutes(): ApiRoute[] {
+  async loadApiRoutes(): Promise<ApiRoute[]> {
     if (this.cache.apiRoutes) {
       return this.cache.apiRoutes;
     }
 
-    const { apiRoutes } = loadRoutesFromManifest(this.projectRoot);
+    const { apiRoutes } = await loadRoutesFromManifest(this.projectRoot);
     this.cache.apiRoutes = apiRoutes;
     return apiRoutes;
   }
 
-  loadWssRoutes(): ExtendedWssRoute[] {
+  async loadWssRoutes(): Promise<ExtendedWssRoute[]> {
     if (this.cache.wssRoutes) {
       return this.cache.wssRoutes;
     }
 
-    const { wssRoutes } = loadRoutesFromManifest(this.projectRoot);
+    const { wssRoutes } = await loadRoutesFromManifest(this.projectRoot);
     this.cache.wssRoutes = wssRoutes;
     return wssRoutes;
   }
 
-  loadNotFoundRoute(): LoadedRoute | null {
+  async loadNotFoundRoute(): Promise<LoadedRoute | null> {
     if (this.cache.notFoundRoute !== undefined) {
       return this.cache.notFoundRoute;
     }
 
-    const route = loadNotFoundFromManifest(this.projectRoot);
+    const route = await loadNotFoundFromManifest(this.projectRoot);
     this.cache.notFoundRoute = route;
     return route;
   }
 
-  loadErrorRoute(): LoadedRoute | null {
+  async loadErrorRoute(): Promise<LoadedRoute | null> {
     if (this.cache.errorRoute !== undefined) {
       return this.cache.errorRoute;
     }
 
-    const route = loadErrorFromManifest(this.projectRoot);
+    const route = await loadErrorFromManifest(this.projectRoot);
     this.cache.errorRoute = route;
     return route;
   }
@@ -479,9 +479,9 @@ export class ManifestRouteLoader implements RouteLoader {
  * @param appDir - Root directory of the app
  * @returns LoadedRoute for the not-found page, or null if not found
  */
-export function loadNotFoundRouteFromFilesystem(
+export async function loadNotFoundRouteFromFilesystem(
   appDir: string
-): LoadedRoute | null {
+): Promise<LoadedRoute | null> {
   const notFoundCandidates = [
     path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.tsx`),
     path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.ts`),
@@ -506,9 +506,10 @@ export function loadNotFoundRouteFromFilesystem(
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require(notFoundFile);
-  const component: PageComponent = mod.default;
+  const { loadDefaultExport } = await import("./utils/module-loader");
+  const component = await loadDefaultExport<PageComponent>(notFoundFile, {
+    projectRoot: appDir,
+  });
 
   if (!component) {
     return null;
@@ -519,7 +520,7 @@ export function loadNotFoundRouteFromFilesystem(
     ? appDir
     : path.dirname(notFoundFile);
 
-  const { components: layouts, files: layoutFiles } = loadLayoutsForDir(
+  const { components: layouts, files: layoutFiles } = await loadLayoutsForDir(
     notFoundDir,
     appDir
   );
@@ -529,7 +530,7 @@ export function loadNotFoundRouteFromFilesystem(
   const layoutServerHooks: (typeof serverHook)[] = [];
   const layoutMiddlewares: RouteMiddleware[][] = [];
   for (const layoutFile of layoutFiles) {
-    const layoutHookData = loadLayoutServerHook(layoutFile);
+    const layoutHookData = await loadLayoutServerHook(layoutFile);
     if (layoutHookData) {
       layoutServerHooks.push(layoutHookData.serverHook);
       layoutMiddlewares.push(layoutHookData.middlewares);
@@ -540,7 +541,7 @@ export function loadNotFoundRouteFromFilesystem(
   }
 
   const { middlewares, serverHook, dynamic, generateStaticParams } =
-    loadServerHookForDir(notFoundDir);
+    await loadServerHookForDir(notFoundDir);
 
   return {
     pattern: NOT_FOUND_PATTERN,
@@ -566,9 +567,9 @@ export function loadNotFoundRouteFromFilesystem(
  * @param appDir - Root directory of the app
  * @returns LoadedRoute for the error page, or null if not found
  */
-export function loadErrorRouteFromFilesystem(
+export async function loadErrorRouteFromFilesystem(
   appDir: string
-): LoadedRoute | null {
+): Promise<LoadedRoute | null> {
   const errorCandidates = [
     path.join(appDir, `${ERROR_FILE_PREFIX}.tsx`),
     path.join(appDir, `${ERROR_FILE_PREFIX}.ts`),
@@ -588,15 +589,16 @@ export function loadErrorRouteFromFilesystem(
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require(errorFile);
-  const component: PageComponent = mod.default;
+  const { loadDefaultExport } = await import("./utils/module-loader");
+  const component = await loadDefaultExport<PageComponent>(errorFile, {
+    projectRoot: appDir,
+  });
 
   if (!component) {
     return null;
   }
 
-  const { components: layouts, files: layoutFiles } = loadLayoutsForDir(
+  const { components: layouts, files: layoutFiles } = await loadLayoutsForDir(
     appDir,
     appDir
   );
@@ -606,7 +608,7 @@ export function loadErrorRouteFromFilesystem(
   const layoutServerHooks: (typeof serverHook)[] = [];
   const layoutMiddlewares: RouteMiddleware[][] = [];
   for (const layoutFile of layoutFiles) {
-    const layoutHookData = loadLayoutServerHook(layoutFile);
+    const layoutHookData = await loadLayoutServerHook(layoutFile);
     if (layoutHookData) {
       layoutServerHooks.push(layoutHookData.serverHook);
       layoutMiddlewares.push(layoutHookData.middlewares);
@@ -617,7 +619,7 @@ export function loadErrorRouteFromFilesystem(
   }
 
   const { middlewares, serverHook, dynamic, generateStaticParams } =
-    loadServerHookForDir(appDir);
+    await loadServerHookForDir(appDir);
 
   return {
     pattern: ERROR_PATTERN,

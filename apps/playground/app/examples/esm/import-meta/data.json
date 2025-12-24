@@ -1,0 +1,9 @@
+{
+  "message": "This file was read using import.meta.url!",
+  "feature": "ESM-only capability",
+  "loadedAt": "Module loaded successfully",
+  "data": {
+    "example": "This demonstrates reading files relative to the module location"
+  }
+}
+

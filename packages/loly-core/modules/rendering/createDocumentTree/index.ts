@@ -421,10 +421,10 @@ export function createDocumentTree(options: {
       }),
       ...extraMetaTags,
       ...linkTags,
-      // Preload all entrypoint files except the last one (runtime, vendor, commons)
-      // The last file is the main entry which we load as a script
+      // Preload all entrypoint files (runtime, vendor, commons, entry)
+      // This allows the browser to start downloading them early
       ...(entrypointFiles.length > 0
-        ? entrypointFiles.slice(0, -1).map((file) =>
+        ? entrypointFiles.map((file) =>
             React.createElement("link", {
               key: `preload-${file}`,
               rel: "preload",
@@ -448,6 +448,13 @@ export function createDocumentTree(options: {
           href: faviconPath,
           type: faviconType || (faviconPath.endsWith(".ico") ? "image/x-icon" : "image/png"),
         }),
+      // Preload CSS para evitar bloqueo de renderizado
+      React.createElement("link", {
+        key: "preload-css",
+        rel: "preload",
+        href: clientCssPath,
+        as: "style",
+      }),
       React.createElement("link", {
         rel: "stylesheet",
         href: clientCssPath,

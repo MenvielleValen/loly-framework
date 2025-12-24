@@ -1,6 +1,7 @@
 {
   "name": "template",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "loly dev",
@@ -8,7 +9,7 @@
     "start": "loly start"
   },
   "dependencies": {
-    "@lolyjs/core": "0.2.0-alpha.29",
+    "@lolyjs/core": "0.3.0-alpha.2",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

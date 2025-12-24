@@ -80,6 +80,17 @@ export async function loadRoutes(appDir: string): Promise<LoadedRoute[]> {
     return [];
   }
 
+  // Calculate projectRoot from appDir
+  let projectRoot = appDir;
+  let current = path.resolve(appDir);
+  while (current !== path.dirname(current)) {
+    if (fs.existsSync(path.join(current, 'package.json'))) {
+      projectRoot = current;
+      break;
+    }
+    current = path.dirname(current);
+  }
+
   const routes: LoadedRoute[] = [];
 
   async function walk(currentDir: string): Promise<void> {
@@ -106,7 +117,7 @@ export async function loadRoutes(appDir: string): Promise<LoadedRoute[]> {
 
       const { loadDefaultExport } = await import("./utils/module-loader");
       const component = await loadDefaultExport<PageComponent>(fullPath, {
-        projectRoot: appDir,
+        projectRoot,
       });
 
       if (!component) {
@@ -123,7 +134,7 @@ export async function loadRoutes(appDir: string): Promise<LoadedRoute[]> {
       const layoutServerHooks: (typeof serverHook)[] = [];
       const layoutMiddlewares: RouteMiddleware[][] = [];
       for (const layoutFile of layoutFiles) {
-        const layoutHookData = await loadLayoutServerHook(layoutFile);
+        const layoutHookData = await loadLayoutServerHook(layoutFile, projectRoot);
         if (layoutHookData) {
           layoutServerHooks.push(layoutHookData.serverHook);
           layoutMiddlewares.push(layoutHookData.middlewares);
@@ -134,7 +145,7 @@ export async function loadRoutes(appDir: string): Promise<LoadedRoute[]> {
       }
 
       const { middlewares, serverHook, dynamic, generateStaticParams } =
-        await loadServerHookForDir(currentDir);
+        await loadServerHookForDir(currentDir, projectRoot);
 
       routes.push({
         pattern: routePath,

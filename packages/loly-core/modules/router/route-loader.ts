@@ -335,7 +335,7 @@ export class FilesystemRouteLoader implements RouteLoader {
     if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.notFoundRoute === undefined) {
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.notFoundRoute = await loadNotFoundRouteFromFilesystem(this.appDir);
+      this.cache.notFoundRoute = await loadNotFoundRouteFromFilesystem(this.appDir, this.projectRoot);
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -357,7 +357,7 @@ export class FilesystemRouteLoader implements RouteLoader {
     if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.errorRoute === undefined) {
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.errorRoute = await loadErrorRouteFromFilesystem(this.appDir);
+      this.cache.errorRoute = await loadErrorRouteFromFilesystem(this.appDir, this.projectRoot);
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -477,10 +477,12 @@ export class ManifestRouteLoader implements RouteLoader {
  * Looks for `_not-found.tsx` in the app root (Next.js style).
  *
  * @param appDir - Root directory of the app
+ * @param projectRoot - Root directory of the project (where package.json is located)
  * @returns LoadedRoute for the not-found page, or null if not found
  */
 export async function loadNotFoundRouteFromFilesystem(
-  appDir: string
+  appDir: string,
+  projectRoot: string
 ): Promise<LoadedRoute | null> {
   const notFoundCandidates = [
     path.join(appDir, `${NOT_FOUND_FILE_PREFIX}.tsx`),
@@ -508,7 +510,7 @@ export async function loadNotFoundRouteFromFilesystem(
 
   const { loadDefaultExport } = await import("./utils/module-loader");
   const component = await loadDefaultExport<PageComponent>(notFoundFile, {
-    projectRoot: appDir,
+    projectRoot: projectRoot,
   });
 
   if (!component) {
@@ -530,7 +532,7 @@ export async function loadNotFoundRouteFromFilesystem(
   const layoutServerHooks: (typeof serverHook)[] = [];
   const layoutMiddlewares: RouteMiddleware[][] = [];
   for (const layoutFile of layoutFiles) {
-    const layoutHookData = await loadLayoutServerHook(layoutFile);
+    const layoutHookData = await loadLayoutServerHook(layoutFile, projectRoot);
     if (layoutHookData) {
       layoutServerHooks.push(layoutHookData.serverHook);
       layoutMiddlewares.push(layoutHookData.middlewares);
@@ -541,7 +543,7 @@ export async function loadNotFoundRouteFromFilesystem(
   }
 
   const { middlewares, serverHook, dynamic, generateStaticParams } =
-    await loadServerHookForDir(notFoundDir);
+    await loadServerHookForDir(notFoundDir, projectRoot);
 
   return {
     pattern: NOT_FOUND_PATTERN,
@@ -565,10 +567,12 @@ export async function loadNotFoundRouteFromFilesystem(
  * Looks for `_error.tsx` in the app root (Next.js style).
  *
  * @param appDir - Root directory of the app
+ * @param projectRoot - Root directory of the project (where package.json is located)
  * @returns LoadedRoute for the error page, or null if not found
  */
 export async function loadErrorRouteFromFilesystem(
-  appDir: string
+  appDir: string,
+  projectRoot: string
 ): Promise<LoadedRoute | null> {
   const errorCandidates = [
     path.join(appDir, `${ERROR_FILE_PREFIX}.tsx`),
@@ -591,7 +595,7 @@ export async function loadErrorRouteFromFilesystem(
 
   const { loadDefaultExport } = await import("./utils/module-loader");
   const component = await loadDefaultExport<PageComponent>(errorFile, {
-    projectRoot: appDir,
+    projectRoot: projectRoot,
   });
 
   if (!component) {
@@ -608,7 +612,7 @@ export async function loadErrorRouteFromFilesystem(
   const layoutServerHooks: (typeof serverHook)[] = [];
   const layoutMiddlewares: RouteMiddleware[][] = [];
   for (const layoutFile of layoutFiles) {
-    const layoutHookData = await loadLayoutServerHook(layoutFile);
+    const layoutHookData = await loadLayoutServerHook(layoutFile, projectRoot);
     if (layoutHookData) {
       layoutServerHooks.push(layoutHookData.serverHook);
       layoutMiddlewares.push(layoutHookData.middlewares);
@@ -619,7 +623,7 @@ export async function loadErrorRouteFromFilesystem(
   }
 
   const { middlewares, serverHook, dynamic, generateStaticParams } =
-    await loadServerHookForDir(appDir);
+    await loadServerHookForDir(appDir, projectRoot);
 
   return {
     pattern: ERROR_PATTERN,

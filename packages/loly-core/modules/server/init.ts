@@ -14,6 +14,11 @@ export async function runInitIfExists(
   try {
     let mod: any = await getServerFile(projectRoot, INIT_FILE_NAME);
 
+    if (!mod) {
+      // File doesn't exist or failed to load - that's okay
+      return {};
+    }
+
     if (typeof mod?.init === "function") {
       const serverContext: any = { ...serverData };
       await mod.init({ serverContext });

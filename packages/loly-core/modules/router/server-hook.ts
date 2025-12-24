@@ -37,7 +37,10 @@ const NAMING = {
  * export const dynamic = "force-static";
  * export const generateStaticParams = async () => [{ slug: "post-1" }];
  */
-export async function loadServerHookForDir(currentDir: string): Promise<{
+export async function loadServerHookForDir(
+  currentDir: string,
+  projectRoot?: string
+): Promise<{
   middlewares: RouteMiddleware[];
   serverHook: ServerLoader | null;
   dynamic: DynamicMode;
@@ -100,10 +103,26 @@ export async function loadServerHookForDir(currentDir: string): Promise<{
     };
   }
 
+  // Calculate projectRoot from currentDir if not provided
+  let resolvedProjectRoot = projectRoot;
+  if (!resolvedProjectRoot) {
+    let current = path.resolve(currentDir);
+    while (current !== path.dirname(current)) {
+      if (fs.existsSync(path.join(current, 'package.json'))) {
+        resolvedProjectRoot = current;
+        break;
+      }
+      current = path.dirname(current);
+    }
+    if (!resolvedProjectRoot) {
+      resolvedProjectRoot = currentDir;
+    }
+  }
+
   let mod: any;
   try {
     const { loadModule } = await import("./utils/module-loader");
-    mod = await loadModule(file, { projectRoot: currentDir });
+    mod = await loadModule(file, { projectRoot: resolvedProjectRoot });
   } catch (error) {
     console.error(
       `[framework][server-hook] Error loading server hook from ${file}:`,
@@ -188,7 +207,10 @@ export async function loadServerHookForDir(currentDir: string): Promise<{
  *   return { props: { theme: ctx.locals.layoutData?.theme } };
  * };
  */
-export async function loadLayoutServerHook(layoutFile: string): Promise<{
+export async function loadLayoutServerHook(
+  layoutFile: string,
+  projectRoot?: string
+): Promise<{
   serverHook: ServerLoader | null;
   middlewares: RouteMiddleware[];
 } | null> {
@@ -232,7 +254,21 @@ export async function loadLayoutServerHook(layoutFile: string): Promise<{
 
   try {
     const { loadModule } = await import("./utils/module-loader");
-    const mod = await loadModule(file, { projectRoot: path.dirname(file) });
+    // Calculate projectRoot from layoutFile if not provided
+    if (!projectRoot) {
+      let current = path.dirname(layoutFile);
+      while (current !== path.dirname(current)) {
+        if (fs.existsSync(path.join(current, 'package.json'))) {
+          projectRoot = current;
+          break;
+        }
+        current = path.dirname(current);
+      }
+      if (!projectRoot) {
+        projectRoot = path.dirname(layoutFile);
+      }
+    }
+    const mod = await loadModule(file, { projectRoot });
     
     const serverHook: ServerLoader | null =
       typeof mod?.getServerSideProps === "function"

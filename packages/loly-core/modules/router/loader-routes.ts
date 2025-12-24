@@ -63,7 +63,7 @@ export async function loadRoutesFromManifest(projectRoot: string): Promise<{
     const layoutServerHooks: (typeof serverHook)[] = [];
     const layoutMiddlewares: RouteMiddleware[][] = [];
     for (const layoutFile of layoutFiles) {
-      const layoutHookData = await loadLayoutServerHook(layoutFile);
+      const layoutHookData = await loadLayoutServerHook(layoutFile, projectRoot);
       if (layoutHookData) {
         layoutServerHooks.push(layoutHookData.serverHook);
         layoutMiddlewares.push(layoutHookData.middlewares);
@@ -74,7 +74,7 @@ export async function loadRoutesFromManifest(projectRoot: string): Promise<{
     }
     
     const { middlewares, serverHook, dynamic, generateStaticParams } =
-      await loadServerHookForDir(pageDir);
+      await loadServerHookForDir(pageDir, projectRoot);
 
     pageRoutes.push({
       pattern: entry.pattern,

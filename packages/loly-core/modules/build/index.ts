@@ -62,8 +62,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
   const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir, config);
 
   // Load special error pages (_not-found.tsx, _error.tsx)
-  const notFoundRoute = await loadNotFoundRouteFromFilesystem(appDir);
-  const errorRoute = await loadErrorRouteFromFilesystem(appDir);
+  const notFoundRoute = await loadNotFoundRouteFromFilesystem(appDir, projectRoot);
+  const errorRoute = await loadErrorRouteFromFilesystem(appDir, projectRoot);
 
   if (!notFoundRoute) {
     console.warn(

@@ -145,7 +145,7 @@ export const DEFAULT_CONFIG: FrameworkConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     formats: ['image/webp', 'image/avif'],
     quality: 75,
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 31536000, // 1 year
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     maxWidth: 3840,

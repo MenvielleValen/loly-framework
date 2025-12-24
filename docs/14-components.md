@@ -48,7 +48,7 @@ interface LinkProps {
 
 ## Image
 
-Componente optimizado para imágenes (en desarrollo).
+Componente optimizado para imágenes con optimización automática, lazy loading, responsive images y más.
 
 ### Uso Básico
 
@@ -66,6 +66,16 @@ export default function MyPage() {
   );
 }
 ```
+
+### Características
+
+- ✅ Optimización automática (redimensionado, compresión, formatos modernos)
+- ✅ Lazy loading por defecto
+- ✅ Responsive images con srcset automático
+- ✅ Soporte para imágenes remotas (con whitelist)
+- ✅ Prevención de CLS (Cumulative Layout Shift)
+
+Para documentación completa, ver [Image Optimization](./17-image-optimization.md).
 
 ## Ejemplos Completos
 

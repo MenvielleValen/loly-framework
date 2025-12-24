@@ -43,6 +43,7 @@ Loly is a full-stack React framework that combines the simplicity of file-based 
 - 🛡️ **Security First** - Built-in rate limiting, validation, sanitization, and security headers
 - ⚡ **Performance** - Fast bundling with Rspack and optimized code splitting
 - 📦 **Full ESM Support** - Native ES modules with top-level await, dynamic imports, and `import.meta.url`
+- 🖼️ **Image Optimization** - Automatic image optimization with WebP/AVIF support, lazy loading, and responsive images
 
 ---
 
@@ -847,6 +848,79 @@ export default {
   },
 } satisfies Partial<FrameworkConfig>;
 ```
+
+### 🖼️ Image Optimization
+
+Loly includes a powerful image optimization system similar to Next.js Image, with automatic optimization, lazy loading, responsive images, and remote image support.
+
+**Basic Usage:**
+
+```tsx
+import { Image } from "@lolyjs/core/components";
+
+export default function MyPage() {
+  return (
+    <Image
+      src="/assets/hero.jpg"
+      alt="Hero image"
+      width={800}
+      height={600}
+    />
+  );
+}
+```
+
+**Remote Images:**
+
+```tsx
+<Image
+  src="https://images.unsplash.com/photo-123"
+  alt="Photo"
+  width={1200}
+  height={800}
+  quality={85}
+  format="webp"
+/>
+```
+
+**Features:**
+
+- ✅ Automatic optimization (resize, compress, format conversion)
+- ✅ Modern formats (WebP, AVIF)
+- ✅ Lazy loading by default
+- ✅ Responsive images with automatic srcset
+- ✅ Remote image support (with domain whitelist)
+- ✅ Cache optimization
+- ✅ CLS prevention
+
+**Configuration:**
+
+Configure allowed remote domains in `loly.config.ts`:
+
+```tsx
+import type { FrameworkConfig } from "@lolyjs/core";
+
+export default {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.unsplash.com", // Wildcard for subdomains
+      },
+    ],
+    formats: ["image/webp", "image/avif"],
+    quality: 75,
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+  },
+} satisfies Partial<FrameworkConfig>;
+```
+
+For complete documentation, see [Image Optimization Documentation](https://github.com/MenvielleValen/loly-framework/blob/main/docs/17-image-optimization.md).
 
 ### 🔌 API Routes
 

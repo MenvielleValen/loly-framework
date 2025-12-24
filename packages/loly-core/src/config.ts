@@ -54,6 +54,51 @@ export interface FrameworkConfig {
   
   // Plugins (to be implemented in Phase 2)
   plugins?: any[];
+  
+  // Image optimization
+  images?: ImageConfig;
+}
+
+/**
+ * Remote pattern for image domain whitelisting.
+ */
+export interface RemotePattern {
+  protocol?: 'http' | 'https';
+  hostname: string;
+  port?: string;
+  pathname?: string;
+}
+
+/**
+ * Image optimization configuration.
+ */
+export interface ImageConfig {
+  // Remote image domains
+  remotePatterns?: RemotePattern[];
+  domains?: string[]; // Legacy format, like Next.js
+  
+  // Image sizes for srcset generation
+  deviceSizes?: number[];
+  imageSizes?: number[];
+  
+  // Supported formats
+  formats?: ('image/webp' | 'image/avif')[];
+  
+  // Default quality (1-100)
+  quality?: number;
+  
+  // Minimum cache TTL in seconds
+  minimumCacheTTL?: number;
+  
+  // Allow SVG images (security risk if enabled)
+  dangerouslyAllowSVG?: boolean;
+  
+  // Content Security Policy for SVG
+  contentSecurityPolicy?: string;
+  
+  // Maximum image dimensions
+  maxWidth?: number;
+  maxHeight?: number;
 }
 
 /**
@@ -93,6 +138,19 @@ export const DEFAULT_CONFIG: FrameworkConfig = {
     ssg: true,
   },
   plugins: [],
+  images: {
+    remotePatterns: [],
+    domains: [],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    formats: ['image/webp', 'image/avif'],
+    quality: 75,
+    minimumCacheTTL: 60,
+    dangerouslyAllowSVG: false,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    maxWidth: 3840,
+    maxHeight: 3840,
+  },
 };
 
 /**
@@ -247,6 +305,61 @@ function validateConfig(config: FrameworkConfig, projectRoot: string): void {
 
   if (typeof config.rendering.ssg !== 'boolean') {
     errors.push('config.rendering.ssg must be a boolean');
+  }
+
+  // Validate images config if provided
+  if (config.images) {
+    if (config.images.quality !== undefined) {
+      if (typeof config.images.quality !== 'number' || config.images.quality < 1 || config.images.quality > 100) {
+        errors.push('config.images.quality must be a number between 1 and 100');
+      }
+    }
+    
+    if (config.images.minimumCacheTTL !== undefined) {
+      if (typeof config.images.minimumCacheTTL !== 'number' || config.images.minimumCacheTTL < 0) {
+        errors.push('config.images.minimumCacheTTL must be a non-negative number');
+      }
+    }
+    
+    if (config.images.deviceSizes) {
+      if (!Array.isArray(config.images.deviceSizes) || config.images.deviceSizes.some(s => typeof s !== 'number' || s <= 0)) {
+        errors.push('config.images.deviceSizes must be an array of positive numbers');
+      }
+    }
+    
+    if (config.images.imageSizes) {
+      if (!Array.isArray(config.images.imageSizes) || config.images.imageSizes.some(s => typeof s !== 'number' || s <= 0)) {
+        errors.push('config.images.imageSizes must be an array of positive numbers');
+      }
+    }
+    
+    if (config.images.formats) {
+      const validFormats = ['image/webp', 'image/avif'];
+      if (!Array.isArray(config.images.formats) || config.images.formats.some(f => !validFormats.includes(f))) {
+        errors.push(`config.images.formats must be an array containing only: ${validFormats.join(', ')}`);
+      }
+    }
+    
+    if (config.images.remotePatterns) {
+      if (!Array.isArray(config.images.remotePatterns)) {
+        errors.push('config.images.remotePatterns must be an array');
+      } else {
+        config.images.remotePatterns.forEach((pattern, idx) => {
+          if (!pattern.hostname || typeof pattern.hostname !== 'string') {
+            errors.push(`config.images.remotePatterns[${idx}].hostname must be a non-empty string`);
+          }
+          if (pattern.protocol && !['http', 'https'].includes(pattern.protocol)) {
+            errors.push(`config.images.remotePatterns[${idx}].protocol must be 'http' or 'https'`);
+          }
+        });
+      }
+    }
+    
+    if (config.images.domains) {
+      if (!Array.isArray(config.images.domains) || config.images.domains.some(d => typeof d !== 'string')) {
+        errors.push('config.images.domains must be an array of strings');
+      }
+    }
   }
 
   // If there are errors, throw with detailed message

@@ -95,22 +95,28 @@ Bienvenido a la documentación técnica completa de Loly Framework. Esta documen
     - Image component
     - Ejemplos
 
+14. **[Image Optimization](./17-image-optimization.md)**
+    - Optimización automática
+    - Imágenes remotas
+    - Configuración
+    - Mejores prácticas
+
 ### Configuración y Seguridad
 
-14. **[Configuración](./12-configuracion.md)**
+15. **[Configuración](./12-configuracion.md)**
     - loly.config.ts
     - ServerConfig
     - Variables de entorno
     - Path aliases
 
-15. **[Seguridad](./15-seguridad.md)**
+16. **[Seguridad](./15-seguridad.md)**
     - Sanitización
     - Rate limiting
     - Helmet (security headers)
     - CORS
     - Autenticación
 
-16. **[Logging](./16-logging.md)**
+17. **[Logging](./16-logging.md)**
     - Sistema de logging
     - Logger por módulo
     - Logger por request

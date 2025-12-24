@@ -27,6 +27,7 @@ const loadNavigation = async () => {
     { href: "/examples/esm/import-meta", label: "Import.meta" },
     { href: "/examples/esm/dynamic-imports", label: "Dynamic Imports" },
     { href: "/examples/esm/async-init", label: "Async Init" },
+    { href: "/examples/image-optimization", label: "Image Optimizer" },
   ];
 };
 

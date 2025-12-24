@@ -326,6 +326,7 @@ export async function processRewrites(
   if (
     normalizedPath.startsWith("/static/") || // Static assets (client.js, client.css, etc.)
     normalizedPath.startsWith("/__fw/") || // Framework internal routes (hot reload, etc.)
+    normalizedPath.startsWith("/_loly/") || // Framework internal routes (image optimization, etc.)
     normalizedPath === "/favicon.ico" || // Favicon
     normalizedPath.startsWith("/wss/") // WebSocket routes - handled separately by Socket.IO
   ) {

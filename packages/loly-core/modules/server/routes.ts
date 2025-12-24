@@ -1,6 +1,7 @@
 import express from "express";
 import { LoadedRoute, ApiRoute, WssRoute } from "@router/index.types";
 import { handleApiRequest, handlePageRequest } from "./handlers";
+import { handleImageRequest } from "./handlers/image";
 import { RouteLoader, RewriteLoader, createRewriteLoader } from "@router/index";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
 import { getBuildDir, type FrameworkConfig } from "@src/config";
@@ -77,6 +78,18 @@ export function setupRoutes(options: SetupRoutesOptions): void {
     config ? getBuildDir(projectRoot, config) : path.join(projectRoot, BUILD_FOLDER_NAME),
     "ssg"
   );
+
+  // Image optimization endpoint - must be registered before /api/* and catch-all routes
+  if (config) {
+    app.get("/_loly/image", async (req, res) => {
+      await handleImageRequest({
+        req,
+        res,
+        projectRoot,
+        config,
+      });
+    });
+  }
 
   app.all("/api/*", async (req, res) => {
     const apiRoutes = isDev && getRoutes

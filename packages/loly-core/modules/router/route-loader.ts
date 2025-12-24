@@ -291,7 +291,18 @@ export class FilesystemRouteLoader implements RouteLoader {
       // Files changed or not loaded yet, reload
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.apiRoutes = await loadApiRoutes(this.appDir);
+      const apiRoutes = await loadApiRoutes(this.appDir);
+      
+      // Ensure cache still exists before updating (it might have been invalidated)
+      if (!this.cache) {
+        // Re-initialize cache if it was invalidated
+        await this.loadRoutes();
+        if (!this.cache) {
+          throw new Error('Failed to initialize route cache');
+        }
+      }
+      
+      this.cache.apiRoutes = apiRoutes;
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -313,7 +324,18 @@ export class FilesystemRouteLoader implements RouteLoader {
     if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.wssRoutes.length === 0) {
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.wssRoutes = await loadWssRoutes(this.appDir);
+      const wssRoutes = await loadWssRoutes(this.appDir);
+      
+      // Ensure cache still exists before updating (it might have been invalidated)
+      if (!this.cache) {
+        // Re-initialize cache if it was invalidated
+        await this.loadRoutes();
+        if (!this.cache) {
+          throw new Error('Failed to initialize route cache');
+        }
+      }
+      
+      this.cache.wssRoutes = wssRoutes;
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -335,7 +357,18 @@ export class FilesystemRouteLoader implements RouteLoader {
     if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.notFoundRoute === undefined) {
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.notFoundRoute = await loadNotFoundRouteFromFilesystem(this.appDir, this.projectRoot);
+      const notFoundRoute = await loadNotFoundRouteFromFilesystem(this.appDir, this.projectRoot);
+      
+      // Ensure cache still exists before updating (it might have been invalidated)
+      if (!this.cache) {
+        // Re-initialize cache if it was invalidated
+        await this.loadRoutes();
+        if (!this.cache) {
+          throw new Error('Failed to initialize route cache');
+        }
+      }
+      
+      this.cache.notFoundRoute = notFoundRoute;
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }
@@ -357,7 +390,18 @@ export class FilesystemRouteLoader implements RouteLoader {
     if (hasFilesChanged(this.appDir, this.projectRoot, this.cache.fileStats) || this.cache.errorRoute === undefined) {
       const files = getRelevantFiles(this.appDir, this.projectRoot);
       const fileStats = buildFileStats(files);
-      this.cache.errorRoute = await loadErrorRouteFromFilesystem(this.appDir, this.projectRoot);
+      const errorRoute = await loadErrorRouteFromFilesystem(this.appDir, this.projectRoot);
+      
+      // Ensure cache still exists before updating (it might have been invalidated)
+      if (!this.cache) {
+        // Re-initialize cache if it was invalidated
+        await this.loadRoutes();
+        if (!this.cache) {
+          throw new Error('Failed to initialize route cache');
+        }
+      }
+      
+      this.cache.errorRoute = errorRoute;
       this.cache.fileStats = fileStats;
       this.cache.timestamp = Date.now();
     }

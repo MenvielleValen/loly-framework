@@ -1,4 +1,5 @@
 import React, { ReactElement } from "react";
+import path from "path";
 import type { LoaderResult, PageComponent, LoadedRoute, PageMetadata } from "@router/index";
 import { InitialData, RouterData } from "../index.types";
 import {
@@ -7,6 +8,8 @@ import {
   FAVICON_PATH,
   ROUTER_DATA_KEY,
 } from "@constants/globals";
+import { ClientComponentPlaceholder } from "../ClientComponentPlaceholder";
+import { isClientComponent } from "@build/utils/detect-client-components";
 
 /**
  * Builds the app tree (Page + layouts) in the same way for SSR and SSG.
@@ -30,20 +33,53 @@ export function buildAppTree(
   props: Record<string, any>
 ): ReactElement {
   const Page = route.component;
-
-  let appTree: ReactElement = React.createElement(Page, {
-    params,
-    ...props,
-  } as any);
-
-  const layoutChain = route.layouts.slice().reverse();
-
-  for (const Layout of layoutChain) {
-    appTree = React.createElement(Layout, {
+  const isServer = typeof window === "undefined";
+  
+  // Check if page component is a client component
+  const isPageClientComponent = isServer && route.pageFile && isClientComponent(route.pageFile);
+  
+  let appTree: ReactElement;
+  
+  if (isPageClientComponent) {
+    // Render placeholder for client component on server
+    const componentName = route.pageFile ? path.basename(route.pageFile, path.extname(route.pageFile)) : "Page";
+    appTree = React.createElement(ClientComponentPlaceholder, {
+      componentName,
+      filePath: route.pageFile,
+      props: { params, ...props },
+    });
+  } else {
+    // Render normal component
+    appTree = React.createElement(Page, {
       params,
       ...props,
-      children: appTree,
     } as any);
+  }
+
+  const layoutChain = route.layouts.slice().reverse();
+  const layoutFiles = route.layoutFiles.slice().reverse();
+
+  for (let i = 0; i < layoutChain.length; i++) {
+    const Layout = layoutChain[i];
+    const layoutFile = layoutFiles[i];
+    const isLayoutClientComponent = isServer && layoutFile && isClientComponent(layoutFile);
+    
+    if (isLayoutClientComponent) {
+      // Render placeholder for client layout on server
+      const componentName = layoutFile ? path.basename(layoutFile, path.extname(layoutFile)) : "Layout";
+      appTree = React.createElement(ClientComponentPlaceholder, {
+        componentName,
+        filePath: layoutFile,
+        props: { params, ...props, children: appTree },
+      });
+    } else {
+      // Render normal layout
+      appTree = React.createElement(Layout, {
+        params,
+        ...props,
+        children: appTree,
+      } as any);
+    }
   }
 
   return appTree;

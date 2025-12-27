@@ -5,6 +5,7 @@ import { PAGE_FILE_REGEX } from "./constants";
 import { buildRoutePathFromDir, buildRegexFromRoutePath, isRouteGroup } from "./path";
 import { loadLayoutsForDir } from "./layout";
 import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
+import { scanAndRegisterClientComponents, isClientComponent } from "@build/utils/detect-client-components";
 
 /**
  * Validates loaded routes and warns about common issues.
@@ -90,6 +91,9 @@ export async function loadRoutes(appDir: string): Promise<LoadedRoute[]> {
     }
     current = path.dirname(current);
   }
+
+  // Scan and register client components before loading routes
+  scanAndRegisterClientComponents(appDir);
 
   const routes: LoadedRoute[] = [];
 

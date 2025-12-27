@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useLayoutEffect } from "react";
 import { RouterView } from "./RouterView";
 import {
   navigate,
@@ -66,9 +66,12 @@ export function AppShell({
    * can access it even when the context isn't ready yet, ensuring SPA navigation
    * works correctly from the first render.
    * 
+   * Using useLayoutEffect ensures this happens synchronously before paint,
+   * making it available as early as possible during hydration.
+   * 
    * This is similar to how window.__FW_DATA__ is used for initial data.
    */
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window !== "undefined") {
       window[ROUTER_NAVIGATE_KEY] = handleNavigate;
       return () => {

@@ -199,6 +199,17 @@ export function bootstrapClient(
         notFoundRoute,
         errorRoute
       );
+      
+      // 5. Handle client component placeholders (if any)
+      // Note: React's hydration should handle most cases automatically,
+      // but we call this to ensure placeholders are properly marked
+      try {
+        const { hydrateClientPlaceholders } = await import("./hydrate-placeholders");
+        hydrateClientPlaceholders(container);
+      } catch (error) {
+        // Non-critical, continue even if placeholder hydration fails
+        console.warn("[client] Failed to hydrate client component placeholders:", error);
+      }
     } catch (error) {
       // Fatal error during bootstrap - reload the page
       console.error("\n❌ [client] Fatal error during bootstrap:");

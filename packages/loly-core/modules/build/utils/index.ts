@@ -459,3 +459,13 @@ export function getClientCssPath(projectRoot: string): string {
   const filename = manifest?.client.css || "client.css";
   return `${STATIC_PATH}/${filename}`;
 }
+
+// Re-export client component detection utilities
+export {
+  hasClientDirective,
+  registerClientComponent,
+  isClientComponent,
+  scanAndRegisterClientComponents,
+  getClientComponents,
+  clearClientComponentRegistry,
+} from "./detect-client-components";

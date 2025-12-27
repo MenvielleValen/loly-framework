@@ -1,18 +1,15 @@
-import React from "react";
+"use client";
 
 import { useTheme } from "@lolyjs/core/themes";
-import { useClientMounted } from "@lolyjs/core/hooks";
 import { Moon, Sun } from "lucide-react";
 
-export const ThemeSwitch = () => {
+/**
+ * Versión mejorada del ThemeSwitch usando ClientOnly.
+ * Este componente no necesita manejar el estado de montaje manualmente
+ * porque está envuelto en ClientOnly.
+ */
+export function ImprovedThemeSwitch() {
   const { theme, handleThemeChange } = useTheme();
-  const isMounted = useClientMounted();
-
-  if (!isMounted) {
-    return (
-      <div className="h-9 w-16 rounded-full bg-muted" aria-label="Toggle theme" />
-    );
-  }
 
   const handleSwitch = () => {
     handleThemeChange(theme === "dark" ? "light" : "dark");
@@ -61,4 +58,5 @@ export const ThemeSwitch = () => {
       </span>
     </button>
   );
-};
+}
+

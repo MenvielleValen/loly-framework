@@ -21,7 +21,6 @@ export default function HomePage({ appName = "My App", navigation }: HomePagePro
             width={100}
             height={50}
           />
-          <ThemeSwitch />
         </div>
 
         {/* Hero Section */}
@@ -54,6 +53,16 @@ export default function HomePage({ appName = "My App", navigation }: HomePagePro
               ))}
             </nav>
           )}
+
+          {/* Client Components Link */}
+          <div className="mt-4">
+            <a
+              href="/examples/client-components"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              🧪 Ver Ejemplos de Client Components
+            </a>
+          </div>
 
           {/* Quick Actions */}
           <div className="mt-8 flex flex-col gap-4 text-base font-medium sm:flex-row">

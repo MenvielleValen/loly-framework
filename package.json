@@ -11,7 +11,8 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "dev-app": "node init-example dev",
-    "start-app": "node init-example start"
+    "start-app": "node init-example start",
+    "test": "pnpm -r test"
   },
   "keywords": [],
   "author": "",

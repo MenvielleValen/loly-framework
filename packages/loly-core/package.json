@@ -1,6 +1,6 @@
 {
   "name": "@lolyjs/core",
-  "version": "0.4.0-alpha.2",
+  "version": "0.4.0-alpha.3",
   "author": {
     "name": "Valentin Menvielle Candia",
     "url": "https://github.com/MenvielleValen"
@@ -79,7 +79,10 @@
   "scripts": {
     "build": "tsup",
     "dev": "node ./dev/dev-server.js",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage"
   },
   "bin": {
     "loly": "bin/loly.cjs"
@@ -126,7 +129,9 @@
     "react-dom": "^19.2.3",
     "style-loader": "^4.0.0",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0"
   },
   "files": [
     "dist",

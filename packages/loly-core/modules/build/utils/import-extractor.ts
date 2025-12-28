@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { loadAliasesFromTsconfig } from "./index";
 
 /**
  * Represents an import statement extracted from source code.
@@ -274,8 +275,6 @@ export function resolveImportPath(
   
   // Handle path aliases (@/components, @app/...)
   if (importPath.startsWith("@") && projectRoot) {
-    // Load aliases from tsconfig
-    const { loadAliasesFromTsconfig } = require("./index");
     const aliases = loadAliasesFromTsconfig(projectRoot);
     
     // Find matching alias
@@ -302,7 +301,7 @@ export function resolveImportPath(
           if (fs.existsSync(resolved)) {
             return resolved;
           }
-          // If not found, return null instead of the non-existent path
+          // If it has extension but file doesn't exist, return null
           return null;
         }
         
@@ -325,7 +324,7 @@ export function resolveImportPath(
           }
         }
         
-        // Don't return resolved if file doesn't exist - return null instead
+        // If we couldn't find the file with extensions or as a directory, return null
         return null;
       }
     }

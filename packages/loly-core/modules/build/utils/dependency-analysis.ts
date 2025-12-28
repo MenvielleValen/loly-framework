@@ -274,50 +274,86 @@ export class RecursiveDependencyAnalyzer implements DependencyAnalyzer {
     maxDepth: number,
     seen: Set<string>
   ): string[] {
-    if (!filePath || !fs.existsSync(filePath)) {
+    if (!filePath) {
       return [];
     }
-
+    
+    // Normalize path before checking existence
     const normPath = path.resolve(filePath);
     if (seen.has(normPath)) return [];
+    
+    if (!fs.existsSync(normPath)) {
+      return [];
+    }
+    
     seen.add(normPath);
 
     const clientComponents: string[] = [];
-    const imports = extractImports(filePath);
-    const localImports = filterLocalImports(imports, filePath, projectRoot);
+    
+    // If this file itself is a client component, include it in the results
+    if (isClientComponentFile(normPath)) {
+      clientComponents.push(normPath);
+    }
+    
+    const imports = extractImports(normPath);
+    const localImports = filterLocalImports(imports, normPath, projectRoot);
 
     for (const imp of localImports) {
-      const resolved = resolveImportPath(imp.importPath, filePath, projectRoot);
+      const resolved = resolveImportPath(imp.importPath, normPath, projectRoot);
       if (!resolved) continue;
 
+      // Normalize resolved path to ensure consistency
+      const resolvedNorm = path.resolve(resolved);
+
       // Barrel re-exports
-      if (followBarrel && isBarrelExportFile(resolved)) {
+      if (followBarrel && isBarrelExportFile(resolvedNorm)) {
         const barrelComponents = resolveBarrelImportToClientComponents(
           imp.importPath,
-          filePath,
+          normPath,
           projectRoot
         );
         clientComponents.push(...barrelComponents);
-        continue;
+        // If barrel resolution didn't find client components, still recurse into the file
+        // to analyze its direct imports (some index.tsx files aren't true barrel exports)
+        if (barrelComponents.length > 0) {
+          continue;
+        }
+        // Fall through to recursion if no barrel components found
       }
 
-      if (isClientComponentFile(resolved)) {
-        clientComponents.push(resolved);
-        continue;
-      }
-
-      // Recurse into non-client local modules if depth allows
-      if (depth + 1 <= maxDepth) {
-        clientComponents.push(
-          ...this.analyzeFileRecursive(
-            resolved,
+      if (isClientComponentFile(resolvedNorm)) {
+        // Client components can also import other client components, so recurse into them
+        // We recurse to find transitive client component dependencies
+        // The seen set will prevent re-processing the same file
+        if (depth + 1 <= maxDepth) {
+          const recursiveResult = this.analyzeFileRecursive(
+            resolvedNorm,
             projectRoot,
             followBarrel,
             depth + 1,
             maxDepth,
             seen
-          )
+          );
+          // analyzeFileRecursive will include the file itself if it's a client component
+          clientComponents.push(...recursiveResult);
+        } else {
+          // If max depth reached, just add the component itself
+          clientComponents.push(resolvedNorm);
+        }
+        continue;
+      }
+
+      // Recurse into non-client local modules if depth allows
+      if (depth + 1 <= maxDepth) {
+        const recursiveResult = this.analyzeFileRecursive(
+          resolvedNorm,
+          projectRoot,
+          followBarrel,
+          depth + 1,
+          maxDepth,
+          seen
         );
+        clientComponents.push(...recursiveResult);
       }
     }
 

@@ -91,11 +91,9 @@ export function shouldClientTakeover(routeDeps: any | null | undefined): boolean
   const layoutClient =
     Array.isArray(routeDeps.isLayoutClientComponent) &&
     routeDeps.isLayoutClientComponent.some((v: boolean) => v);
-  const hasDirectClient =
-    Array.isArray(routeDeps.allClientComponents) &&
-    routeDeps.allClientComponents.length > 0;
 
-  return pageClient || layoutClient || hasDirectClient;
+  // Take over only when page or any layout is marked as client
+  return pageClient || layoutClient;
 }
 
 export async function loadInitialRoute(

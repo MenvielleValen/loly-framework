@@ -321,7 +321,7 @@ async function renderNotFoundPage(
   initialData.notFound = true;
 
   // Get nonce from res.locals (set by Helmet for CSP)
-  const nonce = (res.locals as any).nonce || undefined;
+  const nonce = (res.locals as any).nonce || (res.locals as any).cspNonce || undefined;
 
   // Get entrypoint files in order for preload
   const entrypointFiles: string[] = [];
@@ -903,7 +903,7 @@ async function handlePageRequestInternal(
   }
 
   // Get nonce from res.locals (set by Helmet for CSP)
-  const nonce = (res.locals as any).nonce || undefined;
+  const nonce = (res.locals as any).nonce || (res.locals as any).cspNonce || undefined;
 
   // Get entrypoint files in order (runtime, vendor, commons, entry) for preload
   const entrypointFiles: string[] = [];
@@ -1261,7 +1261,7 @@ async function renderErrorPageWithStream(
     }
 
     // Get nonce from res.locals (set by Helmet for CSP)
-    const nonce = (res.locals as any).nonce || undefined;
+    const nonce = (res.locals as any).nonce || (res.locals as any).cspNonce || undefined;
 
     // Get entrypoint files in order for preload
     const entrypointFiles: string[] = [];

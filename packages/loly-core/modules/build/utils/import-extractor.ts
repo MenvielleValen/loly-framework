@@ -292,7 +292,21 @@ export function resolveImportPath(
           ? path.join(aliasPath, restPath)
           : aliasPath;
         
-        // Try with extensions
+        // Check if the path already has a standard extension (.tsx, .ts, .jsx, .js, .json)
+        // Note: .client is NOT a standard extension, so files like theme-switcher.client
+        // will continue to the extension-trying logic below
+        const hasStandardExtension = /\.(tsx|ts|jsx|js|json)$/i.test(resolved);
+        
+        if (hasStandardExtension) {
+          // If it already has a standard extension, check if file exists
+          if (fs.existsSync(resolved)) {
+            return resolved;
+          }
+          // If not found, return null instead of the non-existent path
+          return null;
+        }
+        
+        // Try with different extensions
         const extensions = [".tsx", ".ts", ".jsx", ".js", ".json"];
         for (const ext of extensions) {
           const withExt = resolved + ext;
@@ -311,7 +325,8 @@ export function resolveImportPath(
           }
         }
         
-        return resolved;
+        // Don't return resolved if file doesn't exist - return null instead
+        return null;
       }
     }
   }

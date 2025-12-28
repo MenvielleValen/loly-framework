@@ -259,15 +259,16 @@ export function bootstrapClient(
       const routerPathname = initialData?.pathname || window.location.pathname;
       initializeRouterData(routerPathname + window.location.search, initialData);
 
-      // Detect if this route has client components (direct or page/layout client)
+      // Detect if this route has client page/layout components
+      // Note: directClientComponents (components inside server components) should use
+      // the normal hydration path + islands, not client takeover
       const routePattern = initialData?.pathname || window.location.pathname;
       const routeDeps = getRouteDependencies(routePattern);
       const hasClientIslands =
         !!routeDeps &&
         (
           routeDeps.isPageClientComponent === true ||
-          (routeDeps.isLayoutClientComponent && routeDeps.isLayoutClientComponent.some((v: boolean) => v)) ||
-          (routeDeps.directClientComponents && routeDeps.directClientComponents.length > 0)
+          (routeDeps.isLayoutClientComponent && routeDeps.isLayoutClientComponent.some((v: boolean) => v))
         );
 
       // Load initial state (needed for AppShell)
@@ -304,7 +305,7 @@ export function bootstrapClient(
         return;
       }
 
-      // Normal hydration path (no direct client components)
+      // Normal hydration path (includes direct client components via islands)
       await hydrateInitialRoute(
         container,
         initialUrl,

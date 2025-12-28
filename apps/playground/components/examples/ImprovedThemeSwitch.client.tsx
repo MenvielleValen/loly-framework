@@ -1,18 +1,54 @@
-"use client";
-
-import { useTheme } from "@lolyjs/core/themes";
 import { Moon, Sun } from "lucide-react";
+import React from "react";
+
+const THEME_CHANNEL = "loly_theme_channel";
+
+const readTheme = (): "light" | "dark" => {
+  if (typeof window === "undefined") return "light";
+  const api = (window as any).loly?.theme;
+  if (api?.get) return api.get();
+  if (document.body?.classList.contains("dark")) return "dark";
+  if (document.documentElement?.classList.contains("dark")) return "dark";
+  return "light";
+};
 
 /**
- * Versión mejorada del ThemeSwitch usando ClientOnly.
- * Este componente no necesita manejar el estado de montaje manualmente
- * porque está envuelto en ClientOnly.
+ * Improved ThemeSwitch version using global theme API.
+ * This component uses the global loly.theme API with BroadcastChannel
+ * for cross-tab synchronization.
  */
 export function ImprovedThemeSwitch() {
-  const { theme, handleThemeChange } = useTheme();
+  const [theme, setTheme] = React.useState<"light" | "dark">("light");
+
+  React.useEffect(() => {
+    setTheme(readTheme());
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== "undefined") {
+      channel = new BroadcastChannel(THEME_CHANNEL);
+      channel.onmessage = (event) => {
+        const next = event?.data?.theme;
+        if (typeof next === "string") {
+          setTheme(next === "dark" ? "dark" : "light");
+        }
+      };
+    }
+
+    const handleRefresh = () => setTheme(readTheme());
+    window.addEventListener("fw-data-refresh", handleRefresh);
+
+    return () => {
+      if (channel) channel.close();
+      window.removeEventListener("fw-data-refresh", handleRefresh);
+    };
+  }, []);
 
   const handleSwitch = () => {
-    handleThemeChange(theme === "dark" ? "light" : "dark");
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    if (typeof window !== "undefined" && (window as any).loly?.theme?.set) {
+      (window as any).loly.theme.set(nextTheme);
+    }
+    setTheme(nextTheme);
   };
 
   return (

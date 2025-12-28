@@ -1,4 +1,4 @@
-import { RouterContextExample } from "@/components/examples/RouterContextExample";
+import { RouterContextExample } from "@/components/examples/RouterContextExample.client";
 
 export default function RouterContextPage() {
   return (
@@ -7,9 +7,9 @@ export default function RouterContextPage() {
         <div>
           <h1 className="text-3xl font-bold mb-4">Router Context Timing</h1>
           <p className="text-muted-foreground">
-            Este componente usa <code className="bg-muted px-1 rounded">useRouter()</code> que depende de
-            <code className="bg-muted px-1 rounded">RouterContext</code>. Prueba que funciona tanto en
-            navegación SPA como en carga directa.
+            This component uses <code className="bg-muted px-1 rounded">useRouter()</code> which depends on
+            <code className="bg-muted px-1 rounded">RouterContext</code>. Tests that it works in both
+            SPA navigation and direct load.
           </p>
         </div>
 
@@ -19,15 +19,15 @@ export default function RouterContextPage() {
 
         <div className="p-4 bg-muted/50 rounded-lg space-y-2">
           <p className="text-sm">
-            <strong>Problema:</strong> Durante la hidratación, RouterContext puede no estar disponible
-            inmediatamente, causando errores en componentes que usan <code>useRouter()</code>.
+            <strong>Problem:</strong> During hydration, RouterContext may not be available
+            immediately, causing errors in components that use <code>useRouter()</code>.
           </p>
           <p className="text-sm">
-            <strong>Solución:</strong> El framework expone <code>navigate</code> globalmente como fallback
-            y <code>useRouter</code> tiene retry logic interno.
+            <strong>Solution:</strong> The framework exposes <code>navigate</code> globally as a fallback
+            and <code>useRouter</code> has internal retry logic.
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            💡 Prueba navegar a esta ruta directamente (no desde SPA) para verificar que funciona.
+            💡 Try navigating to this route directly (not from SPA) to verify it works.
           </p>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { INIT_FILE_NAME } from "@server/init";
 import { CONFIG_FILE_NAME } from "@server/config";
 import { BUILD_FOLDER_NAME } from "@constants/globals";
 import type { FrameworkConfig } from "@src/config";
+import { createExcludeClientComponentsPlugin } from "../plugins/exclude-client-components";
 const SERVER_FILES = [INIT_FILE_NAME, CONFIG_FILE_NAME];
 
 export interface BuildServerResult {
@@ -499,7 +500,8 @@ function collectAppSources(appDir: string): string[] {
 export async function buildServerApp(
   projectRoot: string,
   appDir: string,
-  config?: FrameworkConfig
+  config?: FrameworkConfig,
+  clientComponents: Set<string> = new Set()
 ): Promise<BuildServerResult> {
   const outDir = path.join(projectRoot, BUILD_FOLDER_NAME, "server");
 
@@ -512,6 +514,7 @@ export async function buildServerApp(
 
   // Create path alias plugin for app files and server files
   const pathAliasPlugin = createPathAliasPlugin(projectRoot, outDir);
+  const excludeClientComponentsPlugin = createExcludeClientComponentsPlugin(projectRoot, clientComponents);
 
   await esbuild.build({
     entryPoints,
@@ -528,7 +531,10 @@ export async function buildServerApp(
     tsconfig: path.join(projectRoot, "tsconfig.json"),
     packages: "external",
     outExtension: { ".js": ".mjs" },
-    plugins: [pathAliasPlugin], // Add path alias plugin to resolve @/ imports
+    plugins: [
+      excludeClientComponentsPlugin, // First: exclude client components (intercepts before path alias resolution)
+      pathAliasPlugin, // Then: resolve path aliases for remaining imports
+    ],
   });
 
   // Copy static files (JSON, txt, etc.) to output directory
@@ -558,7 +564,10 @@ export async function buildServerApp(
         packages: "external",
         logLevel: "info",
         tsconfig: path.join(projectRoot, "tsconfig.json"),
-        plugins: [pathAliasPlugin],
+        plugins: [
+          pathAliasPlugin,
+          excludeClientComponentsPlugin,
+        ],
         outExtension: { ".js": ".mjs" },
       });
     }

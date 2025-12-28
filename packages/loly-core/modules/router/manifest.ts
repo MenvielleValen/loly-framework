@@ -19,6 +19,7 @@ import {
   NOT_FOUND_PATTERN,
   ERROR_PATTERN,
 } from "@constants/globals";
+import { generateDependenciesManifest } from "./dependencies-manifest";
 
 /**
  * Writes the client-side routes manifest file.
@@ -242,6 +243,9 @@ export function writeClientRoutesManifest(
 
   const chunksJsonPath = path.join(fwDir, "route-chunks.json");
   fs.writeFileSync(chunksJsonPath, JSON.stringify(chunkMap, null, 2), "utf-8");
+  
+  // Generate dependencies manifest (Phase 1)
+  generateDependenciesManifest(routes, projectRoot, chunkMap);
 }
 
 /**
@@ -270,8 +274,18 @@ export function writeClientBoostrapManifest(projectRoot: string): void {
   lines.push(`} from "./routes-client";`);
   lines.push("");
 
+  lines.push(`import { clientComponentLoaders } from "./client-components-loaders";`);
+  lines.push("");
+
   lines.push(`import { bootstrapClient } from "@lolyjs/core/runtime"`);
   lines.push("");
+
+  lines.push(`// Expose bundler-safe loaders for client component islands`);
+  lines.push(`if (typeof window !== "undefined") {`);
+  lines.push(`  (window as any).__LOLY_CLIENT_COMPONENT_LOADERS__ = clientComponentLoaders;`);
+  lines.push(`}`);
+  lines.push("");
+
   lines.push(`try {`);
   lines.push(`  bootstrapClient(routes as ClientRouteLoaded[], notFoundRoute, errorRoute);`);
   lines.push(`} catch (error) {`);

@@ -5,52 +5,90 @@ export default function ClientComponentsPage() {
     <div className="container mx-auto py-12 px-4">
       <div className="max-w-4xl mx-auto space-y-12">
         <div>
-          <h1 className="text-4xl font-bold mb-4">Client Components Examples</h1>
+          <h1 className="text-4xl font-bold mb-4">
+            Client Components Examples
+          </h1>
           <p className="text-muted-foreground text-lg">
-            Ejemplos de componentes de cliente y casos límite para probar el sistema de hidratación.
+            Examples of client components and edge cases to test the
+            hydration system.
           </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card
-            title="use client Directive"
-            description="Componente marcado con 'use client' que se renderiza como placeholder en SSR"
+            title="Client File Suffix"
+            description="Component defined in .client.tsx file that renders as placeholder in SSR"
             href="/examples/client-components/use-client"
           />
           <Card
             title="Window API"
-            description="Componente que usa window.innerWidth - debe usar ClientOnly"
+            description="Component that uses window.innerWidth from a .client.tsx file"
             href="/examples/client-components/window-api"
           />
           <Card
             title="LocalStorage"
-            description="Componente que usa localStorage - problema común de hidratación"
+            description="Component that uses localStorage - common hydration issue"
             href="/examples/client-components/localstorage"
           />
           <Card
             title="Router Context"
-            description="Componente que usa useRouter() - prueba timing de RouterContext"
+            description="Component that uses useRouter() - tests RouterContext timing"
             href="/examples/client-components/router-context"
           />
           <Card
             title="DOM Measurements"
-            description="Componente que mide el DOM - usa useIsomorphicLayoutEffect"
+            description="Component that measures the DOM - uses useIsomorphicLayoutEffect"
             href="/examples/client-components/dom-measurements"
           />
           <Card
             title="Complex Hydration"
-            description="Múltiples componentes de cliente anidados - caso complejo"
+            description="Multiple nested client components - complex case"
             href="/examples/client-components/complex"
           />
           <Card
             title="SPA vs Direct Load"
-            description="Compara comportamiento en navegación SPA vs carga directa"
+            description="Compares behavior in SPA navigation vs direct load"
             href="/examples/client-components/spa-vs-direct"
           />
           <Card
             title="Theme Switch"
-            description="Versión mejorada del theme switch usando nuevas utilidades"
+            description="Comparison between theme switch versions with .client.tsx files"
             href="/examples/client-components/theme-switch"
+          />
+          <Card
+            title="Suspense Islands"
+            description="Suspense boundaries with lazy vs immediate islands"
+            href="/examples/client-components/suspense"
+          />
+          <Card
+            title="Client Error Boundary"
+            description="Catches errors in islands without breaking server render"
+            href="/examples/client-components/error-boundary"
+          />
+          <Card
+            title="Barrel Re-exports"
+            description="Islands imported from a barrel index.ts"
+            href="/examples/client-components/barrel-reexports"
+          />
+          <Card
+            title="Multi Export"
+            description="Default + named exports in the same .client.tsx"
+            href="/examples/client-components/multi-export"
+          />
+          <Card
+            title="Context Bridge"
+            description="Server data + client state shared via context"
+            href="/examples/client-components/context-bridge"
+          />
+          <Card
+            title="Server-to-Client Data Flow"
+            description="Passes complex data from page.server.hook to client components"
+            href="/examples/client-components/server-to-client"
+          />
+          <Card
+            title="Section Wrapper"
+            description="Wraps a component in a section with a title"
+            href="/examples/client-components/nested-components"
           />
         </div>
       </div>
@@ -58,7 +96,15 @@ export default function ClientComponentsPage() {
   );
 }
 
-function Card({ title, description, href }: { title: string; description: string; href: string }) {
+function Card({
+  title,
+  description,
+  href,
+}: {
+  title: string;
+  description: string;
+  href: string;
+}) {
   return (
     <Link
       href={href}
@@ -69,4 +115,3 @@ function Card({ title, description, href }: { title: string; description: string
     </Link>
   );
 }
-

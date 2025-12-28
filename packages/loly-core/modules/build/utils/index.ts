@@ -381,6 +381,14 @@ export function generateAssetManifest(outDir: string, stats?: any): AssetManifes
       continue;
     }
     
+    // Match client component chunks: client-component-*.js or client-component-*.[hash].js
+    const clientComponentMatch = file.match(/^(client-component-[^.]+)(\.[\w-]+)?\.js$/);
+    if (clientComponentMatch) {
+      const chunkName = clientComponentMatch[1]; // e.g., "client-component-components-shared-theme-switch"
+      manifest.chunks[chunkName] = file;
+      continue; // Client component chunks are loaded on-demand, not in entrypoints
+    }
+    
     // Match numeric chunks: 0.js, 1.js, etc. or 0.[hash].js
     const numericMatch = file.match(/^(\d+)(\.[\w-]+)?\.js$/);
     if (numericMatch) {
@@ -462,10 +470,45 @@ export function getClientCssPath(projectRoot: string): string {
 
 // Re-export client component detection utilities
 export {
-  hasClientDirective,
   registerClientComponent,
   isClientComponent,
   scanAndRegisterClientComponents,
   getClientComponents,
   clearClientComponentRegistry,
 } from "./detect-client-components";
+
+// Re-export dependency analysis utilities
+export {
+  createDependencyAnalyzer,
+  analyzeAllRouteDependencies,
+  type DependencyAnalyzer,
+  type RouteDependencies,
+  type AnalysisOptions,
+  DirectDependencyAnalyzer,
+} from "./dependency-analysis";
+
+export {
+  extractImports,
+  resolveImportPath,
+  filterLocalImports,
+  type ImportStatement,
+} from "./import-extractor";
+
+export {
+  isBarrelExportFile,
+  extractReExports,
+  followBarrelExport,
+  resolveBarrelImportToClientComponents,
+  type ReExport,
+} from "./barrel-export-resolver";
+
+// Re-export plugin
+export { createExcludeClientComponentsPlugin } from "../plugins/exclude-client-components";
+
+// Re-export client component chunk name utilities
+export {
+  normalizeClientComponentId,
+  normalizeClientComponentIdFromRelative,
+  getChunkNameForComponent,
+  getChunkNameForComponentFromRelative,
+} from "./client-component-chunk-name";

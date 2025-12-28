@@ -210,25 +210,8 @@ export function evaluateRewriteConditions(
         // Remove port if present (e.g., "tenant1.localhost:3000" -> "tenant1.localhost")
         const host = hostWithPort.split(":")[0];
         
-        // Debug logging for host matching
-        if (process.env.NODE_ENV === "development") {
-          console.log("[rewrites] Host matching:", {
-            pattern: condition.value,
-            actualHost: host,
-            hostWithPort,
-            reqHost: req.get("host"),
-            reqHostname: req.hostname,
-          });
-        }
-        
         const hostParams = extractHostParams(condition.value, host);
         if (!hostParams) {
-          if (process.env.NODE_ENV === "development") {
-            console.log("[rewrites] Host params extraction failed:", {
-              pattern: condition.value,
-              actualHost: host,
-            });
-          }
           return { matches: false, params: {} };
         }
         Object.assign(extractedParams, hostParams);
@@ -330,21 +313,7 @@ export async function processRewrites(
     normalizedPath === "/favicon.ico" || // Favicon
     normalizedPath.startsWith("/wss/") // WebSocket routes - handled separately by Socket.IO
   ) {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[rewrites] Skipping rewrite for system route:", normalizedPath);
-    }
     return null;
-  }
-
-  // Debug logging
-  if (process.env.NODE_ENV === "development") {
-    console.log("[rewrites] Processing rewrites:", {
-      urlPath,
-      normalizedPath,
-      host: req.get("host"),
-      hostname: req.hostname,
-      compiledRewritesCount: compiledRewrites.length,
-    });
   }
 
   for (const rewrite of compiledRewrites) {
@@ -353,42 +322,15 @@ export async function processRewrites(
     if (rewrite.has && rewrite.has.length > 0) {
       const conditionResult = evaluateRewriteConditions(rewrite.has, req);
       if (!conditionResult.matches) {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[rewrites] Condition not matched:", {
-            source: rewrite.source,
-            conditions: rewrite.has,
-          });
-        }
         continue; // Skip this rewrite if conditions don't match
       }
       conditionParams = conditionResult.params;
-      if (process.env.NODE_ENV === "development") {
-        console.log("[rewrites] Condition matched:", {
-          source: rewrite.source,
-          conditionParams,
-        });
-      }
     }
 
     // Match source pattern
     const sourceMatch = rewrite.sourceRegex.exec(normalizedPath);
     if (!sourceMatch) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[rewrites] Source pattern not matched:", {
-          source: rewrite.source,
-          normalizedPath,
-          sourceRegex: rewrite.sourceRegex.toString(),
-        });
-      }
       continue; // Skip if source doesn't match
-    }
-    
-    if (process.env.NODE_ENV === "development") {
-      console.log("[rewrites] Source pattern matched:", {
-        source: rewrite.source,
-        normalizedPath,
-        match: sourceMatch[0],
-      });
     }
 
     // Extract parameters from source
@@ -415,14 +357,6 @@ export async function processRewrites(
       .replace(/\/+/g, "/") // Replace multiple slashes with single slash
       .replace(/^([^/])/, "/$1") // Ensure it starts with /
       .replace(/\/$/, "") || "/"; // Remove trailing slash, but keep "/" for root
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[rewrites] Rewrite successful:", {
-        originalPath: urlPath,
-        rewrittenPath: normalizedDestination,
-        allParams,
-      });
-    }
 
     return {
       rewrittenPath: normalizedDestination,

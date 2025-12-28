@@ -1,4 +1,4 @@
-import { hydrateRoot } from "react-dom/client";
+import { hydrateRoot, createRoot } from "react-dom/client";
 import { APP_CONTAINER_ID } from "./constants";
 import { getWindowData, getRouterData, setRouterData, setPreservedLayoutProps } from "./window-data";
 import { matchRouteClient } from "./route-matcher";
@@ -9,7 +9,71 @@ import type {
   InitialData,
   ClientRouteLoaded,
   RouteViewState,
+  ClientLoadedComponents,
 } from "./types";
+
+/**
+ * Detects if components are client components using the dependencies manifest.
+ */
+function detectClientComponents(
+  routePattern: string,
+  components: ClientLoadedComponents
+): ClientLoadedComponents {
+  // Try to get dependencies manifest from window
+  let dependenciesManifest: any = null;
+  if (typeof window !== "undefined" && (window as any).__LOLY_ROUTE_DEPENDENCIES__) {
+    dependenciesManifest = (window as any).__LOLY_ROUTE_DEPENDENCIES__;
+  }
+
+  if (!dependenciesManifest || !dependenciesManifest.routes) {
+    // No manifest available, return components as-is
+    return components;
+  }
+
+  const routeDeps = dependenciesManifest.routes[routePattern];
+  if (!routeDeps) {
+    return components;
+  }
+
+  // Check if page is a client component (from manifest)
+  const isPageClientComponent = routeDeps.isPageClientComponent || false;
+  const pageFilePath = routeDeps.pageFilePath || (routePattern === "/" 
+    ? "app/page.tsx"
+    : `app${routePattern}/page.tsx`);
+  
+  // Check which layouts are client components (from manifest)
+  // The manifest has isLayoutClientComponent array that matches the layoutFiles order
+  const isLayoutClientComponent = routeDeps.isLayoutClientComponent 
+    ? routeDeps.isLayoutClientComponent.slice(0, components.layouts.length)
+    : new Array(components.layouts.length).fill(false);
+  
+  // Get layout file paths for client components
+  const layoutFilePaths = routeDeps.layoutFilePaths || [];
+  // Map layout file paths to the correct layout indices
+  // We need to match them with the isLayoutClientComponent array
+  const clientComponentLayoutPaths: (string | undefined)[] = new Array(components.layouts.length).fill(undefined);
+  if (routeDeps.isLayoutClientComponent && routeDeps.layoutFilePaths) {
+    let layoutFilePathIndex = 0;
+    for (let i = 0; i < isLayoutClientComponent.length; i++) {
+      if (isLayoutClientComponent[i] && layoutFilePathIndex < routeDeps.layoutFilePaths.length) {
+        clientComponentLayoutPaths[i] = routeDeps.layoutFilePaths[layoutFilePathIndex];
+        layoutFilePathIndex++;
+      }
+    }
+  }
+
+  return {
+    ...components,
+    isPageClientComponent,
+    isLayoutClientComponent,
+    clientComponentFilePaths: {
+      page: isPageClientComponent ? pageFilePath : undefined,
+      layouts: clientComponentLayoutPaths.some(p => p !== undefined) 
+        ? clientComponentLayoutPaths
+        : undefined,
+    },
+  };
+}
 
 export async function loadInitialRoute(
   initialUrl: string,
@@ -23,26 +87,30 @@ export async function loadInitialRoute(
 
   let initialRoute: ClientRouteLoaded | null = null;
   let initialParams: Record<string, string> = {};
-  let initialComponents = null;
+  let initialComponents: ClientLoadedComponents | null = null;
 
   if (isInitialError && errorRoute) {
     initialRoute = errorRoute;
     initialParams = initialData?.params ?? {};
-    initialComponents = await errorRoute.load();
+    const loaded = await errorRoute.load();
+    initialComponents = detectClientComponents(errorRoute.pattern, loaded);
   } else if (isInitialNotFound && notFoundRoute) {
     initialRoute = notFoundRoute;
     initialParams = {};
-    initialComponents = await notFoundRoute.load();
+    const loaded = await notFoundRoute.load();
+    initialComponents = detectClientComponents(notFoundRoute.pattern, loaded);
   } else {
     const match = matchRouteClient(initialUrl, routes);
     if (match) {
       initialRoute = match.route;
       initialParams = match.params;
-      initialComponents = await match.route.load();
+      const loaded = await match.route.load();
+      initialComponents = detectClientComponents(match.route.pattern, loaded);
     } else if (notFoundRoute) {
       initialRoute = notFoundRoute;
       initialParams = {};
-      initialComponents = await notFoundRoute.load();
+      const loaded = await notFoundRoute.load();
+      initialComponents = detectClientComponents(notFoundRoute.pattern, loaded);
     } else {
       console.warn(
         `[client] No route match found for ${initialUrl}. Available routes:`,
@@ -58,6 +126,15 @@ export async function loadInitialRoute(
     components: initialComponents,
     props: initialData?.props ?? {},
   };
+}
+
+function getRouteDependencies(
+  routePattern: string
+): any | null {
+  if (typeof window === "undefined") return null;
+  const deps = (window as any).__LOLY_ROUTE_DEPENDENCIES__;
+  if (!deps || !deps.routes) return null;
+  return deps.routes[routePattern] || null;
 }
 
 /**
@@ -114,6 +191,8 @@ async function hydrateInitialRoute(
     }
 
     // Hydrate React root
+    // Note: hydrateRoot doesn't return a promise, so we need to wait for hydration to complete
+    // using other means (requestIdleCallback, requestAnimationFrame, etc.)
     hydrateRoot(
       container,
       <AppShell
@@ -169,28 +248,63 @@ export function bootstrapClient(
       }
 
       const initialData = getWindowData();
-      
-      // Use initialData.pathname if available (contains rewritten path from server)
-      // Otherwise fall back to window.location.pathname (original URL)
-      // This ensures rewrites work correctly: server rewrites the path, client uses rewritten path for matching
       const initialUrl = (initialData?.pathname || window.location.pathname) + window.location.search;
 
-      // Preserve layout props from initial load (they come combined in initialData.props)
-      // In SSR, layout hooks are always executed, so we need to extract layout props
-      // For now, we'll preserve all props as layout props since they're combined
-      // This ensures navigation items are available even in SPA navigation
+      // Preserve layout props from initial load
       if (initialData?.props) {
-        // In SSR, props are combined (layout + page), so we preserve them all as layout props
-        // This is not perfect but ensures layout props are available in SPA navigation
         setPreservedLayoutProps(initialData.props);
       }
 
-      // 3. Initialize router data
-      // Use initialData.pathname if available (rewritten path) for router data
+      // Initialize router data
       const routerPathname = initialData?.pathname || window.location.pathname;
       initializeRouterData(routerPathname + window.location.search, initialData);
 
-      // 4. Load and hydrate initial route
+      // Detect if this route has client components (direct or page/layout client)
+      const routePattern = initialData?.pathname || window.location.pathname;
+      const routeDeps = getRouteDependencies(routePattern);
+      const hasClientIslands =
+        !!routeDeps &&
+        (
+          routeDeps.isPageClientComponent === true ||
+          (routeDeps.isLayoutClientComponent && routeDeps.isLayoutClientComponent.some((v: boolean) => v)) ||
+          (routeDeps.directClientComponents && routeDeps.directClientComponents.length > 0)
+        );
+
+      // Load initial state (needed for AppShell)
+      const initialState = await loadInitialRoute(
+        initialUrl,
+        initialData,
+        routes,
+        notFoundRoute,
+        errorRoute
+      );
+
+      // Apply metadata if available
+      if (initialData?.metadata) {
+        try {
+          applyMetadata(initialData.metadata);
+        } catch (metadataError) {
+          console.warn("[client] Error applying metadata:", metadataError);
+        }
+      }
+
+      if (hasClientIslands) {
+        // Client takeover: render AppShell with createRoot (avoid hydration mismatch)
+        container.innerHTML = "";
+        const root = createRoot(container);
+        root.render(
+          <AppShell
+            initialState={initialState}
+            routes={routes}
+            notFoundRoute={notFoundRoute}
+            errorRoute={errorRoute}
+          />
+        );
+        // Islands not needed; client components render directly
+        return;
+      }
+
+      // Normal hydration path (no direct client components)
       await hydrateInitialRoute(
         container,
         initialUrl,
@@ -200,15 +314,19 @@ export function bootstrapClient(
         errorRoute
       );
       
-      // 5. Handle client component placeholders (if any)
-      // Note: React's hydration should handle most cases automatically,
-      // but we call this to ensure placeholders are properly marked
+      // Mount islands after hydration
       try {
-        const { hydrateClientPlaceholders } = await import("./hydrate-placeholders");
-        hydrateClientPlaceholders(container);
+        await new Promise<void>((resolve) => {
+          if (typeof queueMicrotask !== "undefined") {
+            queueMicrotask(resolve);
+          } else {
+            setTimeout(resolve, 0);
+          }
+        });
+        const { mountClientIslands } = await import("./mount-client-islands");
+        await mountClientIslands(container);
       } catch (error) {
-        // Non-critical, continue even if placeholder hydration fails
-        console.warn("[client] Failed to hydrate client component placeholders:", error);
+        console.warn("[client] Failed to mount client component islands:", error);
       }
     } catch (error) {
       // Fatal error during bootstrap - reload the page

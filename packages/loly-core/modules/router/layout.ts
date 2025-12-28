@@ -3,6 +3,7 @@ import path from "path";
 import { LayoutComponent } from "./index.types";
 import { LAYOUT_FILE_BASENAME } from "./constants";
 import { isRouteGroup } from "./path";
+import { isClientComponentFile } from "@build/utils/detect-client-components";
 
 /**
  * Finds a layout file in the given directory.
@@ -51,6 +52,15 @@ export async function loadLayoutsForDir(
   while (true) {
     const layoutFile = findLayoutFileInDir(currentDir);
     if (layoutFile) {
+      // Layouts MUST be server components - validate that layout file is not a client component
+      if (isClientComponentFile(layoutFile)) {
+        const relPath = path.relative(appDir, layoutFile);
+        throw new Error(
+          `Layout files cannot be client components. Found client component: ${relPath}\n` +
+          `Layouts must always be server components. If you need client-side logic, extract it to a separate .client.tsx component.`
+        );
+      }
+      
       const { loadDefaultExport } = await import("./utils/module-loader");
       const LayoutComp = await loadDefaultExport<LayoutComponent>(layoutFile, {
         projectRoot: appDir,

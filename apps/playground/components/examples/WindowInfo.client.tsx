@@ -1,14 +1,16 @@
-"use client";
-
 import { useState, useEffect } from "react";
 
 export function WindowInfo() {
+  // Critical: always initialize with 0 to avoid hydration mismatch
+  // The component mounts with createRoot after hydration,
+  // but if it renders during hydration it must stay consistent
   const [dimensions, setDimensions] = useState({
-    width: typeof window !== "undefined" ? window.innerWidth : 0,
-    height: typeof window !== "undefined" ? window.innerHeight : 0,
+    width: 0,
+    height: 0,
   });
 
   useEffect(() => {
+    // Only update after the client has mounted
     const updateDimensions = () => {
       setDimensions({
         width: window.innerWidth,
@@ -16,6 +18,7 @@ export function WindowInfo() {
       });
     };
 
+    // Update immediately on mount
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
 
@@ -26,19 +29,19 @@ export function WindowInfo() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Información de la Ventana</h3>
+      <h3 className="text-lg font-semibold">Window Information</h3>
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 bg-background border rounded">
-          <p className="text-sm text-muted-foreground">Ancho</p>
+          <p className="text-sm text-muted-foreground">Width</p>
           <p className="text-2xl font-bold">{dimensions.width}px</p>
         </div>
         <div className="p-4 bg-background border rounded">
-          <p className="text-sm text-muted-foreground">Alto</p>
+          <p className="text-sm text-muted-foreground">Height</p>
           <p className="text-2xl font-bold">{dimensions.height}px</p>
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Redimensiona la ventana para ver los cambios en tiempo real.
+        Resize the window to see changes in real time.
       </p>
     </div>
   );

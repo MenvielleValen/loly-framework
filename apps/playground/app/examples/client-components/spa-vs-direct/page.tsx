@@ -1,14 +1,14 @@
-import { SPAVsDirectExample } from "@/components/examples/SPAVsDirectExample";
+import { SPAVsDirectExample } from "@/components/examples/SPAVsDirectExample.client";
 
 export default function SPAVsDirectPage() {
   return (
     <div className="container mx-auto py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold mb-4">SPA vs Carga Directa</h1>
+          <h1 className="text-3xl font-bold mb-4">SPA vs Direct Load</h1>
           <p className="text-muted-foreground">
-            Este ejemplo compara el comportamiento de componentes de cliente en navegación SPA
-            (client-side) vs carga directa por ruta (server-side). Ambos deben funcionar correctamente.
+            This example compares the behavior of client components in SPA navigation
+            (client-side) vs direct route load (server-side). Both should work correctly.
           </p>
         </div>
 
@@ -18,16 +18,16 @@ export default function SPAVsDirectPage() {
 
         <div className="p-4 bg-muted/50 rounded-lg space-y-2">
           <p className="text-sm">
-            <strong>Problema común:</strong> Los componentes funcionan bien en navegación SPA pero
-            fallan cuando se accede directamente a la ruta.
+            <strong>Common problem:</strong> Components work well in SPA navigation but
+            fail when accessing the route directly.
           </p>
           <p className="text-sm">
-            <strong>Causa:</strong> En carga directa, el componente se renderiza en el servidor primero,
-            y luego se hidrata en el cliente. Si hay diferencias, se producen errores.
+            <strong>Cause:</strong> In direct load, the component renders on the server first,
+            then hydrates on the client. If there are differences, errors occur.
           </p>
           <p className="text-sm">
-            <strong>Solución:</strong> Usa las utilidades del framework (ClientOnly, useClientMounted, etc.)
-            para manejar correctamente ambos casos.
+            <strong>Solution:</strong> Use framework utilities (ClientOnly, useClientMounted, etc.)
+            to handle both cases correctly.
           </p>
         </div>
       </div>

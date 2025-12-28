@@ -93,13 +93,12 @@ export function MyComponent() {
 - Cuando necesitas mediciones del DOM que deben ser síncronas
 - Para evitar warnings de React sobre `useLayoutEffect` en SSR
 
-### 4. Directiva `"use client"`
+### 4. Extensión `.client.tsx`
 
-Puedes marcar componentes con la directiva `"use client"` para indicar que son componentes de cliente.
+Los componentes de cliente se identifican por su extensión de archivo: `.client.tsx`, `.client.ts`, `.client.jsx`, o `.client.js`.
 
 ```tsx
-"use client";
-
+// components/InteractiveComponent.client.tsx
 import { useState } from "react";
 
 export function InteractiveComponent() {
@@ -113,7 +112,41 @@ export function InteractiveComponent() {
 }
 ```
 
-**Nota:** Los componentes marcados con `"use client"` se renderizarán como placeholders en el servidor y se hidratarán en el cliente.
+**Nota:** 
+- Los componentes con extensión `.client.tsx` se renderizarán como placeholders en el servidor y se montarán en el cliente usando `createRoot` (Islands Architecture).
+- **Pages y layouts siempre son server components** - no pueden usar la extensión `.client.*`.
+- Si necesitas lógica de cliente en una página, extrae esa lógica a un componente separado con `.client.tsx`.
+
+## Restricciones Importantes
+
+### Pages y Layouts Siempre Son Server Components
+
+**Pages y layouts NO pueden ser client components.** Si intentas crear un archivo `page.client.tsx` o `layout.client.tsx`, el framework lanzará un error.
+
+**Solución:** Si necesitas lógica de cliente en una página o layout, extrae esa lógica a un componente separado con extensión `.client.tsx`:
+
+```tsx
+// ❌ NO HACER: app/my-page/page.client.tsx
+// Esto causará un error
+
+// ✅ HACER: app/my-page/page.tsx (server component)
+import { MyClientComponent } from "@/components/MyClientComponent.client";
+
+export default function MyPage() {
+  return (
+    <div>
+      <h1>Mi Página</h1>
+      <MyClientComponent />
+    </div>
+  );
+}
+
+// ✅ components/MyClientComponent.client.tsx (client component)
+export function MyClientComponent() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+```
 
 ## Mejores Prácticas
 

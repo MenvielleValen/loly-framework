@@ -1,10 +1,8 @@
-"use client";
-
 import { useState } from "react";
 import { ClientOnly } from "@lolyjs/core/components";
 import { useClientMounted } from "@lolyjs/core/hooks";
-import { WindowInfo } from "./WindowInfo";
-import { LocalStorageCounter } from "./LocalStorageCounter";
+import { WindowInfo } from "./WindowInfo.client";
+import { LocalStorageCounter } from "./LocalStorageCounter.client";
 
 export function ComplexHydrationExample() {
   const [toggle, setToggle] = useState(false);
@@ -13,15 +11,15 @@ export function ComplexHydrationExample() {
   return (
     <div className="space-y-6">
       <div className="p-4 bg-background border rounded">
-        <h3 className="text-lg font-semibold mb-2">Componente Principal (use client)</h3>
+        <h3 className="text-lg font-semibold mb-2">Main Component (.client.tsx)</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Este componente está marcado con "use client" y contiene múltiples sub-componentes.
+          This component is marked with .client.tsx extension and contains multiple sub-components.
         </p>
         <button
           onClick={() => setToggle(!toggle)}
           className="px-4 py-2 border rounded hover:bg-muted"
         >
-          {toggle ? "Ocultar" : "Mostrar"} Componentes Anidados
+          {toggle ? "Hide" : "Show"} Nested Components
         </button>
       </div>
 
@@ -30,9 +28,9 @@ export function ComplexHydrationExample() {
           <div className="p-4 bg-background border rounded">
             <h4 className="font-semibold mb-2">1. Componente con useClientMounted</h4>
             {isMounted ? (
-              <p className="text-sm text-green-600">✅ Montado en cliente</p>
+              <p className="text-sm text-green-600">✅ Mounted on client</p>
             ) : (
-              <p className="text-sm text-yellow-600">⏳ Esperando montaje...</p>
+              <p className="text-sm text-yellow-600">⏳ Waiting for mount...</p>
             )}
           </div>
 
@@ -54,8 +52,8 @@ export function ComplexHydrationExample() {
 
       <div className="p-4 bg-muted/50 rounded-lg">
         <p className="text-xs text-muted-foreground">
-          💡 Este ejemplo prueba que múltiples estrategias de hidratación funcionan correctamente
-          juntas, incluso cuando están anidadas.
+          💡 This example tests that multiple hydration strategies work correctly
+          together, even when nested.
         </p>
       </div>
     </div>

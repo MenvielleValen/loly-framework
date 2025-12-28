@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 
 const STORAGE_KEY = "loly-playground-counter";
@@ -39,9 +37,9 @@ export function LocalStorageCounter() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Contador Persistente</h3>
+      <h3 className="text-lg font-semibold">Persistent Counter</h3>
       <p className="text-sm text-muted-foreground">
-        Este contador se guarda en localStorage y persiste entre recargas.
+        This counter is saved in localStorage and persists between reloads.
       </p>
       <div className="flex items-center gap-4">
         <button
@@ -68,7 +66,7 @@ export function LocalStorageCounter() {
         </button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Recarga la página para ver que el valor persiste.
+        Reload the page to see that the value persists.
       </p>
     </div>
   );

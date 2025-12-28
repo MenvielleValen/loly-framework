@@ -46,8 +46,7 @@ export function getRouterData(): RouterData | null {
 export function setWindowData(data: InitialData): void {
   window[WINDOW_DATA_KEY] = data;
   
-  // Dispatch event for components to listen to (e.g. ThemeProvider)
-  // This ensures components update when navigating in SPA mode
+  // Dispatch event for listeners (e.g. theme sync) to refresh client state
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("fw-data-refresh", {

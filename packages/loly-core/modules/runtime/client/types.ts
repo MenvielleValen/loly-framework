@@ -28,6 +28,13 @@ declare global {
 export type ClientLoadedComponents = {
   Page: React.ComponentType<any>;
   layouts: React.ComponentType<any>[];
+  // Metadata for client components (islands architecture)
+  isPageClientComponent?: boolean;
+  isLayoutClientComponent?: boolean[];
+  clientComponentFilePaths?: {
+    page?: string;
+    layouts?: (string | undefined)[];
+  };
 };
 
 export type ClientRouteLoaded = {

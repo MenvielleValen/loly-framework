@@ -11,6 +11,66 @@ import type {
   ClientLoadedComponents,
 } from "./types";
 
+// Helper function to detect client components (same logic as in bootstrap.tsx)
+function detectClientComponents(
+  routePattern: string,
+  components: ClientLoadedComponents
+): ClientLoadedComponents {
+  // Try to get dependencies manifest from window
+  let dependenciesManifest: any = null;
+  if (typeof window !== "undefined" && (window as any).__LOLY_ROUTE_DEPENDENCIES__) {
+    dependenciesManifest = (window as any).__LOLY_ROUTE_DEPENDENCIES__;
+  }
+
+  if (!dependenciesManifest || !dependenciesManifest.routes) {
+    return components;
+  }
+
+  const routeDeps = dependenciesManifest.routes[routePattern];
+  if (!routeDeps) {
+    return components;
+  }
+
+  // Check if page is a client component (from manifest)
+  const isPageClientComponent = routeDeps.isPageClientComponent || false;
+  const pageFilePath = routeDeps.pageFilePath || (routePattern === "/" 
+    ? "app/page.tsx"
+    : `app${routePattern}/page.tsx`);
+  
+  // Check which layouts are client components (from manifest)
+  // The manifest has isLayoutClientComponent array that matches the layoutFiles order
+  const isLayoutClientComponent = routeDeps.isLayoutClientComponent 
+    ? routeDeps.isLayoutClientComponent.slice(0, components.layouts.length)
+    : new Array(components.layouts.length).fill(false);
+  
+  // Get layout file paths for client components
+  const layoutFilePaths = routeDeps.layoutFilePaths || [];
+  // Map layout file paths to the correct layout indices
+  // We need to match them with the isLayoutClientComponent array
+  const clientComponentLayoutPaths: (string | undefined)[] = new Array(components.layouts.length).fill(undefined);
+  if (routeDeps.isLayoutClientComponent && routeDeps.layoutFilePaths) {
+    let layoutFilePathIndex = 0;
+    for (let i = 0; i < isLayoutClientComponent.length; i++) {
+      if (isLayoutClientComponent[i] && layoutFilePathIndex < routeDeps.layoutFilePaths.length) {
+        clientComponentLayoutPaths[i] = routeDeps.layoutFilePaths[layoutFilePathIndex];
+        layoutFilePathIndex++;
+      }
+    }
+  }
+
+  return {
+    ...components,
+    isPageClientComponent,
+    isLayoutClientComponent,
+    clientComponentFilePaths: {
+      page: isPageClientComponent ? pageFilePath : undefined,
+      layouts: clientComponentLayoutPaths.some(p => p !== undefined) 
+        ? clientComponentLayoutPaths
+        : undefined,
+    },
+  };
+}
+
 export type NavigationHandlers = {
   setState: (state: RouteViewState) => void;
   routes: ClientRouteLoaded[];
@@ -25,7 +85,8 @@ async function handleErrorRoute(
   setState: (state: RouteViewState) => void
 ): Promise<boolean> {
   try {
-    const components = await errorRoute.load();
+    const loadedComponents = await errorRoute.load();
+    const components = detectClientComponents(errorRoute.pattern, loadedComponents);
     
     // Get theme: prioritize cookie, then server, then window data, then default
     let theme: string = "light";
@@ -173,7 +234,8 @@ async function handleNotFoundRoute(
   setRouterData(routerData);
 
   if (notFoundRoute) {
-    const components = await notFoundRoute.load();
+    const loadedComponents = await notFoundRoute.load();
+    const components = detectClientComponents(notFoundRoute.pattern, loadedComponents);
     setState({
       url: nextUrl,
       route: notFoundRoute,
@@ -294,11 +356,14 @@ async function handleNormalRoute(
 
   // Use prefetched route if available, otherwise load it
   const prefetched = prefetchedRoutes.get(matched.route);
-  const components = prefetched ? await prefetched : await matched.route.load();
+  const loadedComponents = prefetched ? await prefetched : await matched.route.load();
+  
+  // Detect client components using the same logic as loadInitialRoute
+  const components = detectClientComponents(matched.route.pattern, loadedComponents);
   
   // Cache the loaded route for future use
   if (!prefetched) {
-    prefetchedRoutes.set(matched.route, Promise.resolve(components));
+    prefetchedRoutes.set(matched.route, Promise.resolve(loadedComponents));
   }
 
   window.scrollTo({

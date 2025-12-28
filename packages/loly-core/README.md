@@ -1376,6 +1376,94 @@ export default function Navigation() {
 }
 ```
 
+### 🎨 Global Theme API
+
+Loly provides a global theme system that works without React Context, using BroadcastChannel for cross-tab synchronization. The theme is automatically applied to the `<body>` element on the server, and you can update it from anywhere in your application using the global API.
+
+**Usage:**
+
+```tsx
+// In any client component or vanilla JavaScript
+export default function ThemeSwitch() {
+  const handleToggle = () => {
+    const current = window.loly?.theme?.get() || "light";
+    const next = current === "dark" ? "light" : "dark";
+    window.loly?.theme?.set(next);
+  };
+
+  return <button onClick={handleToggle}>Toggle Theme</button>;
+}
+```
+
+**Reading the theme:**
+
+```tsx
+// Get current theme
+const currentTheme = window.loly?.theme?.get(); // "light" | "dark"
+
+// Or read from body class (SSR-safe)
+const themeFromDOM = document.body.classList.contains("dark") ? "dark" : "light";
+```
+
+**Server-side theme:**
+
+The theme is automatically applied to the `<body>` element on the server. You can pass the theme from your layout server hook:
+
+```tsx
+// app/layout.server.hook.ts
+import type { ServerLoader } from "@lolyjs/core";
+
+export const getServerSideProps: ServerLoader = async (ctx) => {
+  // Get theme from cookie, user preference, etc.
+  const theme = ctx.req.cookies?.theme || "light";
+  
+  return {
+    props: {},
+    metadata: {
+      // Theme is automatically applied to body via inline script
+    },
+  };
+};
+```
+
+**Key Features:**
+
+- ✅ **No React Context required** - Works with server components
+- ✅ **Cross-tab synchronization** - Uses BroadcastChannel
+- ✅ **SSR-safe** - Theme applied on server to prevent flash
+- ✅ **Cookie persistence** - Theme preference saved automatically
+- ✅ **Simple API** - `window.loly.theme.set()` and `window.loly.theme.get()`
+
+**React hook example (optional):**
+
+```tsx
+import { useEffect, useState } from "react";
+
+function useTheme() {
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    return window.loly?.theme?.get() || "light";
+  });
+
+  useEffect(() => {
+    const channel = new BroadcastChannel("loly_theme_channel");
+    channel.onmessage = (event) => {
+      if (event.data?.theme) {
+        setTheme(event.data.theme);
+      }
+    };
+    return () => channel.close();
+  }, []);
+
+  const changeTheme = (newTheme: "light" | "dark") => {
+    window.loly?.theme?.set(newTheme);
+    setTheme(newTheme);
+  };
+
+  return { theme, changeTheme };
+}
+```
+
 ---
 
 ## Configuration

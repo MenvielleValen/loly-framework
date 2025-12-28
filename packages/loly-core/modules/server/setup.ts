@@ -5,6 +5,7 @@ import {
   FilesystemRouteLoader,
   ManifestRouteLoader,
   RouteLoader,
+  writeClientBoostrapManifest,
   writeClientRoutesManifest,
 } from "@router/index";
 import { startClientBundler } from "@build/bundler/client";
@@ -90,6 +91,12 @@ export async function setupServer(
     : new ManifestRouteLoader(projectRoot);
 
   if (isDev) {
+    // Generate .loly manifests BEFORE starting the bundler.
+    // The client entry now imports ./client-components-loaders.ts, so it must exist first.
+    const initialRoutes = await routeLoader.loadRoutes();
+    writeClientBoostrapManifest(projectRoot);
+    writeClientRoutesManifest(initialRoutes, projectRoot);
+
     const { outDir, waitForBuild } = startClientBundler(projectRoot, "development");
     
     // Callback to reload routes manifest and clear cache when files change
@@ -112,6 +119,7 @@ export async function setupServer(
       if (isPageFile) {
         const loader = new FilesystemRouteLoader(appDir, projectRoot);
         const newRoutes = await loader.loadRoutes();
+        writeClientBoostrapManifest(projectRoot);
         writeClientRoutesManifest(newRoutes, projectRoot);
         console.log("[hot-reload] Client routes manifest reloaded");
       }
@@ -127,11 +135,11 @@ export async function setupServer(
     
     app.use("/static", express.static(outDir));
 
-    const routes = await routeLoader.loadRoutes();
+    const routes = initialRoutes;
     const wssRoutes = await routeLoader.loadWssRoutes();
     const notFoundPage = await routeLoader.loadNotFoundRoute();
     const errorPage = await routeLoader.loadErrorRoute();
-    writeClientRoutesManifest(routes, projectRoot);
+    // routes + loaders already generated above
 
     // Reuse the same loader instance to benefit from caching
     // Pass projectRoot so it can monitor files outside app/ directory

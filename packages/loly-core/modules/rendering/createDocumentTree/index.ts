@@ -7,9 +7,21 @@ import {
   APP_CONTAINER_ID,
   FAVICON_PATH,
   ROUTER_DATA_KEY,
+  STATIC_PATH,
 } from "@constants/globals";
-import { ClientComponentPlaceholder } from "../ClientComponentPlaceholder";
 import { isClientComponent } from "@build/utils/detect-client-components";
+import { getInlineScriptsHTML } from "../inline-scripts";
+import "../../react/themes/theme-inline-script";
+
+export type PlaceholderMetadata = {
+  componentName: string;
+  filePath: string;
+  props: Record<string, any>;
+  exportName: string;
+  insertionIndex: number; // Position in tree (0 = page, 1+ = layouts from outer to inner)
+  insertionType: "page" | "layout";
+  layoutDepth?: number; // For nested layouts (0 = outermost layout)
+};
 
 /**
  * Builds the app tree (Page + layouts) in the same way for SSR and SSG.
@@ -30,24 +42,59 @@ import { isClientComponent } from "@build/utils/detect-client-components";
 export function buildAppTree(
   route: LoadedRoute,
   params: Record<string, string>,
-  props: Record<string, any>
-): ReactElement {
+  props: Record<string, any>,
+  projectRoot?: string
+): {
+  appTree: ReactElement | null;
+  placeholders: PlaceholderMetadata[];
+} {
   const Page = route.component;
   const isServer = typeof window === "undefined";
+  const placeholders: PlaceholderMetadata[] = [];
+  
+  // Helper to normalize file path to relative path (consistent with client-side manifest)
+  const normalizeFilePath = (filePath: string | undefined): string | undefined => {
+    if (!filePath) return undefined;
+    try {
+      // Convert to relative path from project root (or process.cwd() as fallback)
+      const root = projectRoot || process.cwd();
+      const relative = path.relative(root, filePath);
+      // Normalize to use forward slashes (consistent across platforms)
+      return relative.replace(/\\/g, "/");
+    } catch {
+      // Fallback: just normalize slashes
+      return filePath.replace(/\\/g, "/");
+    }
+  };
+  
+  // Helper to extract component name from file path
+  const getComponentName = (filePath: string | undefined, fallback: string): string => {
+    if (!filePath) return fallback;
+    return path.basename(filePath, path.extname(filePath)) || fallback;
+  };
   
   // Check if page component is a client component
   const isPageClientComponent = isServer && route.pageFile && isClientComponent(route.pageFile);
   
-  let appTree: ReactElement;
+  let appTree: ReactElement | null;
   
   if (isPageClientComponent) {
-    // Render placeholder for client component on server
-    const componentName = route.pageFile ? path.basename(route.pageFile, path.extname(route.pageFile)) : "Page";
-    appTree = React.createElement(ClientComponentPlaceholder, {
-      componentName,
-      filePath: route.pageFile,
-      props: { params, ...props },
-    });
+    // Return null for client component - placeholder will be injected outside React
+    const componentName = getComponentName(route.pageFile, "Page");
+    const normalizedFilePath = normalizeFilePath(route.pageFile);
+    
+    if (normalizedFilePath) {
+      placeholders.push({
+        componentName,
+        filePath: normalizedFilePath,
+        props: { params, ...props },
+        exportName: "default",
+        insertionIndex: 0, // Page is at index 0
+        insertionType: "page",
+      });
+    }
+    
+    appTree = null;
   } else {
     // Render normal component
     appTree = React.createElement(Page, {
@@ -58,20 +105,34 @@ export function buildAppTree(
 
   const layoutChain = route.layouts.slice().reverse();
   const layoutFiles = route.layoutFiles.slice().reverse();
-
+  
+  // Track layout depth (0 = outermost layout)
+  let layoutDepth = 0;
+  
   for (let i = 0; i < layoutChain.length; i++) {
     const Layout = layoutChain[i];
     const layoutFile = layoutFiles[i];
     const isLayoutClientComponent = isServer && layoutFile && isClientComponent(layoutFile);
     
     if (isLayoutClientComponent) {
-      // Render placeholder for client layout on server
-      const componentName = layoutFile ? path.basename(layoutFile, path.extname(layoutFile)) : "Layout";
-      appTree = React.createElement(ClientComponentPlaceholder, {
-        componentName,
-        filePath: layoutFile,
-        props: { params, ...props, children: appTree },
-      });
+      // Return null for client layout - placeholder will be injected outside React
+      const componentName = getComponentName(layoutFile, "Layout");
+      const normalizedLayoutFilePath = normalizeFilePath(layoutFile);
+      
+      if (normalizedLayoutFilePath) {
+        placeholders.push({
+          componentName,
+          filePath: normalizedLayoutFilePath,
+          props: { params, ...props, children: appTree },
+          exportName: "default",
+          insertionIndex: i + 1, // Layouts start at index 1 (after page)
+          insertionType: "layout",
+          layoutDepth,
+        });
+      }
+      
+      // Keep existing appTree (null or previous) - don't wrap with placeholder
+      layoutDepth++;
     } else {
       // Render normal layout
       appTree = React.createElement(Layout, {
@@ -79,10 +140,11 @@ export function buildAppTree(
         ...props,
         children: appTree,
       } as any);
+      layoutDepth++;
     }
   }
 
-  return appTree;
+  return { appTree, placeholders };
 }
 
 /**
@@ -92,7 +154,8 @@ export function buildAppTree(
  * @returns React element representing the HTML document
  */
 export function createDocumentTree(options: {
-  appTree: ReactElement;
+  appTree: ReactElement | null;
+  placeholders?: PlaceholderMetadata[];
   initialData: InitialData;
   routerData: RouterData;
   meta: LoaderResult<any>["metadata"];
@@ -100,6 +163,9 @@ export function createDocumentTree(options: {
   descriptionFallback?: string;
   chunkHref?: string | null;
   entrypointFiles?: string[]; // All JS files for client entrypoint in order (runtime, vendor, commons, entry)
+  clientComponentChunks?: string[]; // Chunk names for client components to preload
+  dependenciesManifest?: any; // Route dependencies manifest for client component resolution
+  assetManifest?: Record<string, string>; // Asset manifest to resolve chunk names to hashed filenames
   theme?: string;
   clientJsPath?: string;
   clientCssPath?: string;
@@ -109,7 +175,8 @@ export function createDocumentTree(options: {
   faviconType?: string | null; // Favicon MIME type (e.g., "image/x-icon" or "image/png")
 }): ReactElement {
   const {
-    appTree,
+    appTree: rawAppTree,
+    placeholders = [],
     initialData,
     routerData,
     meta,
@@ -117,6 +184,9 @@ export function createDocumentTree(options: {
     descriptionFallback,
     chunkHref,
     entrypointFiles = [],
+    clientComponentChunks = [],
+    assetManifest,
+    dependenciesManifest,
     theme,
     clientJsPath = "/static/client.js",
     clientCssPath = "/static/client.css",
@@ -418,9 +488,20 @@ export function createDocumentTree(options: {
     ...routerData,
   });
 
+  // Serialize asset manifest and dependencies manifest for client
+  const assetManifestSerialized = assetManifest ? JSON.stringify(assetManifest) : "{}";
+  const dependenciesManifestSerialized = dependenciesManifest ? JSON.stringify(dependenciesManifest) : "null";
+
+  // Render the app container. Placeholders are injected outside of React (server handler),
+  // so React should only see the actual appTree (or null) here.
   const bodyChildren: ReactElement[] = [
-    React.createElement("div", { id: APP_CONTAINER_ID }, appTree),
+    React.createElement("div", { id: APP_CONTAINER_ID, suppressHydrationWarning: true }, rawAppTree),
   ];
+
+  const inlineScripts = getInlineScriptsHTML(
+    { initialTheme: theme ?? null },
+    nonce
+  );
 
   // Add inline scripts for SSG (renderToString doesn't support bootstrapScripts)
   if (includeInlineScripts) {
@@ -437,6 +518,20 @@ export function createDocumentTree(options: {
         nonce: nonce,
         dangerouslySetInnerHTML: {
           __html: `window.${ROUTER_DATA_KEY} = ${routerSerialized};`,
+        },
+      }),
+      React.createElement("script", {
+        key: "asset-manifest",
+        nonce: nonce,
+        dangerouslySetInnerHTML: {
+          __html: `window.__LOLY_ASSET_MANIFEST__ = ${assetManifestSerialized};`,
+        },
+      }),
+      React.createElement("script", {
+        key: "dependencies-manifest",
+        nonce: nonce,
+        dangerouslySetInnerHTML: {
+          __html: `window.__LOLY_ROUTE_DEPENDENCIES__ = ${dependenciesManifestSerialized};`,
         },
       })
     );
@@ -455,6 +550,7 @@ export function createDocumentTree(options: {
         name: "viewport",
         content: metaObj?.viewport ?? "width=device-width, initial-scale=1",
       }),
+      ...inlineScripts,
       ...extraMetaTags,
       ...linkTags,
       // Preload all entrypoint files (runtime, vendor, commons, entry)
@@ -477,6 +573,23 @@ export function createDocumentTree(options: {
           href: chunkHref,
           as: "script",
         }),
+      // Prefetch client component chunks (lower priority than preload)
+      // Rationale: islands may mount after `window.load`, and Chrome warns when a preload
+      // isn't consumed shortly after load. Prefetch keeps the optimization without noisy warnings.
+      ...(clientComponentChunks.length > 0 && assetManifest
+        ? clientComponentChunks
+            .map((chunkName) => {
+              const chunkFile = assetManifest[chunkName];
+              if (!chunkFile) return null;
+              return React.createElement("link", {
+                key: `prefetch-client-${chunkName}`,
+                rel: "prefetch",
+                href: `${STATIC_PATH}/${chunkFile}`,
+                as: "script",
+              });
+            })
+            .filter((link) => link !== null) as ReactElement[]
+        : []),
       faviconPath &&
         React.createElement("link", {
           key: "favicon",

@@ -4,6 +4,10 @@ import { rspack, type Configuration } from "@rspack/core";
 import { loadAliasesFromTsconfig } from "../utils";
 import dotenv from 'dotenv';
 import { BUILD_FOLDER_NAME, STATIC_PATH } from "@constants/globals";
+import { createClientComponentsSplitterPlugin } from "../plugins/rspack-client-components-splitter";
+import { createRspackExcludeClientComponentsPlugin } from "../plugins/rspack-exclude-client-components";
+import { isClientComponentFile } from "../utils/detect-client-components";
+import { getChunkNameForComponent } from "../utils/client-component-chunk-name";
 
 /**
  * Creates Rspack configuration for client bundle.
@@ -22,6 +26,7 @@ export function createClientConfig(
   const buildDir = path.join(projectRoot, BUILD_FOLDER_NAME);
   const clientEntry = path.join(buildDir, "boostrap.ts");
   const outDir = path.join(buildDir, "client");
+  
 
   const envPath = path.join(projectRoot, ".env");
   if (fs.existsSync(envPath)) {
@@ -94,6 +99,10 @@ export function createClientConfig(
       new rspack.CssExtractRspackPlugin({
         filename: mode === "production" ? "client.[contenthash].css" : "client.css",
       }),
+      // Plugin to mark client components for code splitting
+      createClientComponentsSplitterPlugin(projectRoot),
+      // Plugin to exclude client components from client bundle (replace with placeholders)
+      createRspackExcludeClientComponentsPlugin(projectRoot),
     ],
     optimization: mode === "production" ? {
       usedExports: true,
@@ -114,6 +123,54 @@ export function createClientConfig(
             name: "vendor",
             priority: 30,
             enforce: true, // Force separation even if only used once
+            reuseExistingChunk: true,
+          },
+          // Client components: separate chunk for *.client.* components
+          // NOTE: Page and layout components are NOT separated here - they stay in route chunks
+          clientComponents: {
+            test: (module: any) => {
+              if (!module.resource) return false;
+              
+              // Exclude page and layout components - they stay in route chunks
+              const resource = module.resource.replace(/\\/g, '/');
+              const isPageFile = /[\\/](app|pages)[\\/].*[\\/]page\.(tsx?|jsx?)$/.test(resource);
+              const isLayoutFile = /[\\/](app|pages)[\\/].*[\\/]layout\.(tsx?|jsx?)$/.test(resource);
+              
+              if (isPageFile || isLayoutFile) {
+                return false; // Page/layout components stay in route chunks
+              }
+              
+              // Skip node_modules
+              if (resource.includes('node_modules')) {
+                return false;
+              }
+              
+              // First check if plugin marked it (faster, no file I/O)
+              if (module.buildInfo?.isClientComponent === true) {
+                return true;
+              }
+              
+              // Fallback: Check if file is a client component by filename
+              // This is fast - just checks the filename pattern
+              try {
+                return isClientComponentFile(module.resource);
+              } catch {
+                return false;
+              }
+            },
+            name: (module: any) => {
+              if (!module.resource) return 'client-component-unknown';
+              
+              // Try to get normalized path from buildInfo if available
+              const normalizedPath = module.buildInfo?.clientComponentPath 
+                ? module.buildInfo.clientComponentPath
+                : module.resource;
+              
+              return getChunkNameForComponent(normalizedPath, projectRoot);
+            },
+            priority: 20, // Higher priority than default to ensure separation
+            enforce: true, // Force separation even if only used once
+            minChunks: 1, // Create chunk even if only used once
             reuseExistingChunk: true,
           },
           // Other node_modules dependencies in a separate chunk

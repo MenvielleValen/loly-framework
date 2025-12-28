@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { renderToPipeableStream } from "react-dom/server";
+import { PassThrough } from "stream";
 import {
   ServerContext,
   LoadedRoute,
@@ -23,11 +24,76 @@ import { loadGlobalMiddlewares, runGlobalMiddlewares } from "../global-middlewar
 import { tryServeSsgHtml, tryServeSsgData } from "./ssg";
 import { ERROR_CHUNK_KEY, STATIC_PATH } from "@constants/globals";
 import { getClientJsPath, getClientCssPath, loadAssetManifest, getFaviconInfo } from "@build/utils";
+import { loadDependenciesManifest } from "@router/dependencies-manifest";
 import { getStaticDir, type FrameworkConfig } from "@src/config";
 import { sanitizeParams } from "@security/sanitize";
 import { getRequestLogger } from "@logger/index";
 import path from "path";
 import type { PageMetadata } from "@router/index";
+import { generatePlaceholderHTML } from "@rendering/ClientComponentPlaceholder";
+import { APP_CONTAINER_ID } from "@constants/globals";
+import type { PlaceholderMetadata } from "@rendering/index";
+
+/**
+ * Injects placeholder HTML into the HTML string at the deterministic location.
+ * Finds the APP_CONTAINER_ID div and injects placeholders inside it in the correct order.
+ * 
+ * @param html - The HTML string from React render
+ * @param placeholders - Array of placeholder metadata in logical tree order
+ * @returns Modified HTML string with placeholders injected
+ */
+function injectPlaceholdersIntoHTML(html: string, placeholders: PlaceholderMetadata[]): string {
+  if (placeholders.length === 0) {
+    return html;
+  }
+
+  // Find the deterministic injection point: the opening tag containing id="__app"
+  const containerId = APP_CONTAINER_ID;
+  const idIndex = html.indexOf(`id="${containerId}"`);
+
+  if (idIndex === -1) {
+    console.warn(`[server] Could not find container with id="${containerId}" for placeholder injection`);
+    return html;
+  }
+
+  // Find the end of the opening tag '>'
+  const injectionPoint = html.indexOf(">", idIndex);
+  if (injectionPoint === -1) {
+    console.warn(`[server] Could not find end of container tag for id="${containerId}"`);
+    return html;
+  }
+
+  // Generate placeholder HTML strings in the correct order (logical tree order)
+  // Sort by insertionIndex to ensure correct order (page first, then layouts)
+  const sortedPlaceholders = [...placeholders].sort((a, b) => {
+    if (a.insertionIndex !== b.insertionIndex) {
+      return a.insertionIndex - b.insertionIndex;
+    }
+    // If same index, sort by layout depth (outermost first)
+    const depthA = a.layoutDepth ?? 0;
+    const depthB = b.layoutDepth ?? 0;
+    return depthA - depthB;
+  });
+
+  const placeholderHTMLs = sortedPlaceholders.map(placeholder => 
+    generatePlaceholderHTML(
+      placeholder.componentName,
+      placeholder.filePath,
+      placeholder.props,
+      placeholder.exportName
+    )
+  );
+
+  // Join placeholders with newlines for readability
+  const placeholdersHTML = placeholderHTMLs.join("\n");
+
+  // Inject placeholders right after the container opening tag
+  return (
+    html.slice(0, injectionPoint) +
+    "\n" + placeholdersHTML + "\n" +
+    html.slice(injectionPoint)
+  );
+}
 
 /**
  * Merges two PageMetadata objects.
@@ -251,7 +317,7 @@ async function renderNotFoundPage(
 
   // Use finalUrlPath (rewritten) for initialData so client can match correctly
   const initialData = buildInitialData(finalUrlPath, {}, combinedLoaderResult);
-  const appTree = buildAppTree(notFoundPage, {}, initialData.props);
+  const { appTree, placeholders } = buildAppTree(notFoundPage, {}, initialData.props, projectRoot);
   initialData.notFound = true;
 
   // Get nonce from res.locals (set by Helmet for CSP)
@@ -265,6 +331,7 @@ async function renderNotFoundPage(
 
   const documentTree = createDocumentTree({
     appTree,
+    placeholders,
     initialData,
     routerData,
     meta: combinedLoaderResult.metadata ?? null,
@@ -286,9 +353,23 @@ async function renderNotFoundPage(
     onShellReady() {
       if (didError || res.headersSent) return;
 
-      res.statusCode = 404;
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      pipe(res);
+      // Option B: Collect stream HTML, inject placeholders, then send
+      const htmlChunks: Buffer[] = [];
+      const collectStream = new PassThrough();
+      
+      collectStream.on("data", (chunk: Buffer) => {
+        htmlChunks.push(chunk);
+      });
+      
+      collectStream.on("end", () => {
+        const html = Buffer.concat(htmlChunks).toString("utf-8");
+        const htmlWithPlaceholders = injectPlaceholdersIntoHTML(html, placeholders);
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.end(htmlWithPlaceholders);
+      });
+      
+      pipe(collectStream);
     },
     onShellError(err) {
       didError = true;
@@ -806,7 +887,7 @@ async function handlePageRequestInternal(
   // Use finalUrlPath (rewritten) for initialData so client can match correctly
   // The original urlPath is preserved in the browser, but the client needs the rewritten path to match routes
   const initialData = buildInitialData(finalUrlPath, params, combinedLoaderResult);
-  const appTree = buildAppTree(route, params, initialData.props);
+  const { appTree, placeholders } = buildAppTree(route, params, initialData.props, projectRoot);
 
   // Get chunk href with hash if available
   const chunkName = routeChunks[route.pattern];
@@ -830,8 +911,14 @@ async function handlePageRequestInternal(
     entrypointFiles.push(...assetManifest.entrypoints.client.map(file => `${STATIC_PATH}/${file}`));
   }
 
+  // Load dependencies manifest and get client component chunks for this route
+  const dependenciesManifest = projectRoot ? loadDependenciesManifest(projectRoot) : null;
+  const routeDependencies = dependenciesManifest?.routes[route.pattern];
+  const clientComponentChunks = routeDependencies?.clientComponentChunks || [];
+
   const documentTree = createDocumentTree({
     appTree,
+    placeholders,
     initialData,
     routerData,
     meta: combinedLoaderResult.metadata,
@@ -839,6 +926,9 @@ async function handlePageRequestInternal(
     descriptionFallback: "Loly demo",
     chunkHref,
     entrypointFiles,
+    clientComponentChunks,
+    assetManifest: assetManifest?.chunks || {},
+    dependenciesManifest: dependenciesManifest || null,
     theme,
     clientJsPath,
     clientCssPath,
@@ -855,9 +945,30 @@ async function handlePageRequestInternal(
         return;
       }
 
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      pipe(res);
+      // Option B: Collect stream HTML, inject placeholders, then send
+      // This breaks true streaming but is simpler for first implementation
+      // Future: Migrate to Option A (transform stream) for better performance
+      const htmlChunks: Buffer[] = [];
+      const collectStream = new PassThrough();
+      
+      collectStream.on("data", (chunk: Buffer) => {
+        htmlChunks.push(chunk);
+      });
+      
+      collectStream.on("end", () => {
+        // Collect all HTML chunks
+        const html = Buffer.concat(htmlChunks).toString("utf-8");
+        
+        // Inject placeholders after React render (outside React tree)
+        const htmlWithPlaceholders = injectPlaceholdersIntoHTML(html, placeholders);
+        
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.end(htmlWithPlaceholders);
+      });
+      
+      // Pipe React's stream to our collector
+      pipe(collectStream);
     },
 
     onShellError(err) {
@@ -1127,7 +1238,7 @@ async function renderErrorPageWithStream(
       );
       return;
     }
-    const appTree = buildAppTree(errorPage, { error: String(error) }, initialData.props);
+    const { appTree, placeholders } = buildAppTree(errorPage, { error: String(error) }, initialData.props, projectRoot);
 
     // Get asset paths with hashes (if in production and manifest exists)
     // In dev, always use non-hashed names; in prod, use manifest if available
@@ -1160,6 +1271,7 @@ async function renderErrorPageWithStream(
 
     const documentTree = createDocumentTree({
       appTree,
+      placeholders,
       initialData,
       routerData,
       meta: combinedLoaderResult.metadata ?? null,
@@ -1182,9 +1294,23 @@ async function renderErrorPageWithStream(
           return;
         }
 
-        res.statusCode = 500;
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        pipe(res);
+        // Option B: Collect stream HTML, inject placeholders, then send
+        const htmlChunks: Buffer[] = [];
+        const collectStream = new PassThrough();
+        
+        collectStream.on("data", (chunk: Buffer) => {
+          htmlChunks.push(chunk);
+        });
+        
+        collectStream.on("end", () => {
+          const html = Buffer.concat(htmlChunks).toString("utf-8");
+          const htmlWithPlaceholders = injectPlaceholdersIntoHTML(html, placeholders);
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.end(htmlWithPlaceholders);
+        });
+        
+        pipe(collectStream);
       },
       onShellError(err) {
         didError = true;

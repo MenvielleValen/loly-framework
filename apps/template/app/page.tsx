@@ -1,5 +1,5 @@
 import { Image } from "@lolyjs/core/components";
-import { ThemeSwitch } from "@/components/shared/theme-switch";
+import { ThemeSwitch } from "@components/shared/ImprovedThemeSwitch.client";
 
 type HomePageProps = {
   // Props from page server.hook.ts (specific to this page)

@@ -17,6 +17,7 @@ import { buildServerApp } from "./bundler/server";
 import { NOT_FOUND_PATTERN } from "@constants/globals";
 import { loadConfig, getAppDir, type FrameworkConfig } from "@src/config";
 import { loadWssRoutes } from "@router/loader-wss";
+import { scanAndRegisterClientComponents, getClientComponents } from "./utils/detect-client-components";
 
 export interface BuildAppOptions {
   rootDir?: string;
@@ -59,7 +60,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<void> {
   const apiRoutes = await loadApiRoutes(appDir);
   const wssRoutes = await loadWssRoutes(appDir);
 
-  const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir, config);
+  // Scan and register all client components before building
+  scanAndRegisterClientComponents(appDir);
+  const clientComponents = new Set(
+    getClientComponents().map(p => path.normalize(p))
+  );
+
+  const { outDir: serverOutDir } = await buildServerApp(projectRoot, appDir, config, clientComponents);
 
   // Load special error pages (_not-found.tsx, _error.tsx)
   const notFoundRoute = await loadNotFoundRouteFromFilesystem(appDir, projectRoot);

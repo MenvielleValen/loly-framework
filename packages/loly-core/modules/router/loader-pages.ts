@@ -5,7 +5,7 @@ import { PAGE_FILE_REGEX } from "./constants";
 import { buildRoutePathFromDir, buildRegexFromRoutePath, isRouteGroup } from "./path";
 import { loadLayoutsForDir } from "./layout";
 import { loadServerHookForDir, loadLayoutServerHook } from "./server-hook";
-import { scanAndRegisterClientComponents, isClientComponent } from "@build/utils/detect-client-components";
+import { scanAndRegisterClientComponents, isClientComponent, isClientComponentFile } from "@build/utils/detect-client-components";
 
 /**
  * Validates loaded routes and warns about common issues.
@@ -113,6 +113,15 @@ export async function loadRoutes(appDir: string): Promise<LoadedRoute[]> {
       // Skip special error pages - they're handled separately
       if (entry.name.startsWith("_not-found.") || entry.name.startsWith("_error.")) {
         continue;
+      }
+
+      // Pages MUST be server components - validate that page file is not a client component
+      if (isClientComponentFile(fullPath)) {
+        const relPath = path.relative(appDir, fullPath);
+        throw new Error(
+          `Page files cannot be client components. Found client component: ${relPath}\n` +
+          `Pages must always be server components. If you need client-side logic, extract it to a separate .client.tsx component.`
+        );
       }
 
       const relDir = path.relative(appDir, currentDir);

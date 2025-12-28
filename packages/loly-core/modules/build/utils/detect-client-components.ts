@@ -2,40 +2,42 @@ import fs from "fs";
 import path from "path";
 
 /**
- * Checks if a file contains the "use client" directive.
+ * Checks if a file is a client component based on its filename.
+ * Client components use the convention: *.client.tsx, *.client.ts, *.client.jsx, *.client.js
+ * 
+ * Pages and layouts CANNOT be client components - they must always be server components.
  * 
  * @param filePath - Path to the file to check
- * @returns `true` if the file contains "use client", `false` otherwise
+ * @returns `true` if the file is a client component, `false` otherwise
  */
-export function hasClientDirective(filePath: string): boolean {
-  if (!fs.existsSync(filePath)) {
+export function isClientComponentFile(filePath: string): boolean {
+  if (!filePath) {
     return false;
   }
 
-  try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    // Check for "use client" at the top of the file (before any imports or code)
-    // It can be with or without quotes, and may have whitespace
-    const lines = content.split("\n");
-    
-    // Check first 10 lines for "use client" directive
-    for (let i = 0; i < Math.min(10, lines.length); i++) {
-      const line = lines[i].trim();
-      // Match "use client" with optional quotes and whitespace
-      if (/^["']?use\s+client["']?\s*;?\s*$/.test(line)) {
-        return true;
-      }
-      // Stop checking if we hit a non-comment, non-empty line that's not "use client"
-      if (line && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*")) {
-        break;
-      }
-    }
-    
-    return false;
-  } catch (error) {
-    // If we can't read the file, assume it's not a client component
+  const normalizedPath = path.normalize(filePath);
+  const fileName = path.basename(normalizedPath);
+  
+  // Check if file matches client component pattern: *.client.tsx, *.client.ts, *.client.jsx, *.client.js
+  const clientComponentPattern = /\.client\.(tsx|ts|jsx|js)$/i;
+  if (!clientComponentPattern.test(fileName)) {
     return false;
   }
+  
+  // Pages and layouts are ALWAYS server components, even if they have .client. in the name
+  // This prevents accidental client pages/layouts
+  if (fileName === "page.client.tsx" || 
+      fileName === "page.client.ts" || 
+      fileName === "page.client.jsx" || 
+      fileName === "page.client.js" ||
+      fileName === "layout.client.tsx" || 
+      fileName === "layout.client.ts" || 
+      fileName === "layout.client.jsx" || 
+      fileName === "layout.client.js") {
+    return false;
+  }
+  
+  return true;
 }
 
 /**
@@ -66,7 +68,8 @@ export function isClientComponent(filePath: string): boolean {
 }
 
 /**
- * Scans a directory and registers all files with "use client" directive.
+ * Scans a directory and registers all client component files.
+ * Client components are identified by the .client.tsx/.client.ts/.client.jsx/.client.js extension.
  * 
  * @param dirPath - Directory to scan
  * @param extensions - File extensions to check (default: [".tsx", ".ts", ".jsx", ".js"])
@@ -94,7 +97,8 @@ export function scanAndRegisterClientComponents(
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name);
         if (extensions.includes(ext)) {
-          if (hasClientDirective(fullPath)) {
+          // Use filename-based detection instead of reading file content
+          if (isClientComponentFile(fullPath)) {
             registerClientComponent(fullPath);
           }
         }

@@ -11,8 +11,9 @@ import {
 import { pathToOutDir } from "./path";
 import { ensureDir, getClientJsPath, getClientCssPath, loadAssetManifest, getFaviconInfo } from "../utils";
 import { type FrameworkConfig } from "@src/config";
-import { STATIC_PATH } from "@constants/globals";
+import { STATIC_PATH, APP_CONTAINER_ID } from "@constants/globals";
 import { mergeMetadata } from "../../server/handlers/pages";
+import { generatePlaceholderHTML } from "@rendering/ClientComponentPlaceholder";
 
 /**
  * Renders a static page for SSG.
@@ -203,9 +204,10 @@ export async function renderStaticRoute(
   // Build React component tree with combined props
   const initialData = buildInitialData(urlPath, params, combinedLoaderResult);
   const routerData = buildRouterData(req);
-  const appTree = buildAppTree(route, params, initialData.props);
+  const { appTree, placeholders } = buildAppTree(route, params, initialData.props, projectRoot);
   const documentTree = createDocumentTree({
     appTree,
+    placeholders,
     initialData,
     routerData,
     meta: combinedLoaderResult.metadata,
@@ -223,7 +225,32 @@ export async function renderStaticRoute(
   // Render to HTML (hydratable, same as SSR)
   // Note: renderToString doesn't support bootstrapScripts like renderToPipeableStream,
   // so scripts remain in body (acceptable for SSG as it's pre-rendered)
-  const html = "<!DOCTYPE html>" + renderToString(documentTree);
+  let html = "<!DOCTYPE html>" + renderToString(documentTree);
+  
+  // Inject placeholders into HTML (same as SSR)
+  if (placeholders.length > 0) {
+    const idIndex = html.indexOf(`id="${APP_CONTAINER_ID}"`);
+    if (idIndex !== -1) {
+      const injectionPoint = html.indexOf(">", idIndex);
+      if (injectionPoint !== -1) {
+        const sortedPlaceholders = [...placeholders].sort((a, b) => {
+          if (a.insertionIndex !== b.insertionIndex) {
+            return a.insertionIndex - b.insertionIndex;
+          }
+          const depthA = a.layoutDepth ?? 0;
+          const depthB = b.layoutDepth ?? 0;
+          return depthA - depthB;
+        });
+        
+        const placeholderHTMLs = sortedPlaceholders.map(p => 
+          generatePlaceholderHTML(p.componentName, p.filePath, p.props, p.exportName)
+        );
+        const placeholdersHTML = placeholderHTMLs.join("\n");
+        
+        html = html.slice(0, injectionPoint + 1) + "\n" + placeholdersHTML + "\n" + html.slice(injectionPoint + 1);
+      }
+    }
+  }
 
   // Write files
   const dir = pathToOutDir(ssgOutDir, urlPath);

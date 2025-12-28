@@ -9,7 +9,7 @@
     "start": "loly start"
   },
   "dependencies": {
-    "@lolyjs/core": "0.3.0-alpha.2",
+    "@lolyjs/core": "workspace:*",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

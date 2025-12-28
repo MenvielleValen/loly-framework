@@ -1,10 +1,8 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "@lolyjs/core/hooks";
 import { useClientMounted } from "@lolyjs/core/hooks";
 
-export function SPAVsDirectExample() {
+export function SPAVsDirectExample(props: any) {
   const [loadMethod, setLoadMethod] = useState<"unknown" | "spa" | "direct">("unknown");
   const [hydratedAt, setHydratedAt] = useState<Date | null>(null);
   const router = useRouter();
@@ -28,17 +26,17 @@ export function SPAVsDirectExample() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Información de Carga</h3>
+      <h3 className="text-lg font-semibold">Load Information</h3>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 bg-background border rounded">
-          <p className="text-sm text-muted-foreground mb-1">Método de carga:</p>
+          <p className="text-sm text-muted-foreground mb-1">Load method:</p>
           <p className="text-xl font-bold">
             {loadMethod === "spa" ? "🔄 SPA" : loadMethod === "direct" ? "🌐 Directa" : "⏳ Detectando..."}
           </p>
         </div>
         <div className="p-4 bg-background border rounded">
-          <p className="text-sm text-muted-foreground mb-1">Hidratado a las:</p>
+          <p className="text-sm text-muted-foreground mb-1">Hydrated at:</p>
           <p className="text-sm font-mono">
             {hydratedAt ? hydratedAt.toLocaleTimeString() : "⏳"}
           </p>
@@ -47,36 +45,36 @@ export function SPAVsDirectExample() {
 
       <div className="p-4 bg-muted/50 rounded-lg">
         <p className="text-sm mb-2">
-          <strong>Prueba:</strong>
+          <strong>Test:</strong>
         </p>
         <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
-          <li>Navega a otra página usando los botones (SPA)</li>
-          <li>Vuelve aquí - debería mostrar "SPA"</li>
-          <li>Recarga la página directamente (F5) - debería mostrar "Directa"</li>
+          <li>Navigate to another page using the buttons (SPA)</li>
+          <li>Come back here - should show "SPA"</li>
+          <li>Reload the page directly (F5) - should show "Direct"</li>
           <li>Ambos casos deben funcionar correctamente</li>
         </ol>
       </div>
 
       <div className="pt-4 border-t space-y-2">
-        <p className="text-sm font-semibold">Navegación de prueba:</p>
+        <p className="text-sm font-semibold">Test navigation:</p>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => router.push("/")}
             className="px-4 py-2 border rounded hover:bg-muted text-sm"
           >
-            Ir a Home (SPA)
+            Go to Home (SPA)
           </button>
           <button
             onClick={() => router.push("/examples/client-components")}
             className="px-4 py-2 border rounded hover:bg-muted text-sm"
           >
-            Ir a Ejemplos (SPA)
+            Go to Examples (SPA)
           </button>
           <a
             href="/examples/client-components/window-api"
             className="px-4 py-2 border rounded hover:bg-muted text-sm inline-block"
           >
-            Ir a Window API (Directa)
+            Go to Window API (Direct)
           </a>
         </div>
       </div>

@@ -1,15 +1,45 @@
-import React from "react";
-
-import { useTheme } from "@lolyjs/core/themes";
 import { Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
+
+const THEME_CHANNEL = "loly_theme_channel";
+
+const readTheme = (): "light" | "dark" => {
+  if (typeof window === "undefined") return "light";
+  const api = (window as any).loly?.theme;
+  if (api?.get) return api.get();
+  if (document.body?.classList.contains("dark")) return "dark";
+  if (document.documentElement?.classList.contains("dark")) return "dark";
+  return "light";
+};
 
 export const ThemeSwitch = () => {
-  const { theme, handleThemeChange } = useTheme();
-  const [mounted, setMounted] = React.useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [mounted, setMounted] = useState(false);
 
   // Avoid hydration mismatch
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true);
+
+    setTheme(readTheme());
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== "undefined") {
+      channel = new BroadcastChannel(THEME_CHANNEL);
+      channel.onmessage = (event) => {
+        const next = event?.data?.theme;
+        if (typeof next === "string") {
+          setTheme(next === "dark" ? "dark" : "light");
+        }
+      };
+    }
+
+    const handleRefresh = () => setTheme(readTheme());
+    window.addEventListener("fw-data-refresh", handleRefresh);
+
+    return () => {
+      if (channel) channel.close();
+      window.removeEventListener("fw-data-refresh", handleRefresh);
+    };
   }, []);
 
   if (!mounted) {
@@ -19,7 +49,11 @@ export const ThemeSwitch = () => {
   }
 
   const handleSwitch = () => {
-    handleThemeChange(theme === "dark" ? "light" : "dark");
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    if (typeof window !== "undefined" && (window as any).loly?.theme?.set) {
+      (window as any).loly.theme.set(nextTheme);
+    }
+    setTheme(nextTheme);
   };
 
   return (

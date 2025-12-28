@@ -7,7 +7,7 @@ import { ServerLoader } from "@lolyjs/core";
  * This hook just makes the routing decision (redirect if not authenticated).
  */
 export const getServerSideProps: ServerLoader = async (ctx) => {
-  // ctx.locals.user ya está establecido por global middleware
+  // ctx.locals.user is already set by the global middleware
   const user = ctx.locals?.user;
 
   if (!user) {

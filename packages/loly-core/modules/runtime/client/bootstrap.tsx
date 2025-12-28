@@ -75,6 +75,29 @@ function detectClientComponents(
   };
 }
 
+/**
+ * Determines if the current route should skip hydrateRoot and instead perform
+ * a client takeover (createRoot) to avoid hydration mismatches.
+ *
+ * We trigger takeover when:
+ * - The page is a client component
+ * - Any layout in the chain is a client component
+ * - There are direct/indirect client components registered for the route
+ */
+export function shouldClientTakeover(routeDeps: any | null | undefined): boolean {
+  if (!routeDeps) return false;
+
+  const pageClient = routeDeps.isPageClientComponent === true;
+  const layoutClient =
+    Array.isArray(routeDeps.isLayoutClientComponent) &&
+    routeDeps.isLayoutClientComponent.some((v: boolean) => v);
+  const hasDirectClient =
+    Array.isArray(routeDeps.allClientComponents) &&
+    routeDeps.allClientComponents.length > 0;
+
+  return pageClient || layoutClient || hasDirectClient;
+}
+
 export async function loadInitialRoute(
   initialUrl: string,
   initialData: InitialData | null,
@@ -264,12 +287,7 @@ export function bootstrapClient(
       // the normal hydration path + islands, not client takeover
       const routePattern = initialData?.pathname || window.location.pathname;
       const routeDeps = getRouteDependencies(routePattern);
-      const hasClientIslands =
-        !!routeDeps &&
-        (
-          routeDeps.isPageClientComponent === true ||
-          (routeDeps.isLayoutClientComponent && routeDeps.isLayoutClientComponent.some((v: boolean) => v))
-        );
+      const hasClientIslands = shouldClientTakeover(routeDeps);
 
       // Load initial state (needed for AppShell)
       const initialState = await loadInitialRoute(
